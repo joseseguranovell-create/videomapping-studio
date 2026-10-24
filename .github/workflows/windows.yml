@@ -24,6 +24,8 @@ jobs:
         run: node tests/e2e/run.mjs
       - name: Instalador y versión portátil
         run: npx electron-builder --win --x64 --publish never
+      - name: Arranque del ejecutable empaquetado
+        run: node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: videomapping-studio-windows
