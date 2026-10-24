@@ -69,6 +69,8 @@ export class Player {
   private baseShow = 0;
   private baseClock = 0;
   private clockSrc: 'audio' | 'perf' = 'perf';
+  /** Vigilancia del reloj de audio: si se atasca (altavoz desconectado, sin tarjeta de sonido), la imagen sigue con el reloj del sistema. */
+  private clockWatch: { perf: number; ctx: number } | null = null;
   private layoutCache: { show: Show | null; layout: ShowLayout; cues: AudioCue[] } = { show: null, layout: { slots: [], duration: 0 }, cues: [] };
   private lastCycle = -1;
   // estadísticas
@@ -139,6 +141,25 @@ export class Player {
     return performance.now() / 1000;
   }
 
+  private watchClock(perfNow: number) {
+    const w = this.clockWatch;
+    if (!w || !this.playing || this.clockSrc !== 'audio' || !this.audio.ctx) return;
+    const dp = perfNow - w.perf;
+    if (dp < 2) return;
+    const da = this.audio.ctx.currentTime - w.ctx;
+    if (da < dp * 0.8) {
+      const t = this.time;
+      this.clockSrc = 'perf';
+      this.baseShow = t;
+      this.baseClock = this.clock();
+      this.clockWatch = null;
+      this.opts.onError?.(`El reloj de audio va lento (${da.toFixed(1)} s en ${dp.toFixed(1)} s): la imagen sigue con el reloj del sistema.`);
+    } else {
+      w.perf = perfNow;
+      w.ctx = this.audio.ctx.currentTime;
+    }
+  }
+
   get time(): number {
     return this.playing ? this.baseShow + (this.clock() - this.baseClock) : this.baseShow;
   }
@@ -148,6 +169,7 @@ export class Player {
     await this.audio.resume();
     this.clockSrc = this.audio.running ? 'audio' : 'perf';
     this.baseClock = this.clock();
+    this.clockWatch = this.clockSrc === 'audio' && this.audio.ctx ? { perf: performance.now() / 1000, ctx: this.audio.ctx.currentTime } : null;
     this.playing = true;
     this.lastCycle = -1;
   }
@@ -259,6 +281,7 @@ export class Player {
       // Ahorro de GPU: en calibración, en negro o en pausa solo se redibuja cuando algo cambia
       // (en pausa, también unas veces por segundo para mostrar fotogramas de vídeo recién cargados).
       const now = performance.now();
+      this.watchClock(now / 1000);
       const animated = this.playing && this.mode.kind === 'show';
       const pausedRefresh = this.mode.kind === 'show' && now - this.lastPausedRender > 150;
       if (animated || this.needsRender || pausedRefresh) {

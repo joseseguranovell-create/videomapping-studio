@@ -609,6 +609,18 @@ try {
     await out.keyboard.press('l');
     i = await info();
     assert(i.live?.index === 3, 'L deja en bucle la escena que suena');
+    // Reloj de audio atascado (p. ej. altavoz desconectado): la imagen pasa al reloj del sistema y sigue a velocidad real.
+    const clk = await out.evaluate(async () => {
+      const p = window.__vmPlayer;
+      if (p.clockSrc !== 'audio') return { skipped: true };
+      p.clockWatch = { perf: performance.now() / 1000 - 3, ctx: p.audio.ctx.currentTime - 0.5 };
+      await new Promise((r) => setTimeout(r, 200));
+      const t0 = p.time, w0 = performance.now();
+      await new Promise((r) => setTimeout(r, 1000));
+      return { src: p.clockSrc, rate: (p.time - t0) / ((performance.now() - w0) / 1000) };
+    });
+    console.log(`      reloj: ${JSON.stringify(clk)}`);
+    assert(clk.skipped || (clk.src === 'perf' && clk.rate > 0.9 && clk.rate < 1.1), 'con el audio atascado la imagen sigue a velocidad real');
     await out.evaluate(() => window.__vmPlayer.pause());
   });
 
