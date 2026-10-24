@@ -100,6 +100,26 @@ try {
     assert(ctx.errors.length === 0, `errores en consola: ${ctx.errors.join(' | ')}`);
   });
 
+  await step('1b. Proyecto vacío + paquete: la casa del paquete llega a Calibrar', async () => {
+    await win.click('[data-testid="new-project"]');
+    await prompt(win, 'Desde paquete');
+    await win.waitForSelector('[data-testid="create-installation"]');
+    await win.click('[data-testid="nav-library"]');
+    await win.click('[data-testid="open-packs"]');
+    assert(await win.locator('.modal input[type="checkbox"]').first().isChecked(), 'sin casa en el proyecto, el paquete trae la suya por defecto');
+    await win.click('[data-testid="add-pack-halloween-infantil"]');
+    await win.waitForFunction(() => window.__vmStore.getState().project.installations.length === 1, null, { timeout: 15000 });
+    await win.click('[data-testid="nav-calibrate"]');
+    await win.waitForSelector('[data-testid="surface-list"]');
+    const n = await win.locator('[data-testid^="surface-item-"]').count();
+    assert(n === 8, `superficies visibles en Calibrar: ${n}`);
+    const s = await S(win);
+    assert(await win.evaluate(() => window.__vmStore.getState().showId) === s.project.shows[0].id, 'el espectáculo del paquete queda seleccionado');
+    await win.keyboard.press('Control+s');
+    await win.waitForFunction(() => !window.__vmStore.getState().dirty);
+    await win.click('[data-testid="nav-home"]');
+  });
+
   await step('2. Crear proyecto nuevo vacío y una instalación', async () => {
     await win.click('[data-testid="new-project"]');
     await prompt(win, 'Casa de pruebas');

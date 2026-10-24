@@ -77,6 +77,14 @@ interface Actions {
   dismissToast(id: string): void;
 }
 
+/** Si la instalación o el espectáculo seleccionados ya no existen (o no había), selecciona el primero. */
+function keepSelection(s: State, p: Project): Partial<State> {
+  const out: Partial<State> = {};
+  if (!p.installations.some((i) => i.id === s.installationId)) Object.assign(out, { installationId: p.installations[0]?.id ?? null, surfaceId: null });
+  if (!p.shows.some((x) => x.id === s.showId)) Object.assign(out, { showId: p.shows[0]?.id ?? null, sceneId: p.shows[0]?.scenes[0]?.id ?? null, clipId: null });
+  return out;
+}
+
 export const useStore = create<State & Actions>((set, get) => ({
   project: null,
   file: null,
@@ -159,6 +167,7 @@ export const useStore = create<State & Actions>((set, get) => ({
     });
     if (next === cur) return;
     set((s) => ({
+      ...keepSelection(s, next),
       project: next,
       past: [...s.past, { doc: cur, label }].slice(-HISTORY_LIMIT),
       future: [],
@@ -189,14 +198,14 @@ export const useStore = create<State & Actions>((set, get) => ({
     const { past, project } = get();
     if (!past.length || !project) return;
     const prev = past[past.length - 1];
-    set((s) => ({ project: prev.doc, past: s.past.slice(0, -1), future: [{ doc: project, label: prev.label }, ...s.future], dirty: true, changeCounter: s.changeCounter + 1 }));
+    set((s) => ({ ...keepSelection(s, prev.doc), project: prev.doc, past: s.past.slice(0, -1), future: [{ doc: project, label: prev.label }, ...s.future], dirty: true, changeCounter: s.changeCounter + 1 }));
     get().toast('info', `Deshecho: ${prev.label}`, 1800);
   },
   redo() {
     const { future, project } = get();
     if (!future.length || !project) return;
     const next = future[0];
-    set((s) => ({ project: next.doc, future: s.future.slice(1), past: [...s.past, { doc: project, label: next.label }], dirty: true, changeCounter: s.changeCounter + 1 }));
+    set((s) => ({ ...keepSelection(s, next.doc), project: next.doc, future: s.future.slice(1), past: [...s.past, { doc: project, label: next.label }], dirty: true, changeCounter: s.changeCounter + 1 }));
     get().toast('info', `Rehecho: ${next.label}`, 1800);
   },
   markSaved(at) {
