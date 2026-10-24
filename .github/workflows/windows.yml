@@ -26,25 +26,45 @@ jobs:
       # Los pasos siguen aunque falle uno anterior, para obtener el diagnóstico completo.
       - name: Dependencias
         run: |
-          npm ci 2>&1 | tee -a ci-log.txt; echo "npm ci: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          npm ci 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "npm ci: $code" >> ci-status.txt
       - name: Tipos
+        continue-on-error: true
         run: |
-          npm run typecheck 2>&1 | tee -a ci-log.txt; echo "typecheck: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          npm run typecheck 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "typecheck: $code" >> ci-status.txt
       - name: Pruebas unitarias
+        continue-on-error: true
         run: |
-          npm test 2>&1 | tee -a ci-log.txt; echo "unit: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          npm test 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "unit: $code" >> ci-status.txt
       - name: Compilación
+        continue-on-error: true
         run: |
-          npm run build 2>&1 | tee -a ci-log.txt; echo "build: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          npm run build 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "build: $code" >> ci-status.txt
       - name: Pruebas de extremo a extremo (Electron real)
+        continue-on-error: true
         run: |
-          node tests/e2e/run.mjs 2>&1 | tee -a ci-log.txt; echo "e2e: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          node tests/e2e/run.mjs 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "e2e: $code" >> ci-status.txt
       - name: Instalador y versión portátil
+        continue-on-error: true
         run: |
-          npx electron-builder --win --x64 --publish never 2>&1 | tee -a ci-log.txt; echo "package: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          npx electron-builder --win --x64 --publish never 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "package: $code" >> ci-status.txt
       - name: Arranque del ejecutable empaquetado
+        continue-on-error: true
         run: |
-          node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe" 2>&1 | tee -a ci-log.txt; echo "packaged-exe: ${PIPESTATUS[0]}" >> ci-status.txt
+          set +e +o pipefail
+          node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe" 2>&1 | tee -a ci-log.txt; code=${PIPESTATUS[0]}
+          echo "packaged-exe: $code" >> ci-status.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

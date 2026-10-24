@@ -286,9 +286,11 @@ try {
     const show = s.project.shows.find((x) => x.name === 'Halloween 2026');
     await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), show.id);
     await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
-    // El vídeo importado dura 2 s (clip de 0 a 2 s): se reproduce desde 0,2 s y se comprueba a ~1,4 s.
+    // El vídeo importado dura 2 s: se alarga su clip (en bucle) para no depender de la velocidad del equipo.
+    await win.evaluate((id) => window.__vmStore.getState().update('test', (d) => { const c = d.shows.find((x) => x.id === id).scenes[0].clips[1]; c.duration = 9; c.loop = true; }), show.id);
+    await out.waitForTimeout(300);
     await out.evaluate(() => { window.__vmPlayer.seek(0.2); void window.__vmPlayer.play(); });
-    await out.waitForTimeout(1200);
+    await out.waitForFunction(() => window.__vmPlayer.media.activeVideos > 0 && window.__vmPlayer.time > 1, null, { timeout: 15000 });
     const st = await out.evaluate(() => window.__vmPlayer.status());
     assert(st.playing && st.time > 1, `la salida reproduce (t=${st.time})`);
     assert(st.activeVideos >= 1, `vídeo activo (${st.activeVideos})`);
