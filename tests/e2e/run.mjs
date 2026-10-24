@@ -372,6 +372,15 @@ try {
       if (bright(vidPx) > 20) break;
       await out.waitForTimeout(250);
     }
+    if (bright(vidPx) <= 20) {
+      const diag = await out.evaluate(() => {
+        const p = window.__vmPlayer;
+        const vids = [...p.media.videos.values()].map((v) => ({ status: v.status, rs: v.el.readyState, t: v.el.currentTime, paused: v.el.paused, err: v.el.error?.message ?? null, src: v.el.currentSrc.slice(-40), w: v.el.videoWidth }));
+        const sh = p.currentShow();
+        return { vids, time: p.time, scene: p.status().sceneName, errors: p.status().errors, clips: sh.scenes[0].clips.map((c) => [c.surfaceId.slice(-6), c.source.type, c.start, c.duration]) };
+      });
+      console.log('      diagnóstico vídeo: ' + JSON.stringify(diag));
+    }
     assert(bright(vidPx) > 20, `el vídeo se ve dentro de la ventana 2 (${vidPx})`);
     assert(bright(gapPx) < 5, `nada se proyecta entre ventanas (${gapPx})`);
     assert(bright(doorPx) > 10, `el efecto se ve en la puerta (${doorPx})`);
