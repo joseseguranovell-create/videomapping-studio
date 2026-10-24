@@ -28,6 +28,14 @@ const api: VmApi = {
       });
     },
   },
+  updates: {
+    info: () => inv('updates:info'),
+    check: () => inv('updates:check'),
+    download: () => inv('updates:download'),
+    install: (file) => inv('updates:install', file),
+    setToken: (t) => inv('updates:setToken', t),
+    onProgress: (cb) => on<{ done: number; total: number }>('updates:progress', (v) => cb(v.done, v.total)),
+  },
   project: {
     create: (name, template) => inv('project:create', name, template),
     createFromPack: (packId, name) => inv('project:createFromPack', packId, name),

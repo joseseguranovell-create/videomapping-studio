@@ -16,6 +16,7 @@ import type { Project } from '../shared/model';
 import { newId } from '../shared/ids';
 import { startAgentApi, stopAgentApi, agentApiRunning, newToken } from './agentApi';
 import type { AgentApiStatus } from '../shared/api';
+import * as updater from './updater';
 
 registerSchemePrivileges();
 
@@ -381,6 +382,12 @@ async function applyAgentSettings(): Promise<AgentApiStatus> {
 }
 
 function registerIpc() {
+  // ── Actualizaciones (solo cuando el usuario lo pide) ──
+  handle('updates:info', () => ({ current: updater.BUILD, hasToken: updater.hasToken(), canInstall: app.isPackaged && process.platform === 'win32' }));
+  handle('updates:check', () => updater.checkForUpdate());
+  handle('updates:download', (e) => updater.downloadInstaller((done, total) => { if (!e.sender.isDestroyed()) e.sender.send('updates:progress', { done, total }); }));
+  handle('updates:install', (_e, file: string) => { log('info', 'actualización', `Abriendo el instalador ${file}`); updater.runInstaller(file); });
+  handle('updates:setToken', (_e, token: string | null) => updater.setToken(token));
   handle('agent:status', () => agentStatus());
   handle('agent:configure', async (_e, p: { enabled: boolean; port?: number; regenerate?: boolean }) => {
     const a = settings.get().agentApi;

@@ -129,6 +129,7 @@ h4.sub { margin: 12px 0 6px; font-size: 11.5px; font-weight: 600; color: var(--m
 .banner { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; margin: 10px 12px 0; border: 1px solid; }
 .banner.warn { background: rgba(251, 191, 36, 0.08); border-color: rgba(251, 191, 36, 0.35); color: #fde68a; }
 .banner.error { background: rgba(248, 113, 113, 0.08); border-color: rgba(248, 113, 113, 0.35); color: #fecaca; }
+.banner.ok { background: rgba(74, 222, 128, 0.08); border-color: rgba(74, 222, 128, 0.35); color: #bbf7d0; }
 .banner.small { margin: 6px 0; padding: 6px 8px; font-size: 12px; }
 .banner span { flex: 1; }
 

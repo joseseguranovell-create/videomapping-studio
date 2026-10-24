@@ -59,6 +59,17 @@ export interface AppSettings {
   agentApi: { enabled: boolean; port: number; token: string };
 }
 
+/** Resultado de buscar actualizaciones. */
+export interface UpdateCheck {
+  current: { sha: string; date: string };
+  latest: { sha: string; date: string; installer: string | null; size: number } | null;
+  available: boolean;
+  /** Solo la aplicación empaquetada de Windows puede instalarse sola. */
+  canInstall: boolean;
+  hasToken: boolean;
+  error: string | null;
+}
+
 export interface AgentApiStatus {
   running: boolean;
   url: string | null;
@@ -160,6 +171,15 @@ export interface VmApi {
     setDirty(dirty: boolean): void;
     onRequestSave(cb: () => Promise<boolean>): void;
     setTitle(title: string): void;
+  };
+  updates: {
+    info(): Promise<{ current: { sha: string; date: string }; hasToken: boolean; canInstall: boolean }>;
+    check(): Promise<UpdateCheck>;
+    /** Descarga y comprueba el instalador; devuelve su ruta. */
+    download(): Promise<string>;
+    install(file: string): Promise<void>;
+    setToken(token: string | null): Promise<void>;
+    onProgress(cb: (done: number, total: number) => void): () => void;
   };
   project: {
     create(name: string, template?: { project: Project; packId?: string }): Promise<OpenedProject | null>;

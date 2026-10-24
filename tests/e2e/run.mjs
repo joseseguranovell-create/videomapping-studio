@@ -660,6 +660,9 @@ try {
 
   await step('18d. Control por agentes: API local + servidor MCP (escena, rótulo, quitar fondo, captura)', async () => {
     await win.click('[data-testid="nav-settings"]');
+    // Actualizaciones: muestra la versión compilada sin conectarse a nada hasta que se pulse el botón.
+    const upd = await win.locator('[data-testid="update-info"]').innerText();
+    assert(/[0-9a-f]{7}|desarrollo/.test(upd), `versión compilada visible (${upd.replace(/\s+/g, ' ')})`);
     await win.click('label:has([data-testid="agent-enabled"])');
     const infoPath = path.join(userData, 'agent-api.json');
     for (let i = 0; i < 40 && !fs.existsSync(infoPath); i++) await win.waitForTimeout(100);

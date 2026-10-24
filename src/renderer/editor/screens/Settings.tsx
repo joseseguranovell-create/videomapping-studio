@@ -2,9 +2,9 @@
 import { useEffect, useState } from 'react';
 import { RefreshCw, FolderOpen, Archive, History, Download } from 'lucide-react';
 import { useStore } from '../store';
-import { vm, startAutosave, sendAudioSettings, errMsg } from '../services';
+import { vm, startAutosave, sendAudioSettings, errMsg, saveProject } from '../services';
 import { Button, Field, NumberInput, Panel, Toggle, confirmDialog, promptDialog, formatBytes } from '../components/ui';
-import type { AgentApiStatus, AppInfo, AppSettings, BackupEntry } from '../../../shared/api';
+import type { AgentApiStatus, AppInfo, AppSettings, BackupEntry, UpdateCheck } from '../../../shared/api';
 
 export function SettingsScreen() {
   const settings = useStore((s) => s.settings);
@@ -40,6 +40,7 @@ export function SettingsScreen() {
             <NumberInput value={settings.autosaveSeconds} min={10} max={600} step={5} precision={0} suffix="s" onCommit={(v) => void save({ autosaveSeconds: v })} />
           </Field>
         </Panel>
+        <UpdatesPanel />
         <AgentPanel />
         <Panel title="Audio">
           <Toggle checked={settings.audioEnabled} onChange={(v) => void save({ audioEnabled: v })} label="Audio activado (desactívalo para pruebas silenciosas)" data-testid="audio-enabled" />
@@ -108,6 +109,80 @@ export function SettingsScreen() {
         </Panel>
       </div>
     </div>
+  );
+}
+
+function UpdatesPanel() {
+  const [info, setInfo] = useState<{ current: { sha: string; date: string }; hasToken: boolean; canInstall: boolean } | null>(null);
+  const [res, setRes] = useState<UpdateCheck | null>(null);
+  const [busy, setBusy] = useState<'' | 'check' | 'download'>('');
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
+  const toast = useStore((s) => s.toast);
+  const dirty = useStore((s) => s.dirty);
+  const load = () => vm.updates.info().then(setInfo);
+  useEffect(() => { void load(); return vm.updates.onProgress((done, total) => setProgress({ done, total })); }, []);
+  if (!info) return null;
+  const fmtDate = (d: string) => (d ? new Date(d).toLocaleString() : '—');
+  const check = async () => {
+    setBusy('check');
+    try { setRes(await vm.updates.check()); } catch (e) { toast('error', errMsg(e), 8000); } finally { setBusy(''); }
+  };
+  const install = async () => {
+    setBusy('download');
+    setProgress(null);
+    try {
+      const file = await vm.updates.download();
+      const ok = await confirmDialog(
+        'Instalar la actualización',
+        `Descargada y comprobada (${formatBytes(res?.latest?.size ?? 0)}). Se abrirá el instalador y el programa se cerrará.${dirty ? ' Antes se guardará el proyecto.' : ''} Tus proyectos y paquetes no se modifican.`,
+        'Instalar y cerrar',
+      );
+      if (!ok) return;
+      if (dirty && !(await saveProject())) { toast('error', 'No se pudo guardar el proyecto: no se instala.'); return; }
+      await vm.updates.install(file);
+    } catch (e) {
+      toast('error', errMsg(e), 10000);
+    } finally {
+      setBusy('');
+    }
+  };
+  const saveToken = async (t: string | null) => {
+    try { await vm.updates.setToken(t); setTokenInput(''); await load(); toast('success', t ? 'Clave guardada (cifrada en este PC)' : 'Clave borrada', 2000); } catch (e) { toast('error', errMsg(e), 8000); }
+  };
+  return (
+    <Panel title="Actualizaciones" className="wide">
+      <p className="muted small">Busca en GitHub la última versión compilada y probada en Windows. Solo se conecta cuando pulsas el botón. El instalador se comprueba (suma SHA-256) antes de abrirlo; tus proyectos y paquetes no se tocan.</p>
+      <dl className="info" data-testid="update-info">
+        <dt>Esta versión</dt><dd>{info.current.sha === 'dev' ? 'desarrollo' : info.current.sha.slice(0, 7)} · {fmtDate(info.current.date)}</dd>
+        {res?.latest && <><dt>Publicada</dt><dd>{res.latest.sha.slice(0, 7)} · {fmtDate(res.latest.date)}</dd></>}
+      </dl>
+      {res?.error && <div className="banner error small">{res.error}</div>}
+      {res && !res.error && (
+        <div className={`banner ${res.available ? 'warn' : 'ok'} small`} data-testid="update-result">
+          {res.available ? 'Hay una versión nueva.' : 'Tienes la última versión.'}
+          {res.available && !res.canInstall && ' Descárgala desde GitHub (la instalación automática solo funciona en el programa instalado en Windows).'}
+        </div>
+      )}
+      {busy === 'download' && progress && progress.total > 0 && (
+        <div className="play-progress"><div className="bar"><div className="fill" style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }} /></div></div>
+      )}
+      <div className="btn-row">
+        <Button icon={<RefreshCw size={15} />} onClick={() => void check()} disabled={!!busy} data-testid="update-check">{busy === 'check' ? 'Buscando…' : 'Buscar actualizaciones'}</Button>
+        {res?.available && res.canInstall && res.latest?.installer && (
+          <Button variant="primary" icon={<Download size={15} />} onClick={() => void install()} disabled={!!busy} data-testid="update-install">{busy === 'download' ? 'Descargando…' : 'Descargar e instalar'}</Button>
+        )}
+      </div>
+      <details className="small" style={{ marginTop: 10 }}>
+        <summary>Repositorio privado: clave de acceso {info.hasToken ? '(guardada)' : ''}</summary>
+        <p className="muted small">Solo hace falta si el repositorio de GitHub es privado. Crea en GitHub → Settings → Developer settings → Fine-grained tokens una clave con acceso únicamente a este repositorio y permiso de <b>lectura</b> de «Contents». Se guarda cifrada en este PC; nunca en los proyectos.</p>
+        <div className="schedule-row">
+          <input type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} placeholder="github_pat_…" autoComplete="off" spellCheck={false} />
+          <Button small onClick={() => void saveToken(tokenInput)} disabled={!tokenInput.trim()}>Guardar clave</Button>
+          {info.hasToken && <Button small variant="ghost" onClick={() => void saveToken(null)}>Borrar clave</Button>}
+        </div>
+      </details>
+    </Panel>
   );
 }
 

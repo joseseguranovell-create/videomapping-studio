@@ -79,8 +79,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if grep -q "packaged-exe: 0" ci-status.txt; then
+            # Sumas SHA-256: el actualizador de la aplicación comprueba el instalador con ellas.
+            (cd release && sha256sum *.exe *.zip > SHA256SUMS.txt)
             gh release delete ultima --yes --cleanup-tag || true
-            gh release create ultima release/*.exe release/*.zip --prerelease --target "$GITHUB_SHA" \
+            gh release create ultima release/*.exe release/*.zip release/SHA256SUMS.txt --prerelease --target "$GITHUB_SHA" \
               --title "Última versión (compilada y probada en Windows)" \
               --notes "Compilada en Windows por GitHub Actions a partir de ${GITHUB_SHA::7}. El ejecutable se ha arrancado automáticamente en Windows antes de publicarse. Descarga el instalador (.exe) o la versión portátil (.zip)."
           else
