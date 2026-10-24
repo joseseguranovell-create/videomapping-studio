@@ -13,6 +13,7 @@ const DEFAULTS: AppSettings = {
   autosaveSeconds: 30,
   lastOutputDisplayLabel: null,
   showFps: false,
+  schedule: { enabled: false, projectFile: null, showId: null, start: '18:30', end: '22:00' },
 };
 
 export class SettingsStore {
@@ -20,7 +21,10 @@ export class SettingsStore {
   constructor(private file: string) {
     this.data = { ...DEFAULTS };
     try {
-      if (fs.existsSync(file)) this.data = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(file, 'utf8')) };
+      if (fs.existsSync(file)) {
+        const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+        this.data = { ...DEFAULTS, ...saved, schedule: { ...DEFAULTS.schedule, ...(saved.schedule ?? {}) } };
+      }
     } catch {
       // Preferencias dañadas: se guarda una copia y se empieza con valores por defecto.
       try { fs.copyFileSync(file, `${file}.corrupt`); } catch { /* ignorar */ }

@@ -1,9 +1,10 @@
 /** Reproducción en directo: control del espectáculo en el proyector y comprobaciones previas. */
 import { useMemo, useState } from 'react';
-import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity } from 'lucide-react';
+import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock } from 'lucide-react';
 import { useStore } from '../store';
-import { openOutput, closeOutput, transport, vm } from '../services';
-import { Button, Panel } from '../components/ui';
+import { openOutput, closeOutput, transport, vm, startScheduler } from '../services';
+import { Button, Panel, Toggle } from '../components/ui';
+import { inSchedule, nextStart, parseHHMM } from '../../../shared/schedule';
 import { formatTime, layoutShow } from '../../../shared/timeline';
 import { validateInstallation } from '../../../shared/geometry';
 
@@ -118,6 +119,7 @@ export function PlaybackScreen() {
             </div>
           )}
         </Panel>
+        <SchedulePanel showId={show?.id ?? null} />
       </div>
       <aside className="side right">
         <Panel title="Comprobaciones previas">
@@ -151,5 +153,55 @@ export function PlaybackScreen() {
         <p className="muted small help">La salida reproduce de forma independiente: puedes seguir editando, aunque los cambios del espectáculo se aplican en directo. Para una noche completa activa «Repetir en bucle» en el espectáculo.</p>
       </aside>
     </div>
+  );
+}
+
+function SchedulePanel({ showId }: { showId: string | null }) {
+  const settings = useStore((s) => s.settings);
+  const file = useStore((s) => s.file);
+  const project = useStore((s) => s.project)!;
+  const set = useStore((s) => s.set);
+  const sch = settings?.schedule;
+  if (!sch) return null;
+  const save = async (p: Partial<typeof sch>) => {
+    // Se parte siempre de los ajustes más recientes (varios cambios seguidos no se pisan).
+    const latest = useStore.getState().settings?.schedule ?? sch;
+    const merged = { ...latest, ...p };
+    set({ settings: { ...useStore.getState().settings!, schedule: merged } });
+    const next = await vm.app.setSettings({ schedule: merged });
+    set({ settings: next });
+    startScheduler();
+  };
+  const forThis = sch.projectFile === file;
+  const schShow = project.shows.find((s) => s.id === sch.showId);
+  const valid = parseHHMM(sch.start) !== null && parseHHMM(sch.end) !== null && sch.start !== sch.end;
+  const now = new Date();
+  const next = nextStart(now, sch.start);
+  return (
+    <Panel title={<><Clock size={14} /> Reproducción programada</>} className="schedule">
+      <p className="muted small">Para la noche del espectáculo: el programa abre la salida y empieza solo a la hora indicada, y deja la proyección en negro al terminar. El programa debe estar abierto (puedes añadirlo a la carpeta de Inicio de Windows; al arrancar reabre el último proyecto).</p>
+      <div className="schedule-row">
+        <Toggle
+          checked={sch.enabled && forThis}
+          onChange={(v) => void save({ enabled: v, projectFile: file, showId: sch.showId && forThis ? sch.showId : showId })}
+          label="Reproducir automáticamente cada día"
+          data-testid="schedule-enabled"
+        />
+        <label>De <input type="time" value={sch.start} onChange={(e) => void save({ start: e.target.value })} data-testid="schedule-start" /></label>
+        <label>a <input type="time" value={sch.end} onChange={(e) => void save({ end: e.target.value })} data-testid="schedule-end" /></label>
+        <select value={forThis ? sch.showId ?? '' : showId ?? ''} onChange={(e) => void save({ showId: e.target.value, projectFile: file })}>
+          {project.shows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
+      {sch.enabled && !forThis && <p className="warn-text small">La programación está configurada para otro proyecto. Actívala aquí para usar este.</p>}
+      {sch.enabled && forThis && valid && (
+        <p className="small" data-testid="schedule-status">
+          {inSchedule(now, sch.start, sch.end)
+            ? `En curso: «${schShow?.name ?? '—'}» hasta las ${sch.end}.`
+            : `Próximo inicio: ${next?.toLocaleString('es-ES', { weekday: 'long', hour: '2-digit', minute: '2-digit' })} («${schShow?.name ?? '—'}»).`}
+        </p>
+      )}
+      {!valid && <p className="warn-text small">Indica una hora de inicio y otra de fin distintas.</p>}
+    </Panel>
   );
 }

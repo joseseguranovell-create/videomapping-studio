@@ -55,6 +55,17 @@ export interface AppSettings {
   autosaveSeconds: number;
   lastOutputDisplayLabel: string | null;
   showFps: boolean;
+  schedule: ScheduleSettings;
+}
+
+/** Reproducción automática diaria (p. ej. la noche de Halloween de 18:30 a 22:00). */
+export interface ScheduleSettings {
+  enabled: boolean;
+  projectFile: string | null;
+  showId: string | null;
+  /** HH:MM (hora local). Si fin < inicio, el periodo cruza la medianoche. */
+  start: string;
+  end: string;
 }
 
 export interface AppInfo {

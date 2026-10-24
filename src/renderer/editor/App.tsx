@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Home as HomeIcon, Crosshair, Images, Ghost, Clapperboard, MonitorPlay, Settings as SettingsIcon, Save, Undo2, Redo2 } from 'lucide-react';
 import { useStore, type View } from './store';
-import { vm, saveProject, startAutosave, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
+import { vm, saveProject, startAutosave, startScheduler, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
 import { Button, DialogHost } from './components/ui';
 import { OutputControl } from './components/OutputControl';
 import { Toasts } from './components/Toasts';
@@ -46,6 +46,7 @@ export function App() {
         const o = await openProjectFile(settings.lastProject);
         if (o) await afterOpen(o);
       }
+      startScheduler();
     })();
     const offD = vm.displays.onChanged((d) => set({ displays: d }));
     const offS = vm.output.onStatus((s) => set({ outputStatus: s }));

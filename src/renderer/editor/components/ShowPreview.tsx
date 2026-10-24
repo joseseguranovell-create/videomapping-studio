@@ -7,6 +7,7 @@ import { Player } from '../../engine/player';
 import { registerPlayerInvalidator } from '../services';
 import { formatTime } from '../../../shared/timeline';
 import { Button } from './ui';
+import { ClipHandles } from './ClipHandles';
 
 interface PreviewState {
   time: number;
@@ -94,6 +95,7 @@ export function ShowPreview() {
       <div className="preview-frame" style={{ aspectRatio: String(aspect) }}>
         <canvas ref={glRef} data-testid="preview-gl" />
         <canvas ref={ovRef} className="ov" />
+        {inst && !playing && <ClipHandles width={inst.output.width} height={inst.output.height} />}
         {!inst && <div className="preview-msg">Asigna una instalación al espectáculo para previsualizarlo.</div>}
         <span className="preview-tag">PREVISUALIZACIÓN</span>
       </div>

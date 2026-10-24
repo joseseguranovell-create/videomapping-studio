@@ -459,8 +459,56 @@ try {
     assert(r.errors.length === 0, `sin errores: ${r.errors.join(' | ')}`);
   });
 
+  await step('18b. Mover y escalar un clip arrastrando sobre la previsualización', async () => {
+    await out.evaluate(() => window.__vmPlayer.pause());
+    await win.click('[data-testid="scene-block-1"]');
+    await win.locator('[data-testid="tl-clip"]', { hasText: 'Boo saluda' }).click();
+    await win.waitForSelector('[data-testid="clip-box"]');
+    const get = () => win.evaluate(() => { const s = window.__vmStore.getState(); const sh = s.project.shows[0]; const c = sh.scenes[1].clips.find((x) => x.id === s.clipId); return { x: c.x, y: c.y, scale: c.scale }; });
+    const c0 = await get();
+    const box = await win.locator('[data-testid="clip-box"]').boundingBox();
+    await win.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await win.mouse.down();
+    await win.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2 + 10, { steps: 5 });
+    await win.mouse.up();
+    const c1 = await get();
+    assert(c1.x > c0.x + 0.05 && c1.y > c0.y, `el clip se mueve dentro de la superficie (${c0.x.toFixed(3)} → ${c1.x.toFixed(3)})`);
+    await win.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2 + 10);
+    await win.mouse.wheel(0, -200);
+    await win.waitForTimeout(500);
+    const c2 = await get();
+    assert(c2.scale > c1.scale * 1.1, `la rueda escala el clip (${c1.scale.toFixed(2)} → ${c2.scale.toFixed(2)})`);
+    await win.click('[data-testid="undo"]');
+    await win.click('[data-testid="undo"]');
+    const c3 = await get();
+    assert(Math.abs(c3.x - c0.x) < 1e-9 && Math.abs(c3.scale - c0.scale) < 1e-9, 'deshacer devuelve posición y escala');
+  });
+
+  await step('18c. Reproducción programada: empieza sola dentro del horario y se apaga al terminar', async () => {
+    await win.click('[data-testid="output-close"]');
+    await win.waitForFunction(() => !window.__vmStore.getState().output.open);
+    await win.click('[data-testid="nav-play"]');
+    const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const now = new Date();
+    await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 60000)));
+    await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() + 3 * 60000)));
+    const [w] = await Promise.all([app.waitForEvent('window', { timeout: 20000 }), win.click('[data-testid="schedule-enabled"]')]);
+    out = w;
+    await out.waitForFunction(() => !!window.__vmPlayer);
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.playing === true, null, { timeout: 15000 });
+    await win.waitForSelector('[data-testid="schedule-status"]');
+    // fin: horario que ya ha pasado
+    await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 3 * 60000)));
+    await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() - 2 * 60000)));
+    await win.waitForFunction(() => { const s = window.__vmStore.getState(); return s.outputMode === 'black' && s.outputStatus && !s.outputStatus.playing; }, null, { timeout: 25000 });
+    await win.click('[data-testid="schedule-enabled"]');
+    await out.evaluate(() => { window.__vmPlayer.seek(0); });
+  });
+
   if (LONG) {
     await step('19. Reproducción en tiempo real de un ciclo completo con bucle (~70 s)', async () => {
+      await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), (await S(win)).project.shows[0].id);
+      await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
       await out.evaluate(() => { window.__vmPlayer.seek(0); void window.__vmPlayer.play(); });
       const samples = [];
       for (let i = 0; i < 14; i++) {

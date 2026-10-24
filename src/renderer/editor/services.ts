@@ -8,6 +8,7 @@ import type { ImportedFile, OpenedProject, OutputMode } from '../../shared/api';
 import { mediaUrl } from '../engine/media';
 import { newId, nowIso } from '../../shared/ids';
 import { referencedAssetIds } from '../../shared/factory';
+import { inSchedule } from '../../shared/schedule';
 
 export const vm = window.vm;
 
@@ -431,4 +432,49 @@ export async function closeOutput() {
 
 export function transport(action: 'play' | 'pause' | 'stop', at?: number) {
   vm.output.send({ type: 'transport', action, at });
+}
+
+// ───────── Reproducción programada ─────────
+
+
+let scheduleTimer: number | null = null;
+let scheduleRunning = false;
+
+/** Comprueba cada 10 s si toca empezar o terminar el espectáculo programado. */
+export function startScheduler() {
+  if (scheduleTimer) clearInterval(scheduleTimer);
+  const tick = async () => {
+    const s = st();
+    const sch = s.settings?.schedule;
+    if (!sch?.enabled || !s.project || !sch.showId || s.file !== sch.projectFile) {
+      scheduleRunning = false;
+      return;
+    }
+    const show = s.project.shows.find((x) => x.id === sch.showId);
+    if (!show) return;
+    const inside = inSchedule(new Date(), sch.start, sch.end);
+    if (inside && !scheduleRunning) {
+      scheduleRunning = true;
+      vm.app.log('info', `Programación: inicio de «${show.name}»`);
+      s.set({ outputMode: 'show', outputShowId: show.id });
+      if (!st().output.open) {
+        const target = s.displays.find((d) => !d.hasEditor && (!s.settings?.lastOutputDisplayLabel || d.label === s.settings.lastOutputDisplayLabel)) ?? s.displays.find((d) => !d.hasEditor);
+        await openOutput(target?.id ?? null, !!target);
+      }
+      setTimeout(() => transport('play', 0), 800);
+      st().toast('info', `Programación: «${show.name}» ha empezado (hasta las ${sch.end}).`, 8000);
+    } else if (!inside && scheduleRunning) {
+      scheduleRunning = false;
+      vm.app.log('info', `Programación: fin de «${show.name}»`);
+      transport('stop');
+      st().set({ outputMode: 'black' });
+      st().toast('info', 'Programación: el espectáculo ha terminado. La salida queda en negro.', 8000);
+    }
+  };
+  scheduleTimer = window.setInterval(() => void tick(), 10000);
+  void tick();
+}
+
+export function isScheduleRunning() {
+  return scheduleRunning;
 }
