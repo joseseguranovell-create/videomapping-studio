@@ -492,7 +492,7 @@ try {
     const now = new Date();
     await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 60000)));
     await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() + 3 * 60000)));
-    const [w] = await Promise.all([app.waitForEvent('window', { timeout: 20000 }), win.click('[data-testid="schedule-enabled"]')]);
+    const [w] = await Promise.all([app.waitForEvent('window', { timeout: 20000 }), win.click('label:has([data-testid="schedule-enabled"])')]);
     out = w;
     await out.waitForFunction(() => !!window.__vmPlayer);
     await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.playing === true, null, { timeout: 15000 });
@@ -501,7 +501,7 @@ try {
     await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 3 * 60000)));
     await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() - 2 * 60000)));
     await win.waitForFunction(() => { const s = window.__vmStore.getState(); return s.outputMode === 'black' && s.outputStatus && !s.outputStatus.playing; }, null, { timeout: 25000 });
-    await win.click('[data-testid="schedule-enabled"]');
+    await win.click('label:has([data-testid="schedule-enabled"])');
     await out.evaluate(() => { window.__vmPlayer.seek(0); });
   });
 

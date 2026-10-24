@@ -33,8 +33,8 @@
 
 ### Resultados de la última ejecución (Linux, Xvfb, WebGL por software SwiftShader)
 
-- Unitarias: **54/54** superadas.
-- E2E: **20/20** superadas con `--long`. Deriva del reloj tras 70 s: ~0,2 s. FPS en la salida con renderizado por software a 1920×1080: 16-23 (en una GPU real se espera 60; **pendiente de medir en Windows**).
+- Unitarias: **59/59** superadas.
+- E2E: **21/21** superadas (más el paso de 70 s con `--long`, también superado). Deriva del reloj tras 70 s: ~0,2 s. FPS en la salida con renderizado por software a 1920×1080: 16-23 (en una GPU real se espera 60; **pendiente de medir en Windows**).
 - Paquete Linux empaquetado (asar + `resources/packs`): arranca y crea el proyecto de ejemplo sin recursos ausentes.
 - No ejecutado aquí: Windows real, proyector físico, dos pantallas reales (Xvfb no permite emular dos monitores RandR) y sonido audible (no hay tarjeta de sonido).
 

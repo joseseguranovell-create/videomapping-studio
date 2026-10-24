@@ -1,106 +1,110 @@
 {
-  "date": "2026-10-24T16:57:35.022Z",
+  "date": "2026-10-24T16:58:21.527Z",
   "results": [
     {
       "name": "1. La aplicación arranca y muestra Inicio",
       "ok": true,
-      "ms": 32
+      "ms": 36
     },
     {
       "name": "2. Crear proyecto nuevo vacío y una instalación",
       "ok": true,
-      "ms": 452
+      "ms": 459
     },
     {
       "name": "3. Dibujar dos ventanas y una puerta con el ratón",
       "ok": true,
-      "ms": 1016
+      "ms": 1046
     },
     {
       "name": "4. Ajustar una esquina arrastrando, deshacer y rehacer, mover 1 px con el teclado",
       "ok": true,
-      "ms": 789
+      "ms": 880
     },
     {
       "name": "5. Dibujar una zona de exclusión poligonal",
       "ok": true,
-      "ms": 234
+      "ms": 223
     },
     {
       "name": "6. Abrir la salida de proyección y comprobar la calibración en directo (píxeles)",
       "ok": true,
-      "ms": 861
+      "ms": 966
     },
     {
       "name": "7. Importar un vídeo MP4 y una imagen PNG con transparencia",
       "ok": true,
-      "ms": 244
+      "ms": 187
     },
     {
       "name": "8. Añadir el paquete Halloween al proyecto (recursos y personajes)",
       "ok": true,
-      "ms": 230
+      "ms": 249
     },
     {
       "name": "9. Crear un espectáculo con escenas, personaje, vídeo, efecto, sonido y música",
       "ok": true,
-      "ms": 1426
+      "ms": 1783
     },
     {
       "name": "10. Mover un clip en la línea de tiempo arrastrándolo",
       "ok": true,
-      "ms": 443
+      "ms": 407
     },
     {
       "name": "11. Reproducir en el proyector: clips coordinados en dos ventanas sin invadir vecinas",
       "ok": true,
-      "ms": 1454
+      "ms": 1470
     },
     {
       "name": "12. Transparencia real de vídeo WebM VP9 (paquete): fondo transparente, cuerpo visible",
       "ok": true,
-      "ms": 2142
+      "ms": 2159
     },
     {
       "name": "13. Guardar, cerrar y reabrir sin perder calibración ni recursos",
       "ok": true,
-      "ms": 938
+      "ms": 932
     },
     {
       "name": "14. Duplicar el espectáculo para otra versión sin modificar el original",
       "ok": true,
-      "ms": 566
+      "ms": 491
     },
     {
       "name": "15. Crear un perfil para otra casa y adaptar una copia del espectáculo",
       "ok": true,
-      "ms": 1097
+      "ms": 1066
     },
     {
       "name": "16. Recurso ausente: aviso al abrir y relocalización",
       "ok": true,
-      "ms": 1203
+      "ms": 1154
     },
     {
       "name": "17. Recuperación tras cierre inesperado (guardado automático)",
       "ok": true,
-      "ms": 1480
+      "ms": 1494
     },
     {
       "name": "18. Proyecto de ejemplo completo desde el paquete y barrido de todo el espectáculo",
       "ok": true,
-      "ms": 19413
+      "ms": 19701
     },
     {
       "name": "18b. Mover y escalar un clip arrastrando sobre la previsualización",
       "ok": true,
-      "ms": 1665
+      "ms": 1650
     },
     {
       "name": "18c. Reproducción programada: empieza sola dentro del horario y se apaga al terminar",
-      "ok": false,
-      "ms": 20202,
-      "error": "electronApplication.waitForEvent: Timeout 20000ms exceeded while waiting for event \"window\""
+      "ok": true,
+      "ms": 1178
+    },
+    {
+      "name": "20. Sin errores de interfaz durante toda la sesión",
+      "ok": true,
+      "ms": 0
     }
   ]
 }
