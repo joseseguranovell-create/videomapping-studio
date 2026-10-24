@@ -193,6 +193,13 @@ Después puedes retocar cada clip o deshacer con Ctrl+Z.
 - **Copia externa**: **Ajustes → Exportar proyecto completo…** a un USB o a la nube. También vale copiar la carpeta del proyecto desde el Explorador (`Documentos\Videomapping Studio\Proyectos\<nombre>`).
 - **Paquetes**: **Biblioteca → Exportar paquete…** guarda personajes y recursos para reutilizarlos en otros proyectos o compartirlos.
 
+## 9a. Actualizaciones
+
+**Ajustes → Actualizaciones → Buscar actualizaciones** consulta en GitHub la última versión compilada y probada en Windows (solo cuando pulsas el botón). Si hay una nueva, **Descargar e instalar** la baja, comprueba su suma SHA-256, guarda el proyecto, abre el instalador y cierra el programa. Los proyectos y paquetes (en Documentos) no se tocan.
+
+- Funciona en el programa **instalado** («Setup»). Con la versión portátil también puedes pulsarlo: se instalará la versión normal, y a partir de ahí usa esa.
+- Si el repositorio de GitHub es **privado**, hace falta una clave de solo lectura (GitHub → Settings → Developer settings → Fine-grained tokens, acceso solo a ese repositorio y permiso de lectura de «Contents»). Se pega en el mismo panel y se guarda cifrada en el PC.
+
 ## 9b. Proyectores baratos (HY300 y similares)
 
 - Su resolución real es **1280×720**, aunque digan aceptar 4K. Pon esa resolución en Windows para esa pantalla y elige «1280 × 720» en la instalación.
