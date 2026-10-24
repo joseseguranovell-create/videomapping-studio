@@ -143,6 +143,8 @@ export class AudioEngine {
       const entry: Playing = { src, gain, cycle };
       src.onended = () => {
         try { gain.disconnect(); } catch { /* ignorar */ }
+        // Se conserva la entrada (para no volver a programarlo en este ciclo) pero sin nodos.
+        entry.src = null as any;
       };
       this.playing.set(pid, entry);
     }

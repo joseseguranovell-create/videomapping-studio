@@ -77,6 +77,7 @@ export function ShowPreview() {
   useEffect(() => {
     if (!current) return;
     current.overlay = { outlines, labels: outlines, grid: false, selectedSurfaceId: surfaceId };
+    current.invalidate();
   }, [outlines, surfaceId]);
 
   useEffect(() => {

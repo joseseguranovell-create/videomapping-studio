@@ -143,8 +143,9 @@ export async function loadProject(p: string): Promise<LoadedProject> {
   let autosaveNewer = false;
   const auto = path.join(dir, AUTOSAVE_FILE);
   if (await exists(auto)) {
-    const [a, b] = await Promise.all([fsp.stat(auto), fsp.stat(file)]);
-    autosaveNewer = a.mtimeMs > b.mtimeMs + 500;
+    // Guardar borra el autoguardado; si existe y difiere del proyecto, hay cambios sin guardar recuperables.
+    const [a, b] = await Promise.all([fsp.readFile(auto, 'utf8'), fsp.readFile(file, 'utf8')]);
+    autosaveNewer = a !== b;
   }
   if (migratedFrom !== null) {
     // Conserva el original antes de reescribirlo con el esquema nuevo.

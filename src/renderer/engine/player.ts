@@ -59,6 +59,9 @@ export class Player {
   errors: string[] = [];
   private onFrame: ((p: Player) => void) | null = null;
   private lastSceneName: string | null = null;
+  /** Hay que redibujar aunque no se esté reproduciendo (cambio de documento, modo, posición…). */
+  private needsRender = true;
+  private lastPausedRender = 0;
 
   constructor(readonly canvas: HTMLCanvasElement, readonly opts: PlayerOptions) {
     this.r = new GLRenderer(canvas);
@@ -81,6 +84,12 @@ export class Player {
     this.base = base;
     this.key = key;
     this.assets = new Map((project?.assets ?? []).map((a) => [a.id, a]));
+    this.needsRender = true;
+  }
+
+  /** Fuerza un redibujado en el próximo fotograma. */
+  invalidate() {
+    this.needsRender = true;
   }
 
   invalidateAsset(id: string) {
@@ -91,6 +100,7 @@ export class Player {
   setMode(mode: OutputMode) {
     const changedShow = mode.kind !== this.mode.kind || (mode.kind === 'show' && this.mode.kind === 'show' && mode.showId !== this.mode.showId);
     this.mode = mode;
+    this.needsRender = true;
     if (changedShow) {
       this.stop();
     }
@@ -135,6 +145,7 @@ export class Player {
   }
 
   seek(t: number) {
+    this.needsRender = true;
     const was = this.playing;
     this.audio.stopAll(0.03);
     this.baseShow = Math.max(0, t);
@@ -153,7 +164,19 @@ export class Player {
     this.running = true;
     const loop = () => {
       if (!this.running) return;
-      this.renderFrame();
+      // Ahorro de GPU: en calibración, en negro o en pausa solo se redibuja cuando algo cambia
+      // (en pausa, también unas veces por segundo para mostrar fotogramas de vídeo recién cargados).
+      const now = performance.now();
+      const animated = this.playing && this.mode.kind === 'show';
+      const pausedRefresh = this.mode.kind === 'show' && now - this.lastPausedRender > 150;
+      if (animated || this.needsRender || pausedRefresh) {
+        this.needsRender = false;
+        this.lastPausedRender = now;
+        this.renderFrame();
+      } else {
+        this.frames++;
+        this.onFrame?.(this);
+      }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
@@ -214,6 +237,7 @@ export class Player {
       ov.width = w;
       ov.height = h;
     }
+    if (this.canvas.width !== w || this.canvas.height !== h) this.needsRender = true;
   }
 
   renderFrame() {
