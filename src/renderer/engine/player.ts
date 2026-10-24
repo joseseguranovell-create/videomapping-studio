@@ -25,6 +25,7 @@ export interface OverlayOptions {
   labels: boolean;
   grid: boolean;
   selectedSurfaceId: string | null;
+  active?: { surfaceId: string; target: 'quad' | 'polygon' | 'move'; index: number } | null;
 }
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
@@ -41,6 +42,8 @@ export class Player {
   private key = '';
   mode: OutputMode = { kind: 'black' };
   overlay: OverlayOptions = { outlines: false, labels: false, grid: false, selectedSurfaceId: null };
+  /** Esquina o vértice activo al calibrar sobre la propia salida (se resalta). */
+  activeVertex: (() => { surfaceId: string; target: 'quad' | 'polygon' | 'move'; index: number } | null) | null = null;
   /** Forzar instalación (previsualización de un espectáculo con otra instalación). */
   private raf = 0;
   private running = false;
@@ -294,6 +297,7 @@ export class Player {
         labels: mode.showLabels,
         outlines: true,
         selectedSurfaceId: mode.selectedSurfaceId,
+        active: this.activeVertex?.() ?? null,
       });
     }
   }
@@ -483,8 +487,25 @@ export function drawOverlay(ctx: CanvasRenderingContext2D, inst: Installation, o
         for (const m of s.masks) if (m.points.length >= 3) hatchPolygon(ctx, m.points.map(px), m.enabled ? 'rgba(255,70,70,0.9)' : 'rgba(255,70,70,0.35)', k);
         if (sel) {
           // esquinas numeradas del cuadrilátero de mapeo
+          if (s.shape === 'polygon') {
+            s.polygon.forEach((p, i) => {
+              const [x, y] = px(p);
+              const act = o.active?.surfaceId === s.id && o.active.target === 'polygon' && o.active.index === i;
+              ctx.fillStyle = act ? '#ff8a3d' : '#ffffff';
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1.5 * k;
+              ctx.fillRect(x - 6 * k, y - 6 * k, 12 * k, 12 * k);
+              ctx.strokeRect(x - 6 * k, y - 6 * k, 12 * k, 12 * k);
+            });
+          }
           s.quad.forEach((p, i) => {
             const [x, y] = px(p);
+            const act = o.active?.surfaceId === s.id && o.active.target === 'quad' && o.active.index === i;
+            if (act) {
+              ctx.strokeStyle = '#ffffff';
+              ctx.lineWidth = 3 * k;
+              ctx.beginPath(); ctx.arc(x, y, 15 * k, 0, Math.PI * 2); ctx.stroke();
+            }
             ctx.fillStyle = ['#ff4040', '#40ff60', '#4080ff', '#ffe030'][i];
             ctx.beginPath(); ctx.arc(x, y, 9 * k, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#000';

@@ -193,10 +193,23 @@ export interface VmApi {
     send(cmd: OutputCommand): void;
     onStatus(cb: (s: OutputStatus) => void): () => void;
     onState(cb: (s: OutputState) => void): () => void;
+    onRequest(cb: (r: OutputRequest) => void): () => void;
   };
 }
 
+/** Peticiones de la ventana de salida (teclado/ratón sobre la proyección) que resuelve el editor. */
+export type OutputRequest =
+  | { type: 'key'; action: 'playPause' | 'restart' | 'black' | 'calibration' | 'show' }
+  | { type: 'select'; surfaceId: string | null }
+  | { type: 'selectNext'; dir: 1 | -1 }
+  | { type: 'drag'; phase: 'start' | 'move' | 'end'; surfaceId: string; target: 'quad' | 'polygon' | 'move'; index: number; point: { x: number; y: number }; delta?: { x: number; y: number } }
+  | { type: 'nudge'; surfaceId: string; target: 'quad' | 'polygon' | 'move'; index: number; dx: number; dy: number }
+  | { type: 'addSurface'; kind: 'window' | 'door'; at: { x: number; y: number } }
+  | { type: 'undo' } | { type: 'redo' } | { type: 'save' };
+
 export interface VmOutputApi {
+  request(r: OutputRequest): void;
+  fullscreen(mode: 'toggle' | 'exit'): void;
   onCommand(cb: (cmd: OutputCommand) => void): void;
   sendStatus(s: OutputStatus): void;
   ready(): void;

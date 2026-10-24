@@ -72,6 +72,7 @@ const api: VmApi = {
     state: () => inv('output:state'),
     send: (cmd) => ipcRenderer.send('output:cmd', cmd),
     onStatus: (cb) => on('output:status', cb),
+    onRequest: (cb) => on('output:request', cb),
     onState: (cb) => {
       const a = on('output:state', cb);
       const b = on('output:ready', () => inv('output:state').then(cb));

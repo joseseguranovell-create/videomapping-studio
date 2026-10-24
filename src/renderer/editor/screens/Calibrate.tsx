@@ -11,7 +11,7 @@ import { createInstallation, createSurface, duplicateInstallation, cloneDeep } f
 import { newId } from '../../../shared/ids';
 import { SURFACE_KINDS, SURFACE_KIND_LABELS, type Installation, type Surface } from '../../../shared/model';
 import { orderQuad, quadFromBBox, rescaleInstallation, surfaceAspect, validateInstallation, sortByAngle, isValidQuad } from '../../../shared/geometry';
-import { vm, openOutput, assetFromImported, errMsg } from '../services';
+import { vm, openOutput, assetFromImported, errMsg, preferredOutputDisplayId, outputCoversEditor } from '../services';
 
 const RES_PRESETS = [
   { w: 1920, h: 1080, l: '1920 × 1080 (Full HD 16:9)' },
@@ -240,7 +240,6 @@ function CalibToolbar({ inst }: { inst: Installation }) {
   const setCalib = useStore((s) => s.setCalib);
   const output = useStore((s) => s.output);
   const outputMode = useStore((s) => s.outputMode);
-  const displays = useStore((s) => s.displays);
   const set = useStore((s) => s.set);
   const surfaceId = useStore((s) => s.surfaceId);
   const update = useStore((s) => s.update);
@@ -301,10 +300,11 @@ function CalibToolbar({ inst }: { inst: Installation }) {
             icon={<Projector size={15} />}
             data-testid="calib-open-output"
             onClick={async () => {
-              const target = displays.find((d) => !d.hasEditor);
+              const target = preferredOutputDisplayId();
               set({ outputMode: 'calibration' });
-              await openOutput(target?.id ?? null, !!target);
-              if (!target) useStore.getState().toast('info', 'No se detecta un segundo monitor o proyector: se abre una ventana de prueba.', 6000);
+              await openOutput(target, target !== null);
+              if (outputCoversEditor(target))
+                useStore.getState().toast('info', 'Una sola pantalla: la calibración ocupa toda la pantalla. Ajusta las esquinas con el ratón sobre la imagen; H muestra la ayuda y Esc sale de pantalla completa.', 10000);
             }}
           >
             Proyectar calibración

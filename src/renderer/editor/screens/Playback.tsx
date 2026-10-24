@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock } from 'lucide-react';
 import { useStore } from '../store';
-import { openOutput, closeOutput, transport, vm, startScheduler } from '../services';
+import { openOutput, closeOutput, transport, vm, startScheduler, preferredOutputDisplayId, outputCoversEditor } from '../services';
 import { Button, Panel, Toggle } from '../components/ui';
 import { inSchedule, nextStart, parseHHMM } from '../../../shared/schedule';
 import { formatTime, layoutShow } from '../../../shared/timeline';
@@ -18,7 +18,7 @@ export function PlaybackScreen() {
   const missing = useStore((s) => s.missing);
   const settings = useStore((s) => s.settings);
   const set = useStore((s) => s.set);
-  const [displayChoice, setDisplayChoice] = useState<number>(displays.find((d) => !d.hasEditor)?.id ?? -1);
+  const [displayChoice, setDisplayChoice] = useState<number>(preferredOutputDisplayId() ?? -1);
 
   const show = project.shows.find((s) => s.id === outputShowId) ?? project.shows[0] ?? null;
   const inst = show ? project.installations.find((i) => i.id === show.installationId) : null;
@@ -54,12 +54,21 @@ export function PlaybackScreen() {
   const playing = live && status?.playing;
   const progress = status && status.duration ? Math.min(1, status.cycleTime / status.duration) : 0;
 
-  const startShow = async () => {
+  /** Abre la salida a pantalla completa con el espectáculo al principio y en espera (negro). */
+  const prepare = async () => {
     if (!show) return;
     set({ outputMode: 'show', outputShowId: show.id });
     if (!output.open) await openOutput(displayChoice >= 0 ? displayChoice : null, displayChoice >= 0);
-    // dar tiempo a que la salida reciba el documento y el modo
-    setTimeout(() => transport('play'), 300);
+    setTimeout(() => transport('stop'), 300);
+    if (outputCoversEditor(displayChoice))
+      useStore.getState().toast('info', 'Preparado. Pulsa Espacio sobre la proyección para empezar (Esc sale de pantalla completa, H muestra la ayuda).', 10000);
+  };
+  const startShow = async () => {
+    if (!show) return;
+    if (!live) {
+      await prepare();
+      setTimeout(() => transport('play', 0), 600);
+    } else transport('play', playing ? 0 : undefined); // en marcha: reiniciar; en pausa: continuar
   };
 
   return (
@@ -77,13 +86,16 @@ export function PlaybackScreen() {
             {!output.open && (
               <select value={displayChoice} onChange={(e) => setDisplayChoice(parseInt(e.target.value, 10))}>
                 {displays.map((d, i) => <option key={d.id} value={d.id}>{`${i + 1}. ${d.label} ${d.pixelSize.width}×${d.pixelSize.height}${d.hasEditor ? ' (editor)' : ''}`}</option>)}
-                <option value={-1}>Ventana de prueba</option>
+                <option value={-1}>Ventana de prueba (sin pantalla completa)</option>
               </select>
             )}
           </div>
           <div className="big-transport">
+            <Button icon={<Projector size={20} />} onClick={() => void prepare()} disabled={!show || (live && !playing && (status?.time ?? 0) === 0)} data-testid="play-prepare" title="Abre la salida a pantalla completa en negro, esperando a que pulses Espacio o «Empezar»">
+              Preparar
+            </Button>
             <Button variant="primary" icon={<Play size={20} />} onClick={startShow} disabled={!show} data-testid="play-start">
-              {playing ? 'Reiniciar' : live ? 'Continuar' : 'Reproducir'}
+              {playing ? 'Reiniciar' : live && (status?.time ?? 0) > 0 ? 'Continuar' : 'Empezar'}
             </Button>
             <Button icon={<Pause size={20} />} onClick={() => transport('pause')} disabled={!playing} data-testid="play-pause">Pausa</Button>
             <Button icon={<Square size={18} />} onClick={() => transport('stop')} disabled={!live} data-testid="play-stop">Detener</Button>

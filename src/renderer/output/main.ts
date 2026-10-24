@@ -4,6 +4,7 @@
  */
 import { Player } from '../engine/player';
 import type { OutputCommand, VmOutputApi } from '../../shared/api';
+import { setupInteraction } from './interaction';
 
 declare global {
   interface Window { vmOutput: VmOutputApi; __vmPlayer?: Player }
@@ -73,6 +74,10 @@ setInterval(() => api.sendStatus(player.status()), 250);
 
 window.addEventListener('error', (e) => api.log('error', `${e.message} @ ${e.filename}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => api.log('error', `Promesa rechazada: ${String(e.reason)}`));
+
+const ui = setupInteraction(player, api, wrap, document.getElementById('stage') as HTMLElement, document.getElementById('hud') as HTMLDivElement);
+// la esquina/vértice activo se resalta en la superposición de calibración
+player.activeVertex = () => ui.activeVertex();
 
 player.start();
 fit();

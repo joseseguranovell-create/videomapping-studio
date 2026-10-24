@@ -14,11 +14,31 @@
 
 > El programa **no detecta automáticamente** puertas ni ventanas: sin cámara ni sistema de visión no hay forma fiable de hacerlo. La calibración manual funciona con cualquier fachada y no necesita hardware adicional.
 
+## 1b. Una pantalla o dos
+
+- **Dos pantallas (recomendado)**: el proyector es una segunda pantalla de Windows (**Win+P → «Extender»**). El editor se queda en el portátil y la imagen a pantalla completa va solo al proyector.
+- **Una sola pantalla** (el PC solo ve el proyector, o está en modo «Duplicar»): la salida ocupa toda la pantalla y **se maneja con el teclado y el ratón sobre la propia proyección** (tabla de abajo). **Esc** sale de pantalla completa para volver al editor y **F** la recupera.
+
+| Tecla sobre la proyección | Acción |
+|---|---|
+| **Espacio** | Empezar / pausar el espectáculo |
+| **Inicio** | Volver al principio |
+| **B** | Negro (otra vez: vuelve el espectáculo) |
+| **C** / **P** | Pasar a calibración / a espectáculo |
+| **F**, **F11** o doble clic | Pantalla completa sí/no |
+| **Esc** | Salir de pantalla completa |
+| **H** | Mostrar u ocultar la ayuda en pantalla |
+| En calibración: arrastrar | Mover esquinas (círculos de color), vértices (cuadrados blancos) o la superficie entera |
+| En calibración: **Tab** / **Mayús+Tab** | Superficie siguiente / anterior |
+| En calibración: **1–4** y **flechas** | Elegir esquina y moverla 1 px (**Mayús**: 10 px; sin esquina elegida se mueve toda la superficie) |
+| En calibración: **R** / **D** | Añadir una ventana / una puerta donde está el ratón |
+| **Ctrl+Z**, **Ctrl+Y**, **Ctrl+S** | Deshacer, rehacer, guardar |
+
 ## 2. Crear el proyecto y la instalación
 
 1. **Inicio → Nuevo proyecto** (por ejemplo «Mi casa»), o **Crear proyecto** desde el ejemplo «Halloween infantil» para partir de una casa y un espectáculo ya hechos.
 2. **Calibración → Nueva instalación** («Fachada principal»). En el panel derecho elige la **resolución de salida** del proyector.
-3. Pulsa **Proyectar calibración**. Se abre la salida a pantalla completa en la pantalla que no tiene el editor. Si hay varias, elige cuál en el selector de la barra superior. Sin proyector se abre una «ventana de prueba».
+3. Pulsa **Proyectar calibración**. Se abre la salida a pantalla completa en el proyector (o en la única pantalla). Puedes calibrar desde el editor o **directamente sobre la proyección** con el ratón y el teclado (ver §1b). Para probar sin pantalla completa elige «Ventana de prueba» en el selector de la barra superior.
 
 ## 3. Dibujar y ajustar las superficies (mirando la fachada)
 
@@ -106,7 +126,7 @@ Para que un personaje **pase de una ventana a otra**, pon un clip «Salir por la
 ## 7. La noche del espectáculo
 
 1. **Reproducción**: elige el espectáculo y revisa las **comprobaciones previas** (calibración, recursos ausentes, audio, pantallas).
-2. **Reproducir** abre la salida si hace falta y empieza. Con «Repetir en bucle» se repite toda la noche (con la pausa en negro configurada).
+2. **Preparar** abre la salida a pantalla completa en negro y en espera; el espectáculo empieza con **Empezar** en el editor o con **Espacio** sobre la proyección. **Empezar** directamente hace las dos cosas. Con «Repetir en bucle» se repite toda la noche (con la pausa en negro configurada).
 3. **Negro** apaga la imagen al instante sin cerrar nada. La salida es independiente: puedes minimizar el editor.
 4. El panel **Diagnóstico** muestra fps, vídeos activos y errores. Si indica «por software», actualiza los controladores de la GPU.
 

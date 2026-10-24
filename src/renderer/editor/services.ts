@@ -3,11 +3,12 @@
  * sincronización con la ventana de salida.
  */
 import { useStore, mediaBase } from './store';
-import type { Asset, AssetKind, Project } from '../../shared/model';
-import type { ImportedFile, OpenedProject, OutputMode } from '../../shared/api';
+import type { Asset, AssetKind, Project, Surface } from '../../shared/model';
+import type { ImportedFile, OpenedProject, OutputMode, OutputRequest } from '../../shared/api';
 import { mediaUrl } from '../engine/media';
 import { newId, nowIso } from '../../shared/ids';
-import { referencedAssetIds } from '../../shared/factory';
+import { referencedAssetIds, createSurface } from '../../shared/factory';
+import { clampPoint, translateSurface } from '../../shared/geometry';
 import { inSchedule } from '../../shared/schedule';
 
 export const vm = window.vm;
@@ -416,6 +417,20 @@ export function sendAudioSettings() {
   vm.output.send({ type: 'audio', enabled: s?.audioEnabled ?? true, volume: 1 });
 }
 
+/** Pantalla para la salida: el proyector (pantalla sin el editor) si existe; si no, la única pantalla. */
+export function preferredOutputDisplayId(): number | null {
+  const s = st();
+  const label = s.settings?.lastOutputDisplayLabel;
+  const d = s.displays.find((x) => !x.hasEditor && (!label || x.label === label)) ?? s.displays.find((x) => !x.hasEditor) ?? s.displays[0];
+  return d?.id ?? null;
+}
+
+/** ¿La salida tapará la pantalla del editor? (una sola pantalla) */
+export function outputCoversEditor(displayId: number | null): boolean {
+  const d = st().displays.find((x) => x.id === displayId);
+  return !!d && d.hasEditor;
+}
+
 export async function openOutput(displayId: number | null, fullscreen = true) {
   try {
     const state = await vm.output.open(displayId, fullscreen);
@@ -458,8 +473,8 @@ export function startScheduler() {
       vm.app.log('info', `Programación: inicio de «${show.name}»`);
       s.set({ outputMode: 'show', outputShowId: show.id });
       if (!st().output.open) {
-        const target = s.displays.find((d) => !d.hasEditor && (!s.settings?.lastOutputDisplayLabel || d.label === s.settings.lastOutputDisplayLabel)) ?? s.displays.find((d) => !d.hasEditor);
-        await openOutput(target?.id ?? null, !!target);
+        const target = preferredOutputDisplayId();
+        await openOutput(target, target !== null);
       }
       setTimeout(() => transport('play', 0), 800);
       st().toast('info', `Programación: «${show.name}» ha empezado (hasta las ${sch.end}).`, 8000);
@@ -477,4 +492,103 @@ export function startScheduler() {
 
 export function isScheduleRunning() {
   return scheduleRunning;
+}
+
+// ───────── Peticiones desde la ventana de salida (teclado y ratón sobre la proyección) ─────────
+
+function outputInstallationId(): string | null {
+  const s = st();
+  if (!s.project) return null;
+  if (s.outputMode === 'show') {
+    const sh = s.project.shows.find((x) => x.id === s.outputShowId);
+    if (sh?.installationId) return sh.installationId;
+  }
+  return s.installationId ?? s.project.installations[0]?.id ?? null;
+}
+
+function ensureShowSelected(): string | null {
+  const s = st();
+  if (!s.project) return null;
+  const id = s.outputShowId && s.project.shows.some((x) => x.id === s.outputShowId) ? s.outputShowId : s.showId ?? s.project.shows[0]?.id ?? null;
+  if (id !== s.outputShowId) s.set({ outputShowId: id });
+  return id;
+}
+
+export function handleOutputRequest(r: OutputRequest) {
+  const s = st();
+  if (!s.project) return;
+  const instId = outputInstallationId();
+  const mutSurface = (live: boolean, label: string, surfaceId: string, fn: (x: Surface) => void) => {
+    const apply = (d: Project) => {
+      const sf = d.installations.find((i) => i.id === instId)?.surfaces.find((x) => x.id === surfaceId);
+      if (sf && !sf.locked) fn(sf);
+    };
+    live ? st().dragUpdate(apply) : st().update(label, apply);
+  };
+  switch (r.type) {
+    case 'key': {
+      if (r.action === 'playPause') {
+        if (s.outputMode !== 'show') {
+          if (!ensureShowSelected()) return;
+          s.set({ outputMode: 'show' });
+          setTimeout(() => transport('play'), 250);
+        } else transport(s.outputStatus?.playing ? 'pause' : 'play');
+      } else if (r.action === 'restart') {
+        vm.output.send({ type: 'seek', time: 0 });
+      } else if (r.action === 'black') {
+        s.set({ outputMode: s.outputMode === 'black' ? (ensureShowSelected() ? 'show' : 'black') : 'black' });
+      } else if (r.action === 'calibration') {
+        if (instId && instId !== s.installationId) s.set({ installationId: instId });
+        if (s.outputStatus?.playing) transport('pause');
+        s.set({ outputMode: 'calibration' });
+      } else if (r.action === 'show') {
+        if (ensureShowSelected()) s.set({ outputMode: 'show' });
+      }
+      return;
+    }
+    case 'select':
+      s.set({ surfaceId: r.surfaceId, maskId: null });
+      return;
+    case 'selectNext': {
+      const surfaces = s.project.installations.find((i) => i.id === instId)?.surfaces ?? [];
+      if (!surfaces.length) return;
+      const idx = surfaces.findIndex((x) => x.id === s.surfaceId);
+      const next = surfaces[(idx + r.dir + surfaces.length) % surfaces.length];
+      s.set({ surfaceId: next.id, maskId: null });
+      return;
+    }
+    case 'drag': {
+      if (r.phase === 'start') { st().beginDrag(); return; }
+      if (r.phase === 'end') { st().endDrag('Ajustar sobre la proyección'); return; }
+      mutSurface(true, '', r.surfaceId, (x) => {
+        if (r.target === 'move' && r.delta) Object.assign(x, translateSurface(x, r.delta.x, r.delta.y));
+        else if (r.target === 'quad') x.quad[r.index] = clampPoint(r.point);
+        else if (r.target === 'polygon' && x.polygon[r.index]) x.polygon[r.index] = clampPoint(r.point);
+      });
+      return;
+    }
+    case 'nudge':
+      mutSurface(false, 'Ajuste fino sobre la proyección', r.surfaceId, (x) => {
+        if (r.target === 'move') Object.assign(x, translateSurface(x, r.dx, r.dy));
+        else {
+          const pts = r.target === 'quad' ? x.quad : x.polygon;
+          const p = pts[r.index];
+          if (p) pts[r.index] = clampPoint({ x: p.x + r.dx, y: p.y + r.dy });
+        }
+      });
+      return;
+    case 'addSurface': {
+      if (!instId) return;
+      const inst = s.project.installations.find((i) => i.id === instId)!;
+      const w = r.kind === 'door' ? 0.09 : 0.12, h = r.kind === 'door' ? 0.3 : 0.18;
+      const n = inst.surfaces.filter((x) => x.kind === r.kind).length + 1;
+      const sf = createSurface(`${r.kind === 'door' ? 'Puerta' : 'Ventana'} ${n}`, r.kind, inst.surfaces.length, { x: r.at.x - w / 2, y: r.at.y - h / 2, w, h });
+      st().update('Añadir superficie sobre la proyección', (d) => { d.installations.find((i) => i.id === instId)!.surfaces.push(sf); });
+      s.set({ surfaceId: sf.id, maskId: null });
+      return;
+    }
+    case 'undo': st().undo(); return;
+    case 'redo': st().redo(); return;
+    case 'save': void saveProject(); return;
+  }
 }

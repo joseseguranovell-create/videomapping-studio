@@ -196,7 +196,8 @@ function openOutput(displayId: number | null, fullscreen: boolean): OutputState 
     y: b.y,
     width: b.width,
     height: b.height,
-    frame: !outputFullscreen,
+    // Con marco siempre: al salir de pantalla completa (Esc) queda una ventana normal que se puede mover.
+    frame: true,
     fullscreenable: true,
     autoHideMenuBar: true,
     backgroundColor: '#000000',
@@ -206,17 +207,25 @@ function openOutput(displayId: number | null, fullscreen: boolean): OutputState 
   });
   outputWin.setMenu(null);
   outputWin.loadURL(`${APP_ORIGIN}/ui/output.html`);
+  // Si la salida cubre la pantalla del editor (una sola pantalla), recibe el foco para poder usar el teclado
+  // (Espacio = reproducir, Esc = salir de pantalla completa…). Si va a otra pantalla, el foco sigue en el editor.
+  const editorDisplay = editorWin ? screen.getDisplayMatching(editorWin.getBounds()) : null;
+  const coversEditor = !target || target.id === editorDisplay?.id;
   outputWin.once('ready-to-show', () => {
     if (!outputWin) return;
     if (outputFullscreen && target) {
       outputWin.setBounds(target.bounds);
-      outputWin.showInactive(); // no robar el foco al editor
+      if (coversEditor) outputWin.show();
+      else outputWin.showInactive();
       outputWin.setFullScreen(true);
     } else {
       outputWin.show();
     }
-    editorWin?.focus();
+    if (coversEditor) outputWin.focus();
+    else editorWin?.focus();
   });
+  outputWin.on('enter-full-screen', () => { outputFullscreen = true; notifyOutputState(); });
+  outputWin.on('leave-full-screen', () => { outputFullscreen = false; notifyOutputState(); });
   outputWin.on('closed', () => {
     outputWin = null;
     outputDisplayId = null;
@@ -504,6 +513,25 @@ function registerIpc() {
   ipcMain.on('output:status', (e, s) => {
     if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
     editorWin?.webContents.send('output:status', s);
+  });
+  // Peticiones desde la ventana de salida (teclado y ratón sobre la proyección): las resuelve el editor.
+  ipcMain.on('output:request', (e, req) => {
+    if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
+    editorWin?.webContents.send('output:request', req);
+  });
+  ipcMain.on('output:fullscreen', (e, mode: 'toggle' | 'exit') => {
+    if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
+    const fs = outputWin.isFullScreen();
+    if (mode === 'exit' && !fs) return;
+    if (fs) {
+      outputWin.setFullScreen(false);
+      const d = screen.getDisplayMatching(outputWin.getBounds()).workArea;
+      outputWin.setBounds({ x: d.x + Math.round(d.width * 0.2), y: d.y + Math.round(d.height * 0.2), width: Math.round(d.width * 0.6), height: Math.round(d.height * 0.6) });
+    } else {
+      const d = screen.getDisplayMatching(outputWin.getBounds());
+      outputDisplayId = d.id;
+      outputWin.setFullScreen(true);
+    }
   });
   ipcMain.on('output:ready', (e) => {
     if (!outputWin || e.sender.id !== outputWin.webContents.id) return;

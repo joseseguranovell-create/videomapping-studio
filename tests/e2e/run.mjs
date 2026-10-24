@@ -198,6 +198,43 @@ try {
     if (SHOTS) await out.screenshot({ path: `${SHOTS}/e2e-output-calibration.png` });
   });
 
+  await step('6b. Calibrar directamente sobre la proyección (ratón y teclado en la ventana de salida)', async () => {
+    await win.evaluate(() => { const st = window.__vmStore.getState(); st.set({ surfaceId: st.project.installations[0].surfaces[0].id }); });
+    await out.waitForTimeout(300);
+    const q0 = (await S(win)).project.installations[0].surfaces[0].quad;
+    const r = await out.evaluate(() => document.getElementById('wrap').getBoundingClientRect().toJSON());
+    const P = (p) => [r.x + p.x * r.width, r.y + p.y * r.height];
+    const [cx, cy] = P(q0[2]);
+    await out.mouse.move(cx, cy);
+    await out.mouse.down();
+    await out.mouse.move(cx + r.width * 0.02, cy + r.height * 0.03, { steps: 5 });
+    await out.mouse.up();
+    await win.waitForTimeout(200);
+    let q1 = (await S(win)).project.installations[0].surfaces[0].quad;
+    assert(Math.abs(q1[2].x - q0[2].x - 0.02) < 0.004 && Math.abs(q1[2].y - q0[2].y - 0.03) < 0.004, `esquina 3 movida sobre la proyección ${JSON.stringify(q0[2])} → ${JSON.stringify(q1[2])}`);
+    // teclado sobre la salida: esquina 1 y flecha = 1 px
+    await out.keyboard.press('1');
+    await out.keyboard.press('ArrowRight');
+    await win.waitForTimeout(200);
+    const q2 = (await S(win)).project.installations[0].surfaces[0].quad;
+    assert(Math.abs((q2[0].x - q1[0].x) * 1920 - 1) < 1e-6, 'flecha en la salida = 1 px en la esquina elegida');
+    // Tab cambia de superficie; R añade una ventana; Ctrl+Z la quita
+    await out.keyboard.press('Tab');
+    await win.waitForTimeout(150);
+    const sel = await win.evaluate(() => window.__vmStore.getState().surfaceId);
+    const ids = (await S(win)).project.installations[0].surfaces.map((x) => x.id);
+    assert(sel === ids[1], 'Tab selecciona la siguiente superficie');
+    await out.mouse.move(r.x + r.width * 0.5, r.y + r.height * 0.5);
+    await out.keyboard.press('r');
+    await win.waitForTimeout(200);
+    assert((await S(win)).project.installations[0].surfaces.length === ids.length + 1, 'R añade una ventana');
+    await out.keyboard.press('Control+z');
+    await win.waitForTimeout(200);
+    assert((await S(win)).project.installations[0].surfaces.length === ids.length, 'Ctrl+Z en la salida deshace');
+    const hud = await out.evaluate(() => document.getElementById('hud').textContent);
+    assert(/Calibración/.test(hud), `ayuda en pantalla visible (${hud.slice(0, 40)})`);
+  });
+
   await step('7. Importar un vídeo MP4 y una imagen PNG con transparencia', async () => {
     const media = path.join(tmp, 'media');
     fs.mkdirSync(media);
@@ -469,8 +506,31 @@ try {
     assert(r.errors.length === 0, `sin errores: ${r.errors.join(' | ')}`);
   });
 
+  await step('18a. Preparar en espera y empezar con Espacio sobre la proyección; B negro; Esc sale de pantalla completa', async () => {
+    await win.click('[data-testid="nav-play"]');
+    await win.click('[data-testid="play-prepare"]');
+    await win.waitForFunction(() => { const s = window.__vmStore.getState(); return s.outputStatus?.mode === 'show' && !s.outputStatus.playing && s.outputStatus.time === 0; }, null, { timeout: 10000 });
+    await out.waitForTimeout(400);
+    await out.keyboard.press(' ');
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.playing === true, null, { timeout: 10000 });
+    await out.keyboard.press('b');
+    await win.waitForFunction(() => window.__vmStore.getState().outputMode === 'black', null, { timeout: 5000 });
+    await out.keyboard.press('b');
+    await win.waitForFunction(() => window.__vmStore.getState().outputMode === 'show', null, { timeout: 5000 });
+    const fs0 = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle().startsWith('Salida'))?.isFullScreen());
+    await out.keyboard.press('Escape');
+    await out.waitForTimeout(800);
+    const fs1 = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find((w) => w.getTitle().startsWith('Salida'))?.isFullScreen());
+    console.log(`      pantalla completa: antes=${fs0} después de Esc=${fs1}`);
+    assert(fs1 === false, 'Esc sale de pantalla completa');
+    await out.keyboard.press('f');
+    await out.waitForTimeout(800);
+    await out.evaluate(() => window.__vmPlayer.pause());
+  });
+
   await step('18b. Mover y escalar un clip arrastrando sobre la previsualización', async () => {
     await out.evaluate(() => window.__vmPlayer.pause());
+    await win.click('[data-testid="nav-shows"]');
     await win.click('[data-testid="scene-block-1"]');
     await win.locator('[data-testid="tl-clip"]', { hasText: 'Boo saluda' }).click();
     await win.waitForSelector('[data-testid="clip-box"]');

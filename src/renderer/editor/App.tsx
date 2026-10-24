@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Home as HomeIcon, Crosshair, Images, Ghost, Clapperboard, MonitorPlay, Settings as SettingsIcon, Save, Undo2, Redo2 } from 'lucide-react';
 import { useStore, type View } from './store';
-import { vm, saveProject, startAutosave, startScheduler, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
+import { vm, saveProject, startAutosave, startScheduler, handleOutputRequest, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
 import { Button, DialogHost } from './components/ui';
 import { OutputControl } from './components/OutputControl';
 import { Toasts } from './components/Toasts';
@@ -50,6 +50,7 @@ export function App() {
     })();
     const offD = vm.displays.onChanged((d) => set({ displays: d }));
     const offS = vm.output.onStatus((s) => set({ outputStatus: s }));
+    const offR = vm.output.onRequest((r) => handleOutputRequest(r));
     const offO = vm.output.onState((o) => {
       set({ output: o });
       if (o.open) {
@@ -63,7 +64,7 @@ export function App() {
     window.addEventListener('error', onErr);
     window.addEventListener('unhandledrejection', onRej);
     return () => {
-      offD(); offS(); offO();
+      offD(); offS(); offO(); offR();
       window.removeEventListener('error', onErr);
       window.removeEventListener('unhandledrejection', onRej);
     };

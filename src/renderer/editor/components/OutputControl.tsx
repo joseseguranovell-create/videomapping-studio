@@ -17,7 +17,8 @@ export function OutputControl() {
   // Preselección: la última pantalla usada, si no la primera que no tenga el editor.
   const defaultDisplay = useMemo(() => {
     const byLabel = displays.find((d) => settings?.lastOutputDisplayLabel && d.label === settings.lastOutputDisplayLabel && !d.hasEditor);
-    return (byLabel ?? displays.find((d) => !d.hasEditor) ?? null)?.id ?? -1;
+    // Sin proyector se usa la única pantalla a pantalla completa (Esc en la salida para volver).
+    return (byLabel ?? displays.find((d) => !d.hasEditor) ?? displays[0] ?? null)?.id ?? -1;
   }, [displays, settings?.lastOutputDisplayLabel]);
   const [choice, setChoice] = useState<number | null>(null);
   const selected = choice ?? defaultDisplay;
@@ -54,7 +55,10 @@ export function OutputControl() {
           disabled={!project}
           data-testid="output-open"
           title={sel?.hasEditor ? 'Atención: esta pantalla es la del editor; la salida la cubrirá.' : 'Abrir la salida a pantalla completa en el proyector'}
-          onClick={() => void openOutput(selected >= 0 ? selected : null, selected >= 0)}
+          onClick={async () => {
+            await openOutput(selected >= 0 ? selected : null, selected >= 0);
+            if (sel?.hasEditor) useStore.getState().toast('info', 'La salida ocupa toda la pantalla. Sobre ella: Espacio reproducir, C calibrar, B negro, H ayuda, Esc salir de pantalla completa.', 10000);
+          }}
         >
           Abrir salida
         </Button>
