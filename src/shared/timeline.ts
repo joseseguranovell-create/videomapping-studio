@@ -244,6 +244,24 @@ export function activeSlot(layout: ShowLayout, t: number): SceneSlot | null {
  * Matriz afín (en 3x3) que lleva coordenadas uv de la superficie a coordenadas del contenido (0..1).
  * Fuera de [0,1] el contenido no se dibuja.
  */
+/**
+ * Escala máxima para que un rótulo no se salga de su superficie (ni por los lados ni por arriba/abajo),
+ * teniendo en cuenta dónde está colocado. Así un texto largo se encoge en vez de cortarse.
+ */
+export function textMaxScale(p: { fit: 'contain' | 'cover' | 'stretch'; x: number; y: number }, surfaceAspect: number, contentAspect: number, margin = 0.96): number {
+  const A = surfaceAspect > 0 ? surfaceAspect : 1;
+  const C = contentAspect > 0 ? contentAspect : 1;
+  let fw = 1, fh = 1;
+  if (p.fit === 'contain') {
+    if (C > A) { fw = 1; fh = A / C; } else { fh = 1; fw = C / A; }
+  } else if (p.fit === 'cover') {
+    if (C > A) { fh = 1; fw = C / A; } else { fw = 1; fh = A / C; }
+  }
+  const roomX = 2 * Math.max(0.05, Math.min(p.x, 1 - p.x)) * margin;
+  const roomY = 2 * Math.max(0.05, Math.min(p.y, 1 - p.y)) * 1.15; // el halo puede rozar arriba y abajo
+  return Math.max(0.05, Math.min(roomX / fw, roomY / fh));
+}
+
 export function contentMatrix(
   p: { fit: 'contain' | 'cover' | 'stretch'; x: number; y: number; scale: number; rotation: number; flipX: boolean },
   surfaceAspect: number,

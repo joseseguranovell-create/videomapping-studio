@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutShow, sceneWeight, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime } from '../../src/shared/timeline';
+import { layoutShow, sceneWeight, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, textMaxScale } from '../../src/shared/timeline';
 import { applyH } from '../../src/shared/geometry';
 import { evaluateMotion } from '../../src/shared/motion';
 import { MOTION_PRESETS } from '../../src/shared/model';
@@ -160,5 +160,16 @@ describe('modo directo (escena en bucle)', () => {
     sh.scenes[2].sounds = [createSoundCue('pop', { start: 1 })];
     const cues = sceneLoopCues(sh.scenes[2]);
     expect(cues.map((c) => [c.assetId, c.start, c.kind])).toEqual([['pop', 1, 'sfx']]);
+  });
+});
+
+describe('rótulos que caben', () => {
+  it('un texto largo no se sale de la superficie aunque se pida más escala', () => {
+    // superficie 4:1 y texto 6:1 (más ancho): a escala 1 ya ocupa todo el ancho
+    expect(textMaxScale({ fit: 'contain', x: 0.5, y: 0.5 }, 4, 6)).toBeCloseTo(0.96);
+    // texto corto (2:1) en la misma superficie: puede crecer hasta llenar el alto (con margen para el halo)
+    expect(textMaxScale({ fit: 'contain', x: 0.5, y: 0.5 }, 4, 2)).toBeCloseTo(1.15);
+    // desplazado a la derecha, tiene menos sitio
+    expect(textMaxScale({ fit: 'contain', x: 0.75, y: 0.5 }, 4, 6)).toBeCloseTo(0.48);
   });
 });
