@@ -50,6 +50,10 @@ export function CalibrateScreen() {
               Nueva instalación
             </Button>
           </div>
+          <p className="muted small" style={{ marginTop: 16 }}>
+            ¿Has instalado un paquete con su casa? Añádelo desde <b>Biblioteca → Paquetes</b> con «Incluir instalaciones y espectáculos» activado,
+            o crea un proyecto nuevo con él desde <b>Inicio → Empezar con un ejemplo</b>.
+          </p>
         </Empty>
       </div>
     );

@@ -205,7 +205,8 @@ function AssetDetails({ a, missing, onDeleted }: { a: Asset; missing: boolean; o
 function PacksModal({ onClose }: { onClose: () => void }) {
   const [packs, setPacks] = useState<PackInfo[] | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
-  const [withShows, setWithShows] = useState(false);
+  // Si el proyecto aún no tiene ninguna casa, lo normal es traer también la del paquete.
+  const [withShows, setWithShows] = useState(() => !useStore.getState().project?.installations.length);
   const toast = useStore((s) => s.toast);
   const load = async () => {
     const r = await vm.packs.list();

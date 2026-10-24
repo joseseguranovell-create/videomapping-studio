@@ -325,7 +325,10 @@ export async function addPackToProject(packId: string, withShows: boolean) {
         for (const s of r.shows) if (!d.shows.some((x) => x.id === s.id)) d.shows.push(s);
       }
     });
-    st().toast('success', `Paquete añadido: ${r.assets.length} recursos, ${r.characters.length} personajes${r.skippedAssets ? ` (${r.skippedAssets} ya estaban)` : ''}`);
+    // Deja seleccionadas la casa y el espectáculo del paquete para que Calibrar y Espectáculos los muestren.
+    if (withShows && r.installations[0]) st().set({ installationId: r.installations[0].id, surfaceId: null });
+    if (withShows && r.shows[0]) st().set({ showId: r.shows[0].id, sceneId: r.shows[0].scenes[0]?.id ?? null, clipId: null });
+    st().toast('success', `Paquete añadido: ${r.assets.length} recursos, ${r.characters.length} personajes${withShows && r.installations.length ? `, ${r.installations.length} instalación(es) y ${r.shows.length} espectáculo(s)` : ''}${r.skippedAssets ? ` (${r.skippedAssets} ya estaban)` : ''}`);
     await refreshMissing();
   } catch (e) {
     st().toast('error', `No se pudo añadir el paquete: ${errMsg(e)}`, 8000);
