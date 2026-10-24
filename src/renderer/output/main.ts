@@ -24,6 +24,7 @@ try {
   throw e;
 }
 window.__vmPlayer = player;
+api.log('info', `Salida iniciada. WebGL: ${player.r.rendererName}`);
 
 function fit() {
   // Encaja el fotograma de salida en la ventana manteniendo su proporción (bandas negras si no coincide).

@@ -25,7 +25,11 @@ export async function afterOpen(o: OpenedProject) {
   st().openProject(o);
   if (o.migratedFrom !== null) st().toast('info', `Proyecto actualizado desde el formato v${o.migratedFrom}. Se guardó una copia del original en «backups».`, 8000);
   if (o.missingAssetIds.length) st().toast('warning', `Faltan ${o.missingAssetIds.length} archivo(s) de recursos. Revisa la Biblioteca para localizarlos.`, 8000);
-  st().set({ view: o.project.installations.length ? 'calibrate' : 'home' });
+  if (o.autosaveNewer) {
+    // La recuperación se ofrece en Inicio: se lleva allí al usuario para que no pase desapercibida.
+    st().set({ view: 'home' });
+    st().toast('warning', 'Hay cambios recuperables del guardado automático (posible cierre inesperado). Revisa el aviso en Inicio.', 10000);
+  } else st().set({ view: o.project.installations.length ? 'calibrate' : 'home' });
 }
 
 export async function openProjectFile(file: string): Promise<OpenedProject | null> {

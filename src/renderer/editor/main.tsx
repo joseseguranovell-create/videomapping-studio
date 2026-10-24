@@ -1,12 +1,16 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { useStore } from './store';
 import type { VmApi } from '../../shared/api';
 import './styles.css';
 
 declare global {
-  interface Window { vm: VmApi }
+  interface Window { vm: VmApi; __vmStore?: typeof useStore }
 }
+
+// Acceso para pruebas automatizadas y diagnóstico desde la consola de desarrollo.
+window.__vmStore = useStore;
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };

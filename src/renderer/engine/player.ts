@@ -400,6 +400,7 @@ export class Player {
       errors: this.errors,
       width: this.canvas.width,
       height: this.canvas.height,
+      gpu: this.r.rendererName,
     };
   }
 }

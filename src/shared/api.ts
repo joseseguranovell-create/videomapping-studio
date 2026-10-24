@@ -114,6 +114,8 @@ export interface OutputStatus {
   errors: string[];
   width: number;
   height: number;
+  /** Implementación WebGL / GPU en uso. */
+  gpu: string;
 }
 
 export interface VmApi {

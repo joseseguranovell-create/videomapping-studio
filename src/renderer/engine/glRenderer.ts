@@ -172,6 +172,8 @@ export class GLRenderer {
   private triCache = new Map<string, Float32Array>();
   private textures = new Set<WebGLTexture>();
   lost = false;
+  /** Nombre de la GPU / implementación WebGL (para diagnóstico). */
+  rendererName = '';
 
   constructor(readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2', {
@@ -184,6 +186,8 @@ export class GLRenderer {
     });
     if (!gl) throw new Error('WebGL2 no está disponible en este equipo.');
     this.gl = gl;
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    this.rendererName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
     this.prog = program(gl, VS, FS);
     this.maskProg = program(gl, VS, MASK_FS);
     for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_aspect', 'u_color', 'u_color2']) {

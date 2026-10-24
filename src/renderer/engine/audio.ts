@@ -131,6 +131,7 @@ export class AudioEngine {
       } else {
         g.setValueAtTime(vol, startAt);
       }
+      src.start(startAt, offset);
       if (isFinite(end)) {
         const endCtx = cycleStartCtx + end;
         const fo = Math.min(Math.max(cue.fadeOut, 0.03), Math.max(0.03, end - cue.start));
@@ -139,7 +140,6 @@ export class AudioEngine {
         g.linearRampToValueAtTime(0, endCtx);
         src.stop(endCtx + 0.02);
       }
-      src.start(startAt, offset);
       const entry: Playing = { src, gain, cycle };
       src.onended = () => {
         try { gain.disconnect(); } catch { /* ignorar */ }

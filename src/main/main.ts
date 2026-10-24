@@ -17,6 +17,13 @@ import { newId } from '../shared/ids';
 
 registerSchemePrivileges();
 
+// Si la GPU no está disponible o está en la lista negra de Chromium, permitir WebGL por software
+// (SwiftShader). Es seguro aquí porque la aplicación solo carga contenido local propio.
+app.commandLine.appendSwitch('enable-unsafe-swiftshader');
+// Evita que Chromium reduzca el ritmo de dibujo de la ventana de salida cuando no tiene el foco.
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
 // Datos de usuario aislados en pruebas automatizadas.
 if (process.env.VMSTUDIO_USER_DATA) app.setPath('userData', process.env.VMSTUDIO_USER_DATA);
 

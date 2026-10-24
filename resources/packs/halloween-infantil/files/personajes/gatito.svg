@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs><radialGradient id="c" cx="45%" cy="30%" r="80%"><stop offset="0" stop-color="#4a3b63"/><stop offset="1" stop-color="#231a33"/></radialGradient></defs>
+  <path d="M130 240 L118 110 L210 180 Z" fill="url(#c)" stroke="#3b2a55" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M382 240 L394 110 L302 180 Z" fill="url(#c)" stroke="#3b2a55" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M138 196 L134 140 L178 176 Z M374 196 L378 140 L334 176 Z" fill="#ff9bb8"/>
+  <path d="M100 300 C100 200 170 160 256 160 C342 160 412 200 412 300 C412 380 350 430 256 430 C162 430 100 380 100 300 Z" fill="url(#c)" stroke="#3b2a55" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <ellipse cx="200" cy="292" rx="34" ry="40" fill="#c8f560"/><ellipse cx="312" cy="292" rx="34" ry="40" fill="#c8f560"/>
+  <ellipse cx="204" cy="296" rx="13" ry="30" fill="#1a1226"/><ellipse cx="308" cy="296" rx="13" ry="30" fill="#1a1226"/>
+  <circle cx="214" cy="276" r="8" fill="#fff"/><circle cx="318" cy="276" r="8" fill="#fff"/>
+  <path d="M244 342 L268 342 L256 356 Z" fill="#ff8fb0" stroke="#3b2a55" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M256 356 Q244 374 228 368 M256 356 Q268 374 284 368" fill="none" stroke="#f4e9ff" stroke-width="5" stroke-linecap="round"/>
+  <path d="M190 350 L120 338 M190 362 L118 368 M322 350 L392 338 M322 362 L394 368" stroke="#f4e9ff" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <path d="M120 440 C120 400 160 392 190 400 C214 408 216 440 200 456 L132 456 C124 452 120 448 120 440 Z" fill="url(#c)" stroke="#3b2a55" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M392 440 C392 400 352 392 322 400 C298 408 296 440 312 456 L380 456 C388 452 392 448 392 440 Z" fill="url(#c)" stroke="#3b2a55" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M146 430 v20 M166 428 v22 M346 430 v20 M366 428 v22" stroke="#6d5a8c" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -138,6 +138,7 @@ export function PlaybackScreen() {
               <dt>Resolución</dt><dd>{status.width}×{status.height}</dd>
               <dt>Vídeos activos</dt><dd>{status.activeVideos}</dd>
               <dt>Texturas</dt><dd>{status.textures}</dd>
+              <dt>Gráficos</dt><dd className="path">{status.gpu || '—'}{/swiftshader|llvmpipe|software/i.test(status.gpu) ? ' (por software: puede ir lento; actualiza los controladores de la GPU)' : ''}</dd>
             </dl>
           ) : <p className="muted small">Abre la salida para ver estadísticas.</p>}
           {status?.errors.length ? (

@@ -571,7 +571,18 @@ function InstallationProps({ inst }: { inst: Installation }) {
         </div>
         {ref && (
           <Field label={`Opacidad ${Math.round(inst.referenceImageOpacity * 100)}%`}>
-            <Slider value={inst.referenceImageOpacity} min={0} max={1} step={0.05} onChange={(v) => useStore.getState().dragUpdate((d) => { d.installations.find((x) => x.id === inst.id)!.referenceImageOpacity = v; })} />
+            <Slider
+              value={inst.referenceImageOpacity}
+              min={0}
+              max={1}
+              step={0.05}
+              onChange={(v) => {
+                const s = useStore.getState();
+                if (!s.dragBase) s.beginDrag();
+                s.dragUpdate((d) => { d.installations.find((x) => x.id === inst.id)!.referenceImageOpacity = v; });
+              }}
+              onCommit={() => useStore.getState().endDrag('Opacidad de la foto')}
+            />
           </Field>
         )}
       </Panel>

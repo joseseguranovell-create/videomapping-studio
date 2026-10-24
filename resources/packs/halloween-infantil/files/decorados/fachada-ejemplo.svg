@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d1430"/><stop offset="1" stop-color="#26244a"/></linearGradient>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#cbbfae"/><stop offset="1" stop-color="#b8aa96"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b4a63"/><stop offset="1" stop-color="#1e2738"/></linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <rect y="1000" width="1920" height="80" fill="#2c3a2a"/>
+  <!-- cuerpo de la casa -->
+  <rect x="460" y="320" width="1000" height="680" fill="url(#wall)" stroke="#5b5146" stroke-width="6"/>
+  <!-- tejado y frontón -->
+  <path d="M420 330 L960 80 L1500 330 Z" fill="#7b3a30" stroke="#4a221c" stroke-width="8"/>
+  <path d="M500 320 L960 110 L1420 320 Z" fill="#d6cab9" stroke="#5b5146" stroke-width="4"/>
+  <!-- ventana del desván (arco) -->
+  <path d="M880 300 L880 215 Q880 163 960 163 Q1040 163 1040 215 L1040 300 Z" fill="url(#glass)" stroke="#f3efe6" stroke-width="10"/>
+  <!-- ventanas altas -->
+  <g fill="url(#glass)" stroke="#f3efe6" stroke-width="10">
+    <rect x="540" y="380" width="220" height="180"/><rect x="850" y="380" width="220" height="180"/><rect x="1160" y="380" width="220" height="180"/>
+    <rect x="540" y="680" width="220" height="200"/><rect x="1160" y="680" width="220" height="200"/>
+  </g>
+  <g stroke="#f3efe6" stroke-width="5">
+    <path d="M650 380 V560 M540 470 H760 M960 380 V560 M850 470 H1070 M1270 380 V560 M1160 470 H1380 M650 680 V880 M540 780 H760 M1270 680 V880 M1160 780 H1380"/>
+  </g>
+  <!-- puerta -->
+  <rect x="870" y="640" width="180" height="360" fill="#5a2e1e" stroke="#2e170f" stroke-width="8"/>
+  <rect x="895" y="670" width="130" height="120" fill="#6d3a26" stroke="#2e170f" stroke-width="4"/>
+  <rect x="895" y="820" width="130" height="150" fill="#6d3a26" stroke="#2e170f" stroke-width="4"/>
+  <circle cx="1025" cy="830" r="8" fill="#d9b44a"/>
+  <!-- escalón -->
+  <rect x="840" y="1000" width="240" height="20" fill="#8a8178"/>
+  <!-- arbusto delante de la ventana baja derecha -->
+  <path d="M1120 1000 C1110 930 1150 880 1200 890 C1220 850 1290 850 1310 890 C1360 880 1410 930 1400 1000 Z" fill="#2f5d34" stroke="#1d3a20" stroke-width="6"/>
+  <!-- marcas de esquinas -->
+  <g fill="#ffffff" opacity="0.45" font-family="sans-serif" font-size="22"><text x="20" y="40">Fachada de ejemplo (ilustración)</text></g>
+</svg>
