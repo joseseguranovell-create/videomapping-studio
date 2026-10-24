@@ -56,11 +56,14 @@ export function toRel(base: string, full: string): string {
   return path.relative(base, full).split(path.sep).join('/');
 }
 
+let tmpSeq = 0;
+
 /** Escritura atómica: archivo temporal + fsync + rename. Un corte de luz no deja el archivo a medias. */
 export async function writeFileAtomic(file: string, data: string | Buffer): Promise<void> {
   const dir = path.dirname(file);
   await fsp.mkdir(dir, { recursive: true });
-  const tmp = path.join(dir, `.${path.basename(file)}.${process.pid}.${Date.now()}.tmp`);
+  // Nombre temporal único aunque dos escrituras coincidan en el mismo milisegundo.
+  const tmp = path.join(dir, `.${path.basename(file)}.${process.pid}.${Date.now()}.${++tmpSeq}.tmp`);
   const fh = await fsp.open(tmp, 'w');
   try {
     await fh.writeFile(data);
