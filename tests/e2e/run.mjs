@@ -365,7 +365,13 @@ try {
     const inst = s.project.installations[0];
     const center = (sf) => [((sf.quad[0].x + sf.quad[2].x) / 2) * 1920, ((sf.quad[0].y + sf.quad[2].y) / 2) * 1080];
     const between = [((inst.surfaces[0].quad[1].x + inst.surfaces[1].quad[0].x) / 2) * 1920, 0.2 * 1080];
-    const [vidPx, gapPx, doorPx] = await outputPixel(out, [[center(inst.surfaces[1])[0], 0.13 * 1080], between, center(inst.surfaces[2])]);
+    // El primer fotograma del vídeo puede tardar en decodificarse en equipos lentos: se espera hasta 5 s.
+    let vidPx, gapPx, doorPx;
+    for (let k = 0; k < 20; k++) {
+      [vidPx, gapPx, doorPx] = await outputPixel(out, [[center(inst.surfaces[1])[0], 0.13 * 1080], between, center(inst.surfaces[2])]);
+      if (bright(vidPx) > 20) break;
+      await out.waitForTimeout(250);
+    }
     assert(bright(vidPx) > 20, `el vídeo se ve dentro de la ventana 2 (${vidPx})`);
     assert(bright(gapPx) < 5, `nada se proyecta entre ventanas (${gapPx})`);
     assert(bright(doorPx) > 10, `el efecto se ve en la puerta (${doorPx})`);
