@@ -428,6 +428,7 @@ try {
     ({ app, win } = ctx);
     await win.waitForSelector('[data-testid="recover-banner"]', { timeout: 15000 });
     await win.click('[data-testid="recover"]');
+    await win.waitForFunction(() => window.__vmStore.getState().project?.description === 'cambio pendiente', null, { timeout: 10000 });
     const s = await S(win);
     assert(s.project.description === 'cambio pendiente' && s.dirty, 'cambios recuperados');
     await win.keyboard.press('Control+s');
