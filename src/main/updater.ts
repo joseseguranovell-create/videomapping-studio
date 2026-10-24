@@ -62,7 +62,14 @@ export async function checkForUpdate(): Promise<UpdateCheck> {
   if (r.status === 404) {
     return { ...base, error: hasToken() ? 'No se encuentra la versión publicada (¿la clave tiene acceso al repositorio?).' : 'No se encuentra la versión publicada. Si el repositorio es privado, añade una clave de solo lectura.' };
   }
-  if (r.status === 401 || r.status === 403) return { ...base, error: 'GitHub ha rechazado la clave (caducada o sin permiso de lectura de «Contents»).' };
+  if (r.status === 401 || r.status === 403) {
+    return {
+      ...base,
+      error: hasToken()
+        ? 'GitHub ha rechazado la clave (caducada o sin permiso de lectura de «Contents»).'
+        : 'GitHub ha denegado el acceso: el repositorio es privado o se ha superado el límite de consultas. Añade una clave o inténtalo más tarde.',
+    };
+  }
   if (!r.ok) return { ...base, error: `GitHub respondió ${r.status}.` };
   const rel = releaseFromApi(await r.json());
   lastRelease = rel;
