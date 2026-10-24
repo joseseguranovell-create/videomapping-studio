@@ -63,6 +63,16 @@ async function prompt(win, value) {
   await win.click('[data-testid="dialog-ok"]');
 }
 
+/** Fija el valor de un <input> de forma compatible con React (Playwright no escribe en type=time en Windows). */
+async function setInput(win, selector, value) {
+  await win.evaluate(({ selector, value }) => {
+    const el = document.querySelector(selector);
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+    setter.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, { selector, value });
+}
+
 async function stubOpenDialog(app, paths) {
   await app.evaluate(({ dialog }, p) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: p });
@@ -561,16 +571,16 @@ try {
     await win.click('[data-testid="nav-play"]');
     const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     const now = new Date();
-    await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 60000)));
-    await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() + 3 * 60000)));
+    await setInput(win, '[data-testid="schedule-start"]', hm(new Date(now.getTime() - 60000)));
+    await setInput(win, '[data-testid="schedule-end"]', hm(new Date(now.getTime() + 3 * 60000)));
     const [w] = await Promise.all([app.waitForEvent('window', { timeout: 20000 }), win.click('label:has([data-testid="schedule-enabled"])')]);
     out = w;
     await out.waitForFunction(() => !!window.__vmPlayer);
     await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.playing === true, null, { timeout: 15000 });
     await win.waitForSelector('[data-testid="schedule-status"]');
     // fin: horario que ya ha pasado
-    await win.fill('[data-testid="schedule-start"]', hm(new Date(now.getTime() - 3 * 60000)));
-    await win.fill('[data-testid="schedule-end"]', hm(new Date(now.getTime() - 2 * 60000)));
+    await setInput(win, '[data-testid="schedule-start"]', hm(new Date(now.getTime() - 3 * 60000)));
+    await setInput(win, '[data-testid="schedule-end"]', hm(new Date(now.getTime() - 2 * 60000)));
     await win.waitForFunction(() => { const s = window.__vmStore.getState(); return s.outputMode === 'black' && s.outputStatus && !s.outputStatus.playing; }, null, { timeout: 25000 });
     await win.click('label:has([data-testid="schedule-enabled"])');
     await out.evaluate(() => { window.__vmPlayer.seek(0); });

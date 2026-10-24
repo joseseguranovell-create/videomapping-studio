@@ -18,7 +18,13 @@ try {
   app = await electron.launch({ executablePath: exe, args: [], env, timeout: 60000 });
   const win = await app.firstWindow({ timeout: 60000 });
   await win.waitForSelector('.app', { timeout: 30000 });
-  const visible = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.isVisible()));
+  // La ventana se muestra al terminar de pintarse: esperar hasta 15 s.
+  let visible = [];
+  for (let i = 0; i < 60; i++) {
+    visible = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.isVisible()));
+    if (visible.some(Boolean)) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
   console.log('ventanas visibles:', visible);
   if (!visible.some(Boolean)) throw new Error('la ventana no es visible');
   await win.click('[data-testid="example-halloween-infantil"]');
