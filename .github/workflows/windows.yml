@@ -7,29 +7,55 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
+      # Cada paso guarda su salida en ci-log.txt y su resultado en ci-status.txt.
+      # Los pasos siguen aunque falle uno anterior, para obtener el diagnóstico completo.
+      - name: Dependencias
+        run: npm ci 2>&1 | tee -a ci-log.txt; echo "npm ci: ${PIPESTATUS[0]}" >> ci-status.txt
+      - name: Tipos
+        run: npm run typecheck 2>&1 | tee -a ci-log.txt; echo "typecheck: ${PIPESTATUS[0]}" >> ci-status.txt
+      - name: Pruebas unitarias
+        run: npm test 2>&1 | tee -a ci-log.txt; echo "unit: ${PIPESTATUS[0]}" >> ci-status.txt
+      - name: Compilación
+        run: npm run build 2>&1 | tee -a ci-log.txt; echo "build: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Pruebas de extremo a extremo (Electron real)
-        run: node tests/e2e/run.mjs
+        run: node tests/e2e/run.mjs 2>&1 | tee -a ci-log.txt; echo "e2e: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Instalador y versión portátil
-        run: npx electron-builder --win --x64 --publish never
+        run: npx electron-builder --win --x64 --publish never 2>&1 | tee -a ci-log.txt; echo "package: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Arranque del ejecutable empaquetado
-        run: node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe"
+        run: node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe" 2>&1 | tee -a ci-log.txt; echo "packaged-exe: ${PIPESTATUS[0]}" >> ci-status.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: videomapping-studio-windows
           path: |
             release/*.exe
             release/*.zip
           retention-days: 30
+      - name: Publicar diagnóstico en la rama ci-logs
+        if: always()
+        run: |
+          cat ci-status.txt || true
+          mkdir -p /tmp/out && cp ci-log.txt ci-status.txt /tmp/out/ 2>/dev/null || true
+          git config user.name "ci" && git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-logs-tmp
+          git rm -rfq . || true
+          cp /tmp/out/* . && git add ci-log.txt ci-status.txt
+          git commit -qm "CI ${GITHUB_SHA::7}" && git push -f origin HEAD:ci-logs
+      - name: Resultado
+        if: always()
+        run: "! grep -E ': [1-9]' ci-status.txt"
