@@ -17,27 +17,83 @@
   },
   "author": "Videomapping Studio",
   "license": "MIT",
-  "dependencies": {
-    "earcut": "3.0.2",
-    "immer": "10.1.3",
-    "lucide-react": "0.548.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "zod": "4.1.12",
-    "zustand": "5.0.8"
-  },
   "devDependencies": {
     "@types/node": "22.18.12",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@vitejs/plugin-react": "5.1.0",
+    "earcut": "3.0.2",
     "electron": "44.9.3",
     "electron-builder": "26.0.12",
     "esbuild": "0.25.11",
+    "immer": "10.1.3",
+    "lucide-react": "0.548.0",
+    "playwright": "1.59.1",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
     "typescript": "5.9.3",
     "vite": "7.1.12",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "zod": "4.1.12",
+    "zustand": "5.0.8"
   },
   "productName": "Videomapping Studio",
-  "private": true
+  "private": true,
+  "build": {
+    "appId": "es.videomappingstudio.app",
+    "productName": "Videomapping Studio",
+    "copyright": "Videomapping Studio",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/**/*.map",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/packs",
+        "to": "packs"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "Videomapping-Studio-${version}-win-x64-portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Videomapping Studio",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Videomapping-Studio-Setup-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ]
+    },
+    "publish": null
+  }
 }

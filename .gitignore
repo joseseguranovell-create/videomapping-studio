@@ -6,3 +6,4 @@ out/
 .vite/
 test-results/
 tests/e2e/.tmp/
+tests/e2e/last-results.json

@@ -11,7 +11,6 @@ import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execFileSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const { _electron: electron } = require('playwright');
@@ -202,8 +201,9 @@ try {
   await step('7. Importar un vídeo MP4 y una imagen PNG con transparencia', async () => {
     const media = path.join(tmp, 'media');
     fs.mkdirSync(media);
-    execFileSync('ffmpeg', ['-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=25:duration=2', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', path.join(media, 'prueba.mp4')]);
-    execFileSync('ffmpeg', ['-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=red@0.0:s=64x64,format=rgba,drawbox=x=16:y=16:w=32:h=32:color=yellow@1:t=fill', '-frames:v', '1', path.join(media, 'estrella.png')]);
+    const fixtures = path.join(process.cwd(), 'tests/fixtures');
+    fs.copyFileSync(path.join(fixtures, 'prueba.mp4'), path.join(media, 'prueba.mp4'));
+    fs.copyFileSync(path.join(fixtures, 'estrella.png'), path.join(media, 'estrella.png'));
     fs.writeFileSync(path.join(media, 'malicioso.exe'), 'MZ');
     await win.click('[data-testid="nav-library"]');
     await stubOpenDialog(app, [path.join(media, 'prueba.mp4'), path.join(media, 'estrella.png'), path.join(media, 'malicioso.exe')]);
