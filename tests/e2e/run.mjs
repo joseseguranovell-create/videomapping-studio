@@ -318,12 +318,19 @@ try {
       });
     });
     await out.evaluate(() => { window.__vmPlayer.seek(2); void window.__vmPlayer.play(); });
-    await out.waitForTimeout(2000);
     const door = (await S(win)).project.installations[0].surfaces[2];
     const x0 = door.quad[0].x * 1920, x1 = door.quad[1].x * 1920, y0 = door.quad[0].y * 1080, y1 = door.quad[2].y * 1080;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
     const w = x1 - x0;
-    const [body, corner] = await outputPixel(out, [[cx, cy + w * 0.12], [x0 + 3, y0 + 3]]);
+    // Espera a que el vídeo esté decodificado (en equipos lentos puede tardar varios segundos).
+    let body, corner;
+    for (let i = 0; i < 30; i++) {
+      [body, corner] = await outputPixel(out, [[cx, cy + w * 0.12], [x0 + 3, y0 + 3]]);
+      if (bright(body) > 150) break;
+      await out.waitForTimeout(500);
+    }
+    const diag = await out.evaluate(() => ({ st: window.__vmPlayer.status(), errs: window.__vmPlayer.errors }));
+    console.log('      diagnóstico vídeo:', JSON.stringify({ t: diag.st.time, videos: diag.st.activeVideos, gpu: diag.st.gpu, errs: diag.errs }));
     assert(bright(body) > 150, `cuerpo del fantasma visible (${body})`);
     assert(bright(corner) < 5, `fondo del vídeo transparente (${corner})`);
     await out.evaluate(() => window.__vmPlayer.pause());
