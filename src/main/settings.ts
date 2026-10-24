@@ -14,6 +14,7 @@ const DEFAULTS: AppSettings = {
   lastOutputDisplayLabel: null,
   showFps: false,
   schedule: { enabled: false, projectFile: null, showId: null, start: '18:30', end: '22:00' },
+  agentApi: { enabled: false, port: 8765, token: '' },
 };
 
 export class SettingsStore {
@@ -23,7 +24,7 @@ export class SettingsStore {
     try {
       if (fs.existsSync(file)) {
         const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
-        this.data = { ...DEFAULTS, ...saved, schedule: { ...DEFAULTS.schedule, ...(saved.schedule ?? {}) } };
+        this.data = { ...DEFAULTS, ...saved, schedule: { ...DEFAULTS.schedule, ...(saved.schedule ?? {}) }, agentApi: { ...DEFAULTS.agentApi, ...(saved.agentApi ?? {}) } };
       }
     } catch {
       // Preferencias dañadas: se guarda una copia y se empieza con valores por defecto.

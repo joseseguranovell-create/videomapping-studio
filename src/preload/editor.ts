@@ -62,6 +62,20 @@ const api: VmApi = {
     importPackFolder: () => inv('packs:importPackFolder'),
     openUserPacksFolder: () => inv('packs:openUserFolder'),
   },
+  agent: {
+    status: () => inv('agent:status'),
+    configure: (p) => inv('agent:configure', p),
+    onRequest: (cb) => {
+      ipcRenderer.on('agent:request', async (_e, req: { id: string; action: string; params: Record<string, unknown> }) => {
+        try {
+          const result = await cb(req.action, req.params);
+          ipcRenderer.send(`agent:response:${req.id}`, { ok: true, result });
+        } catch (e) {
+          ipcRenderer.send(`agent:response:${req.id}`, { ok: false, error: (e as Error)?.message ?? String(e) });
+        }
+      });
+    },
+  },
   displays: {
     list: () => inv('displays:list'),
     onChanged: (cb) => on('displays:changed', cb),

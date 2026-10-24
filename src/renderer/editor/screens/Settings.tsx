@@ -4,7 +4,7 @@ import { RefreshCw, FolderOpen, Archive, History, Download } from 'lucide-react'
 import { useStore } from '../store';
 import { vm, startAutosave, sendAudioSettings, errMsg } from '../services';
 import { Button, Field, NumberInput, Panel, Toggle, confirmDialog, promptDialog, formatBytes } from '../components/ui';
-import type { AppInfo, AppSettings, BackupEntry } from '../../../shared/api';
+import type { AgentApiStatus, AppInfo, AppSettings, BackupEntry } from '../../../shared/api';
 
 export function SettingsScreen() {
   const settings = useStore((s) => s.settings);
@@ -40,6 +40,7 @@ export function SettingsScreen() {
             <NumberInput value={settings.autosaveSeconds} min={10} max={600} step={5} precision={0} suffix="s" onCommit={(v) => void save({ autosaveSeconds: v })} />
           </Field>
         </Panel>
+        <AgentPanel />
         <Panel title="Audio">
           <Toggle checked={settings.audioEnabled} onChange={(v) => void save({ audioEnabled: v })} label="Audio activado (desactívalo para pruebas silenciosas)" data-testid="audio-enabled" />
           <Toggle checked={settings.previewAudio} onChange={(v) => void save({ previewAudio: v })} label="Sonido en la previsualización del editor" />
@@ -107,5 +108,49 @@ export function SettingsScreen() {
         </Panel>
       </div>
     </div>
+  );
+}
+
+function AgentPanel() {
+  const [st, setSt] = useState<AgentApiStatus | null>(null);
+  const [showToken, setShowToken] = useState(false);
+  const toast = useStore((s) => s.toast);
+  useEffect(() => { void vm.agent.status().then(setSt); }, []);
+  if (!st) return null;
+  const configure = async (p: { enabled: boolean; port?: number; regenerate?: boolean }) => {
+    const r = await vm.agent.configure(p);
+    setSt(r);
+    if (r.error) toast('error', r.error, 8000);
+  };
+  const desktopConfig = JSON.stringify({
+    mcpServers: {
+      'videomapping-studio': { command: st.exePath, args: [st.mcpScript], env: { ELECTRON_RUN_AS_NODE: '1' } },
+    },
+  }, null, 2);
+  const codeCmd = `claude mcp add videomapping-studio -e ELECTRON_RUN_AS_NODE=1 -- "${st.exePath}" "${st.mcpScript}"`;
+  const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); toast('success', 'Copiado al portapapeles', 1500); } catch { toast('error', 'No se pudo copiar'); } };
+  return (
+    <Panel title="Control por agentes de IA" className="wide">
+      <p className="muted small">Permite que un asistente de IA (Claude Desktop, Claude Code u otro compatible con MCP) consulte y modifique el proyecto, añada escenas y rótulos, y controle la proyección. Solo acepta conexiones desde este PC y con la clave. Todo lo que haga se puede deshacer con Ctrl+Z. Guía completa: docs/AGENTES.md.</p>
+      <div className="schedule-row">
+        <Toggle checked={st.running} onChange={(v) => void configure({ enabled: v })} label={st.running ? `Activo en ${st.url}` : 'Desactivado'} data-testid="agent-enabled" />
+        <Field label="Puerto" inline><NumberInput value={st.port} min={1024} max={65535} step={1} precision={0} onCommit={(v) => void configure({ enabled: st.running, port: v })} /></Field>
+        <Button small onClick={() => setShowToken(!showToken)}>{showToken ? 'Ocultar clave' : 'Ver clave'}</Button>
+        <Button small onClick={() => void configure({ enabled: st.running, regenerate: true })}>Nueva clave</Button>
+      </div>
+      {showToken && <pre className="log">{st.token || '(se genera al activar)'}</pre>}
+      {st.running && (
+        <>
+          <h4 className="sub">Claude Desktop</h4>
+          <p className="muted small">Ajustes de Claude Desktop → Desarrollador → Editar configuración, pega esto en <code>claude_desktop_config.json</code> y reinicia Claude Desktop:</p>
+          <pre className="log">{desktopConfig}</pre>
+          <Button small onClick={() => void copy(desktopConfig)}>Copiar configuración</Button>
+          <h4 className="sub">Claude Code</h4>
+          <pre className="log">{codeCmd}</pre>
+          <Button small onClick={() => void copy(codeCmd)}>Copiar orden</Button>
+          <p className="muted small">La conexión (URL y clave) se guarda en {st.infoFile}.</p>
+        </>
+      )}
+    </Panel>
   );
 }

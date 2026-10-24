@@ -6,6 +6,7 @@ import { Button, DialogHost } from './components/ui';
 import { OutputControl } from './components/OutputControl';
 import { Toasts } from './components/Toasts';
 import { HomeScreen } from './screens/Home';
+import { handleAgentRequest } from './agent';
 import { CalibrateScreen } from './screens/Calibrate';
 import { LibraryScreen } from './screens/Library';
 import { CharactersScreen } from './screens/Characters';
@@ -59,6 +60,7 @@ export function App() {
       } else set({ outputStatus: null });
     });
     vm.app.onRequestSave(() => saveProject());
+    vm.agent.onRequest((action, params) => handleAgentRequest(action, params));
     const onErr = (e: ErrorEvent) => vm.app.log('error', `${e.message} @ ${e.filename}:${e.lineno}`);
     const onRej = (e: PromiseRejectionEvent) => vm.app.log('error', `Promesa rechazada: ${String(e.reason?.stack ?? e.reason)}`);
     window.addEventListener('error', onErr);

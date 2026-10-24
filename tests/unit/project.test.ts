@@ -47,6 +47,20 @@ describe('formato de proyecto', () => {
     expect(r.migratedFrom).toBe(0);
     expect(r.project.schemaVersion).toBe(SCHEMA_VERSION);
   });
+  it('migra proyectos v1 (sin rótulos ni «quitar fondo») a la versión actual', () => {
+    const p = sample() as any;
+    p.schemaVersion = 1;
+    p.assets.push({ id: 'a', name: 'x', kind: 'image', file: 'assets/x.png', addedAt: '' });
+    const r = parseProject(p);
+    expect(r.migratedFrom).toBe(1);
+    expect(r.project.assets[0].key.mode).toBe('none');
+  });
+  it('acepta clips de texto', () => {
+    const p = sample();
+    p.shows[0].scenes[0].clips.push(createClip(p.installations[0].surfaces[0].id, { type: 'text', text: '¡Hola!', font: 'divertida', color: '#fff', outline: '#000', glow: true, bold: true }));
+    const { project } = parseProject(JSON.parse(serializeProject(p)));
+    expect(project.shows[0].scenes[0].clips[1].source).toMatchObject({ type: 'text', text: '¡Hola!' });
+  });
   it('rechaza proyectos de versiones futuras con un mensaje claro', () => {
     const p = { ...sample(), schemaVersion: 99 };
     expect(() => parseProject(p)).toThrow(/más reciente/);

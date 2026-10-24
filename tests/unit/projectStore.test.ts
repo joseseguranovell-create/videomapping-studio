@@ -87,7 +87,7 @@ describe('recursos y rutas', () => {
   it('detecta recursos ausentes', async () => {
     const p = createProject('M');
     const lp = await store.createProjectFolder(tmp, p);
-    p.assets.push({ id: 'a1', name: 'x', kind: 'image', file: 'assets/no-existe.png', frames: [], fps: 24, format: 'png', width: 1, height: 1, duration: null, hasAlpha: null, size: 0, tags: [], collections: [], license: '', source: '', thumbnail: '', addedAt: '' });
+    p.assets.push({ id: 'a1', name: 'x', kind: 'image', file: 'assets/no-existe.png', frames: [], fps: 24, format: 'png', width: 1, height: 1, duration: null, hasAlpha: null, size: 0, tags: [], collections: [], license: '', source: '', thumbnail: '', key: { mode: 'none', color: '#00ff00', threshold: 0.3, softness: 0.1, despill: true }, addedAt: '' });
     p.assets.push({ ...p.assets[0], id: 'a2', file: '../../fuera.png' });
     expect(await store.findMissingAssets(lp.dir, p)).toEqual(['a1', 'a2']);
   });
@@ -104,7 +104,7 @@ describe('recursos y rutas', () => {
     const lp = await store.createProjectFolder(tmp, p);
     fs.mkdirSync(path.join(lp.dir, 'assets'), { recursive: true });
     fs.writeFileSync(path.join(lp.dir, 'assets/v.mp4'), 'video');
-    p.assets.push({ id: 'v', name: 'v', kind: 'video', file: 'assets/v.mp4', frames: [], fps: 24, format: 'mp4', width: 1, height: 1, duration: 1, hasAlpha: false, size: 5, tags: [], collections: [], license: '', source: '', thumbnail: '', addedAt: '' });
+    p.assets.push({ id: 'v', name: 'v', kind: 'video', file: 'assets/v.mp4', frames: [], fps: 24, format: 'mp4', width: 1, height: 1, duration: 1, hasAlpha: false, size: 5, tags: [], collections: [], license: '', source: '', thumbnail: '', key: { mode: 'none', color: '#00ff00', threshold: 0.3, softness: 0.1, despill: true }, addedAt: '' });
     const dest = path.join(tmp, 'copias');
     fs.mkdirSync(dest);
     const copy = await store.saveProjectAs(lp.dir, dest, { ...p, name: 'Copia' });

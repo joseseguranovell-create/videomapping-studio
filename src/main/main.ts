@@ -14,6 +14,8 @@ import { createProject } from '../shared/factory';
 import { APP_ORIGIN, type DisplayInfo, type OpenedProject, type OutputCommand, type OutputState } from '../shared/api';
 import type { Project } from '../shared/model';
 import { newId } from '../shared/ids';
+import { startAgentApi, stopAgentApi, agentApiRunning, newToken } from './agentApi';
+import type { AgentApiStatus } from '../shared/api';
 
 registerSchemePrivileges();
 
@@ -288,7 +290,105 @@ function handle(channel: string, fn: (e: IpcMainInvokeEvent, ...args: any[]) => 
   });
 }
 
+// ───────── API para agentes de IA ─────────
+
+const agentInfoFile = path.join(app.getPath('userData'), 'agent-api.json');
+const mcpScript = app.isPackaged ? path.join(process.resourcesPath, 'mcp', 'vmstudio-mcp.cjs') : path.join(appRoot, 'resources', 'mcp', 'vmstudio-mcp.cjs');
+let agentError: string | null = null;
+
+function agentStatus(): AgentApiStatus {
+  const a = settings.get().agentApi;
+  return {
+    running: agentApiRunning(),
+    url: agentApiRunning() ? `http://127.0.0.1:${a.port}` : null,
+    token: a.token,
+    port: a.port,
+    infoFile: agentInfoFile,
+    mcpScript,
+    exePath: process.execPath,
+    error: agentError,
+  };
+}
+
+/** Reenvía una acción al editor y espera su respuesta. */
+function askEditor(action: string, params: Record<string, unknown>, timeoutMs = 20000): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    if (!editorWin) return reject(new Error('La ventana del editor no está abierta'));
+    const id = newId('ag');
+    const timer = setTimeout(() => { ipcMain.removeAllListeners(`agent:response:${id}`); reject(new Error('El editor no respondió a tiempo')); }, timeoutMs);
+    ipcMain.once(`agent:response:${id}`, (_e, r: { ok: boolean; result?: unknown; error?: string }) => {
+      clearTimeout(timer);
+      r.ok ? resolve(r.result) : reject(new Error(r.error ?? 'Error'));
+    });
+    editorWin.webContents.send('agent:request', { id, action, params });
+  });
+}
+
+async function agentHandle(action: string, params: Record<string, unknown>): Promise<unknown> {
+  if (action === 'captura') {
+    // Imagen de lo que se proyecta (o del editor si la salida está cerrada), para que el agente «vea».
+    const win = outputWin && !outputWin.isDestroyed() && params.de !== 'editor' ? outputWin : editorWin;
+    if (!win) throw new Error('No hay ventanas abiertas');
+    const img = await win.webContents.capturePage();
+    const max = Number(params.anchoMaximo ?? 1280);
+    const sized = img.getSize().width > max ? img.resize({ width: max }) : img;
+    return { de: win === outputWin ? 'salida' : 'editor', ancho: sized.getSize().width, alto: sized.getSize().height, png: sized.toPNG().toString('base64') };
+  }
+  if (action === 'importar_recurso') {
+    if (!current) throw new Error('No hay ningún proyecto abierto');
+    const ruta = String(params.ruta ?? '');
+    if (!ruta || !path.isAbsolute(ruta)) throw new Error('Indica «ruta» absoluta al archivo');
+    const f = await store.copyIntoProject(current.dir, ruta);
+    return askEditor('importar_recurso_copiado', { archivo: f, nombre: params.nombre });
+  }
+  if (action === 'abrir_proyecto') {
+    const lp = await store.loadProject(String(params.ruta ?? ''));
+    const o = await toOpened(lp);
+    return askEditor('proyecto_abierto', { abierto: o });
+  }
+  if (action === 'abrir_salida') {
+    const id = params.pantallaId !== undefined ? Number(params.pantallaId) : null;
+    const displays = screen.getAllDisplays();
+    const editorDisplay = editorWin ? screen.getDisplayMatching(editorWin.getBounds()) : null;
+    const target = id !== null ? displays.find((d) => d.id === id) : displays.find((d) => d.id !== editorDisplay?.id) ?? displays[0];
+    // Idempotente: si ya está abierta en esa pantalla, no se reabre.
+    if (outputWin && !outputWin.isDestroyed() && (id === null || outputDisplayId === target?.id)) return outputState();
+    return openOutput(target?.id ?? null, params.pantallaCompleta !== false);
+  }
+  if (action === 'cerrar_salida') {
+    closeOutput();
+    notifyOutputState();
+    return outputState();
+  }
+  if (action === 'pantallas') return displayInfos();
+  return askEditor(action, params);
+}
+
+async function applyAgentSettings(): Promise<AgentApiStatus> {
+  const a = settings.get().agentApi;
+  agentError = null;
+  if (!a.enabled) {
+    await stopAgentApi();
+    return agentStatus();
+  }
+  try {
+    await startAgentApi({ port: a.port, token: a.token, infoFile: agentInfoFile, handle: agentHandle });
+  } catch (e) {
+    agentError = `No se pudo abrir el puerto ${a.port}: ${(e as Error).message}`;
+    log('error', 'agente', agentError);
+  }
+  return agentStatus();
+}
+
 function registerIpc() {
+  handle('agent:status', () => agentStatus());
+  handle('agent:configure', async (_e, p: { enabled: boolean; port?: number; regenerate?: boolean }) => {
+    const a = settings.get().agentApi;
+    const port = p.port && p.port > 1023 && p.port < 65536 ? Math.round(p.port) : a.port;
+    const token = !a.token || p.regenerate ? newToken() : a.token;
+    await settings.set({ agentApi: { enabled: !!p.enabled, port, token } });
+    return applyAgentSettings();
+  });
   // ── App ──
   handle('app:info', () => ({
     version: app.getVersion(),
@@ -614,8 +714,11 @@ async function startApp() {
   log('info', 'main', 'Paso: ventana');
   createEditorWindow();
   watchDisplays();
+  if (settings.get().agentApi.enabled) void applyAgentSettings();
   log('info', 'main', `Videomapping Studio ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
 }
+
+app.on('will-quit', () => { void stopAgentApi(); });
 
 app.on('before-quit', () => {
   // El cierre con cambios pendientes lo gestiona el evento 'close' del editor.

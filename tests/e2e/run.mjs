@@ -575,6 +575,87 @@ try {
     await out.evaluate(() => { window.__vmPlayer.seek(0); });
   });
 
+  await step('18d. Control por agentes: API local + servidor MCP (escena, rótulo, quitar fondo, captura)', async () => {
+    await win.click('[data-testid="nav-settings"]');
+    await win.click('label:has([data-testid="agent-enabled"])');
+    const infoPath = path.join(userData, 'agent-api.json');
+    for (let i = 0; i < 40 && !fs.existsSync(infoPath); i++) await win.waitForTimeout(100);
+    assert(fs.existsSync(infoPath), 'se crea agent-api.json al activar');
+    const { url, token } = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+    const api = async (accion, parametros = {}, tk = token) => {
+      const r = await fetch(`${url}/api`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tk}` }, body: JSON.stringify({ accion, parametros }) });
+      return { status: r.status, ...(await r.json()) };
+    };
+    const bad = await api('estado', {}, 'clave-mala');
+    assert(bad.status === 401, 'sin la clave correcta se rechaza');
+    const est = await api('estado');
+    assert(est.ok && est.resultado.instalaciones[0].superficies.length === 8, 'estado devuelve las superficies');
+    const sh = est.resultado.espectaculos[0];
+    // escena de prueba al principio, sin fundidos
+    const sc = await api('crear_escena', { espectaculoId: sh.id, nombre: 'Prueba agente', duracion: 6, transicion: 'cut', posicion: 0 });
+    assert(sc.ok, `crear_escena: ${sc.error}`);
+    const rot = await api('anadir_rotulo', { espectaculoId: sh.id, escenaId: sc.resultado.escenaId, superficieId: 'Ventana alta izquierda', texto: '¡Hola!', inicio: 0, duracion: 6, fundidoEntrada: 0, movimiento: 'none', escala: 1 });
+    assert(rot.ok, `anadir_rotulo: ${rot.error}`);
+    const imp = await api('importar_recurso', { ruta: path.join(process.cwd(), 'tests/fixtures/croma.png'), nombre: 'Croma de prueba' });
+    assert(imp.ok, `importar_recurso: ${imp.error}`);
+    assert((await api('quitar_fondo', { recursoId: imp.resultado.recursoId, modo: 'color', color: '#00ff00', tolerancia: 0.3 })).ok, 'quitar_fondo');
+    const cl = await api('anadir_clip', { espectaculoId: sh.id, escenaId: sc.resultado.escenaId, superficieId: 'Ventana alta central', recursoId: imp.resultado.recursoId, inicio: 0, duracion: 6, fundidoEntrada: 0, ajuste: 'contain', escala: 1 });
+    assert(cl.ok, `anadir_clip: ${cl.error}`);
+    const err = await api('anadir_clip', { superficieId: 'No existe', recursoId: 'x' });
+    assert(!err.ok && /superficie/.test(err.error), 'errores comprensibles');
+    // salida
+    assert((await api('abrir_salida')).ok, 'abrir_salida');
+    out = (await app.windows()).find((w) => w.url().includes('output.html')) ?? out;
+    await out.waitForFunction(() => !!window.__vmPlayer);
+    assert((await api('modo_salida', { modo: 'espectaculo', espectaculoId: sh.id })).ok, 'modo_salida');
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
+    await out.evaluate(() => { window.__vmPlayer.pause(); window.__vmPlayer.seek(1); });
+    const inst = (await S(win)).project.installations[0];
+    const sf = (n) => inst.surfaces.find((x) => x.name === n);
+    const box = (s) => ({ x0: s.quad[0].x * 1920, x1: s.quad[1].x * 1920, y0: s.quad[0].y * 1080, y1: s.quad[2].y * 1080 });
+    // rótulo: alguna muestra de la ventana debe ser brillante
+    const t = box(sf('Ventana alta izquierda'));
+    const pts = [];
+    for (let i = 1; i < 12; i++) for (let j = 2; j < 7; j++) pts.push([t.x0 + ((t.x1 - t.x0) * i) / 12, t.y0 + ((t.y1 - t.y0) * j) / 9]);
+    let maxB = 0;
+    for (let k = 0; k < 20 && maxB < 150; k++) { maxB = Math.max(...(await outputPixel(out, pts)).map(bright)); if (maxB < 150) await out.waitForTimeout(250); }
+    assert(maxB > 150, `el rótulo se dibuja (brillo máx. ${maxB})`);
+    // croma: el cuadrado blanco se ve y el fondo verde desaparece
+    const c = box(sf('Ventana alta central'));
+    const cx = (c.x0 + c.x1) / 2, cy = (c.y0 + c.y1) / 2, h = c.y1 - c.y0;
+    let center, edge;
+    for (let k = 0; k < 20; k++) { [center, edge] = await outputPixel(out, [[cx, cy], [cx - h / 2 + h * 0.1, cy]]); if (bright(center) > 200) break; await out.waitForTimeout(250); }
+    assert(bright(center) > 200, `el cuadrado del recurso se ve (${center})`);
+    assert(bright(edge) < 10 && edge[1] < 10, `el fondo verde se ha quitado (${edge})`);
+    const cap = await api('captura');
+    assert(cap.ok && cap.resultado.png.length > 1000, 'captura devuelve una imagen');
+    if (SHOTS) fs.writeFileSync(`${SHOTS}/e2e-agente-captura.png`, Buffer.from(cap.resultado.png, 'base64'));
+    // MCP por stdio
+    const { spawn } = await import('node:child_process');
+    const mcp = spawn(process.execPath, [path.join(process.cwd(), 'resources/mcp/vmstudio-mcp.cjs')], { env: { ...process.env, VMSTUDIO_API_FILE: infoPath } });
+    const replies = [];
+    let buf = '';
+    mcp.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) >= 0) { replies.push(JSON.parse(buf.slice(0, i))); buf = buf.slice(i + 1); } });
+    const sendMcp = (m) => mcp.stdin.write(JSON.stringify(m) + '\n');
+    sendMcp({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'test', version: '1' } } });
+    sendMcp({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    sendMcp({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
+    sendMcp({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'estado', arguments: {} } });
+    sendMcp({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'captura', arguments: {} } });
+    for (let i = 0; i < 100 && replies.length < 4; i++) await new Promise((r) => setTimeout(r, 100));
+    mcp.kill();
+    const byId = Object.fromEntries(replies.map((r) => [r.id, r]));
+    assert(byId[1]?.result?.serverInfo?.name === 'videomapping-studio', 'MCP initialize');
+    assert(byId[2]?.result?.tools?.length >= 20, `MCP lista herramientas (${byId[2]?.result?.tools?.length})`);
+    assert(/Prueba agente/.test(byId[3]?.result?.content?.[0]?.text ?? ''), 'MCP estado refleja los cambios del agente');
+    assert(byId[4]?.result?.content?.[0]?.type === 'image', 'MCP captura devuelve imagen');
+    // deshacer lo hecho por el agente
+    const before = (await S(win)).project.shows[0].scenes.length;
+    for (let i = 0; i < 6; i++) await api('deshacer');
+    const after = (await S(win)).project.shows[0].scenes.length;
+    assert(after === before - 1, `los cambios del agente se deshacen (${before} → ${after})`);
+  });
+
   if (LONG) {
     await step('19. Reproducción en tiempo real de un ciclo completo con bucle (~70 s)', async () => {
       await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), (await S(win)).project.shows[0].id);

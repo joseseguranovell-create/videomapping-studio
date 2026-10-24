@@ -3,10 +3,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Upload, Film, Image as ImageIcon, Music, Layers, Search, AlertTriangle, Trash2, FolderSearch, FolderOpen, Package, PackagePlus, Sparkles, Eraser } from 'lucide-react';
 import { useStore } from '../store';
 import { importAssets, importSequence, relinkAsset, assetUsage, addPackToProject, vm, errMsg, unusedAssetIds, refreshMissing } from '../services';
-import { Button, Field, TextInput, NumberInput, Panel, Empty, Badge, Modal, confirmDialog, formatBytes, Toggle } from '../components/ui';
+import { Button, Field, TextInput, NumberInput, Panel, Empty, Badge, Modal, confirmDialog, formatBytes, Toggle, Select } from '../components/ui';
 import type { Asset, AssetKind } from '../../../shared/model';
 import type { PackInfo } from '../../../shared/pack';
 import { formatTime } from '../../../shared/timeline';
+import { ClipPreview } from '../components/pickers';
+import { createClip } from '../../../shared/factory';
 
 const KIND_ICON: Record<AssetKind, React.ReactNode> = {
   image: <ImageIcon size={14} />,
@@ -164,6 +166,7 @@ function AssetDetails({ a, missing, onDeleted }: { a: Asset; missing: boolean; o
         )}
         <Toggle checked={!!a.hasAlpha} onChange={(v) => mut('Transparencia', (x) => { x.hasAlpha = v; })} label="Tiene transparencia" />
       </Panel>
+      {a.kind !== 'audio' && <KeyPanel a={a} />}
       <Panel title="Información">
         <dl className="info">
           <dt>Tipo</dt><dd>{KIND_LABEL[a.kind]} ({a.format || '—'})</dd>
@@ -292,5 +295,66 @@ function ExportPackModal({ onClose }: { onClose: () => void }) {
       </div>
       <p className="muted small">Los recursos usados por los personajes y espectáculos elegidos se incluyen automáticamente. El paquete se guarda en la carpeta de paquetes del usuario.</p>
     </Modal>
+  );
+}
+
+/** Leer el color de la esquina superior izquierda de la miniatura (suele ser el fondo). */
+function cornerColor(dataUrl: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!dataUrl) return resolve(null);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d')!;
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(2, 2, 1, 1).data;
+      resolve('#' + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join(''));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+function KeyPanel({ a }: { a: Asset }) {
+  const update = useStore((s) => s.update);
+  const k = a.key;
+  const mut = (label: string, fn: (x: Asset['key']) => void) => update(label, (d) => { const x = d.assets.find((y) => y.id === a.id); if (x) fn(x.key); });
+  return (
+    <Panel title="Quitar fondo">
+      <p className="muted small">Para vídeos o imágenes sin transparencia (por ejemplo, generados con IA sobre fondo verde, blanco o negro). Se aplica al reproducir; el archivo no se modifica.</p>
+      <Field label="Modo">
+        <Select
+          value={k.mode}
+          data-testid="key-mode"
+          onChange={async (v) => {
+            const detected = v === 'color' ? await cornerColor(a.thumbnail) : null;
+            mut('Quitar fondo', (x) => { x.mode = v; if (detected) x.color = detected; });
+          }}
+          options={[
+            { value: 'none', label: 'No quitar nada' },
+            { value: 'color', label: 'Quitar un color (verde, blanco…)' },
+            { value: 'dark', label: 'Quitar lo oscuro (fondo negro)' },
+          ]}
+        />
+      </Field>
+      {k.mode === 'color' && (
+        <div className="row2">
+          <Field label="Color del fondo"><input type="color" value={k.color} onChange={(e) => mut('Color de fondo', (x) => { x.color = e.target.value; })} /></Field>
+          <Button small onClick={async () => { const c = await cornerColor(a.thumbnail); if (c) mut('Detectar fondo', (x) => { x.color = c; }); }}>Detectar</Button>
+        </div>
+      )}
+      {k.mode !== 'none' && (
+        <>
+          <div className="row2">
+            <Field label="Tolerancia"><NumberInput value={Math.round(k.threshold * 100)} min={0} max={100} step={2} precision={0} suffix="%" onCommit={(v) => mut('Tolerancia', (x) => { x.threshold = v / 100; })} /></Field>
+            <Field label="Suavidad"><NumberInput value={Math.round(k.softness * 100)} min={0} max={100} step={2} precision={0} suffix="%" onCommit={(v) => mut('Suavidad', (x) => { x.softness = v / 100; })} /></Field>
+          </div>
+          {k.mode === 'color' && <Toggle checked={k.despill} onChange={(v) => mut('Reflejos', (x) => { x.despill = v; })} label="Quitar reflejos del color en los bordes" />}
+          <ClipPreview clip={createClip('x', { type: 'asset', assetId: a.id }, { id: `key-${a.id}`, duration: Math.max(2, a.duration ?? 4), loop: true, fit: 'contain', fadeIn: 0, fadeOut: 0 })} aspect={4 / 3} height={180} />
+          <p className="muted small">Si se come partes del personaje, baja la tolerancia; si queda borde de color, súbela.</p>
+        </>
+      )}
+    </Panel>
   );
 }

@@ -224,6 +224,7 @@ export async function assetFromImported(f: ImportedFile): Promise<{ asset: Asset
     license: '',
     source: 'Importado',
     thumbnail: p.thumbnail,
+    key: { mode: 'none', color: '#00ff00', threshold: 0.3, softness: 0.1, despill: true },
     addedAt: nowIso(),
   };
   return { asset, warning };

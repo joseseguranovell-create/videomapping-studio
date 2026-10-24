@@ -20,6 +20,8 @@ type RawProject = Record<string, unknown> & { schemaVersion?: unknown };
 export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   // Versión 0: borradores previos sin schemaVersion ni colecciones.
   0: (doc) => ({ ...doc, schemaVersion: 1, collections: Array.isArray(doc.collections) ? doc.collections : [] }),
+  // Versión 1 → 2: rótulos de texto y «quitar fondo» en los recursos. Campos nuevos con valores por defecto.
+  1: (doc) => ({ ...doc, schemaVersion: 2 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

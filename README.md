@@ -12,6 +12,9 @@ Funciona sin conexión, sin suscripciones y sin depender de servicios de IA. Cad
 - **Espectáculos**: escenas con duración, transiciones (corte, fundido, fundido cruzado) y una línea de tiempo por superficie con clips que se arrastran. También sonidos puntuales, música continua, bucle para toda la noche y previsualización.
 - **Personajes**: cada uno agrupa varias animaciones (recurso + movimiento: flotar, saltar, saludar, asomarse, cruzar…).
 - **Biblioteca**: importación con miniaturas y metadatos, búsqueda, etiquetas, colecciones, detección de transparencia, recursos ausentes y relocalización, y paquetes reutilizables (importar y exportar).
+- **Rótulos de texto animados** y **quitar fondo** (croma verde, blanco o negro) para usar directamente vídeos e imágenes generados con IA.
+- **Una o dos pantallas**: pantalla completa siempre, «Preparar» y empezar con Espacio, y **calibración directa sobre la imagen proyectada** con ratón y teclado.
+- **Control por agentes de IA** (Claude Desktop/Code vía MCP o HTTP local): ver [docs/AGENTES.md](docs/AGENTES.md).
 - **Fiabilidad**: guardado atómico, copias de seguridad automáticas, guardado automático con recuperación tras un cierre inesperado, migración de versiones de formato y registro técnico.
 - **Paquete «Halloween infantil»** con 7 personajes ilustrados originales, decorados, música y efectos sintetizados, una casa de ejemplo con 6 ventanas, puerta, desván y frontón, y un **espectáculo de 1 minuto** listo para adaptar.
 

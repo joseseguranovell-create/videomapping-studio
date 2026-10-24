@@ -9,6 +9,13 @@
 - Contenido: paquete «Halloween infantil» generado por `scripts/pack-tools/` (SVG dibujados a mano, audio sintetizado con `synth_audio.py`, vídeo VP9 con alfa renderizado desde SVG). Para regenerar `pack.json`: `node scripts/run-ts.mjs scripts/pack-tools/build-halloween-pack.ts`.
 - Empaquetado: instalador NSIS y ZIP portátil generados desde Linux con Wine; flujo de CI para Windows en `.github/workflows/windows.yml`.
 
+**2026-10-24, sesión 1 (continuación)**
+- Primera instalación en Windows: la versión compilada desde Linux con Wine no abría. La compilada en Windows (GitHub Actions) sí funciona y se publica automáticamente en Releases tras comprobar que arranca.
+- Salida a pantalla completa también con una sola pantalla; modo **Preparar** + **Espacio**; teclado sobre la proyección; **calibración directa sobre la imagen proyectada**.
+- **Rótulos de texto** animados y **quitar fondo** (croma o fondo negro) en el motor.
+- **Control por agentes de IA**: API local (`src/main/agentApi.ts`, `src/renderer/editor/agent.ts`) y servidor MCP sin dependencias (`resources/mcp/vmstudio-mcp.cjs`). Guía en `docs/AGENTES.md`.
+- Esquema de proyecto v2 (migración automática desde v1).
+
 ## Limitaciones conocidas (reales)
 
 1. **Sin detección automática** de puertas y ventanas: la calibración es manual (no requiere cámara).
@@ -20,7 +27,7 @@
 7. **Un proyector por instalación**: una única salida activa a la vez.
 8. **Rendimiento**: no medido aún en una GPU real; con renderizado por software (sin GPU) a 1080p ronda 20 fps.
 9. **Salida de audio**: el dispositivo predeterminado de Windows; no se puede elegir otro desde el programa.
-10. **Edición en la previsualización**: posición, escala y rotación de los clips se ajustan con números en el panel, no arrastrando sobre la vista previa.
+10. **Edición en la previsualización**: se puede mover y escalar el clip seleccionado; la rotación es con Mayús+rueda o en el panel.
 11. **Instalador sin firma digital**: Windows SmartScreen avisa en la primera ejecución. No hay actualización automática.
 12. **Generación de contenido con IA**: no integrada. Se importan archivos creados con cualquier herramienta externa.
 13. **Paquete de ejemplo**: el «vídeo» del fantasma y la secuencia del murciélago son animaciones sencillas; los personajes cobran vida con los movimientos del programa, no con animación fotograma a fotograma.
@@ -28,9 +35,9 @@
 ## Mejoras futuras (por prioridad)
 
 1. **Pruebas en Windows con el proyector** (lista de `docs/PRUEBAS.md`) y corregir lo que aparezca. Medir fps y memoria en 2 h de bucle.
-2. **Arrastrar y escalar clips directamente sobre la previsualización** (asas como en calibración).
+2. ~~Arrastrar y escalar clips sobre la previsualización~~ (hecho).
 3. **Paquete de Navidad** (renos, muñeco de nieve, copos, luces), creado con las mismas herramientas.
-4. **Modo «espectáculo programado»**: abrir la salida y empezar a una hora, y apagar a otra (para que funcione solo toda la noche).
+4. ~~Modo programado~~ (hecho).
 5. **Elegir el dispositivo de audio** (setSinkId) y salida por altavoces del proyector.
 6. **Deformación por malla** (rejilla bezier) para superficies curvas o no planas.
 7. **Plantillas de escena** (por ejemplo «aparece en todas las ventanas en cascada»).

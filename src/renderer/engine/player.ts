@@ -366,6 +366,11 @@ export class Player {
         aspect: surfAspect,
       };
     }
+    if (e.source.type === 'text') {
+      if (e.opacity <= 0) return null;
+      const t = this.media.text(e.source);
+      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(clip, surfAspect, t.aspect, motion), opacity: e.opacity };
+    }
     const asset = this.assets.get(e.source.assetId);
     if (!asset || this.media.errors.has(asset.id)) {
       if (!this.opts.showMissing || e.opacity <= 0) return null;
@@ -405,7 +410,9 @@ export class Player {
       return null; // un recurso de audio no se dibuja
     }
     if (!tex || e.opacity <= 0) return null;
-    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity };
+    const k = asset.key;
+    const key = k && k.mode !== 'none' ? { mode: (k.mode === 'color' ? 1 : 2) as 1 | 2, color: hexToRgb(k.color, [0, 1, 0]), threshold: k.threshold, softness: k.softness, despill: k.despill } : undefined;
+    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key };
   }
 
   status(): OutputStatus {

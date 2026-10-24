@@ -16,3 +16,5 @@ Aplicación Electron (Windows) para videomapping. Interfaz y documentación en e
 - E/S solo en el proceso principal (`src/main`); las rutas de recursos son relativas al proyecto y se resuelven con `resolveInside`.
 - Pruebas: `window.__vmStore` (editor), `window.__vmPlayer` (salida), `window.__vmPreviewPlayer` y `window.__vmCalibPlayer`. `Player.renderFrame()` + `r.readPixel()` comprueban píxeles. Las capturas de pantalla de WebGL bajo Xvfb pueden salir negras tras redimensionar la ventana: usa la lectura de píxeles.
 - Cambiar el esquema → subir `SCHEMA_VERSION` y añadir la migración en `src/shared/schema.ts` con su prueba.
+- Control por agentes: acciones en `src/renderer/editor/agent.ts` (el editor es dueño del documento), servidor HTTP en `src/main/agentApi.ts`, MCP en `resources/mcp/vmstudio-mcp.cjs` (sin dependencias). Al añadir una acción, documentarla en `docs/AGENTES.md` y, si procede, como herramienta MCP.
+- Windows: el instalador válido es el que compila GitHub Actions (rama `main` → Releases «ultima»). El diagnóstico de CI se publica en la rama `ci-logs` (los logs de Actions no son accesibles desde la sesión).

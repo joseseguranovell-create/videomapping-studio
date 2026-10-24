@@ -56,6 +56,10 @@
       {
         "from": "resources/packs",
         "to": "packs"
+      },
+      {
+        "from": "resources/mcp",
+        "to": "mcp"
       }
     ],
     "asar": true,

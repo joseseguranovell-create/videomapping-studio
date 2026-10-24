@@ -1,7 +1,7 @@
 /** Editor de espectáculos: escenas, línea de tiempo por superficie, clips, sonidos y música. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay,
+  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type,
 } from 'lucide-react';
 import { useStore, selShow, selScene } from '../store';
 import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, Modal, confirmDialog, promptDialog } from '../components/ui';
@@ -13,7 +13,7 @@ import {
 } from '../../../shared/factory';
 import { newId } from '../../../shared/ids';
 import {
-  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project,
+  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project,
 } from '../../../shared/model';
 import { layoutShow, formatTime } from '../../../shared/timeline';
 import { transport } from '../services';
@@ -396,6 +396,7 @@ function SceneTimeline({ show }: { show: Show }) {
   const clipLabel = (c: Clip) => {
     if (c.name) return c.name;
     if (c.source.type === 'effect') return EFFECT_LABELS[c.source.effect];
+    if (c.source.type === 'text') return `«${c.source.text.replace(/\n/g, ' ')}»`;
     return project.assets.find((a) => a.id === (c.source as { assetId: string }).assetId)?.name ?? '(recurso ausente)';
   };
 
@@ -408,7 +409,7 @@ function SceneTimeline({ show }: { show: Show }) {
         {clips.map((c) => (
           <div
             key={c.id}
-            className={`tl-bar${c.id === clipId ? ' sel' : ''}${c.source.type === 'effect' ? ' fx' : ''}${c.characterId ? ' chr' : ''}`}
+            className={`tl-bar${c.id === clipId ? ' sel' : ''}${c.source.type === 'effect' ? ' fx' : c.source.type === 'text' ? ' txt' : ''}${c.characterId ? ' chr' : ''}`}
             style={{ left: pct(c.start), width: pct(Math.min(c.duration, D - c.start)) }}
             onPointerDown={(e) => onBarDown(e, c.id, false, 'move')}
             onPointerMove={onMove}
@@ -432,6 +433,17 @@ function SceneTimeline({ show }: { show: Show }) {
         <Button small icon={<Film size={14} />} disabled={!surfaces.length} onClick={() => setPicker('asset')} data-testid="add-clip">Recurso</Button>
         <Button small icon={<Ghost size={14} />} disabled={!surfaces.length || !project.characters.length} onClick={() => setPicker('character')} data-testid="add-character">Personaje</Button>
         <Button small icon={<Sparkles size={14} />} disabled={!surfaces.length} onClick={() => setPicker('effect')} data-testid="add-effect">Efecto</Button>
+        <Button
+          small
+          icon={<Type size={14} />}
+          disabled={!surfaces.length}
+          data-testid="add-text"
+          onClick={() => addClip(createClip(defaultSurface!, { type: 'text', text: '¡Feliz Halloween!', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, {
+            name: '', start: startAt, duration: Math.max(0.5, Math.min(5, D - startAt)), scale: 0.9, motion: { preset: 'popIn', intensity: 1, speed: 1 },
+          }))}
+        >
+          Rótulo
+        </Button>
         <Button small icon={<Volume2 size={14} />} onClick={() => setPicker('sound')} data-testid="add-sound">Sonido</Button>
         <span className="muted small">Se añade en {surfaces.find((s) => s.id === defaultSurface)?.name ?? '—'} a los {startAt.toFixed(1)}s. Arrastra los clips para moverlos (también a otra fila) y su borde derecho para cambiar la duración.</span>
       </div>
@@ -671,6 +683,22 @@ function ClipInspector({ clip }: { clip: Clip }) {
               <Button small onClick={() => setPick(true)}>Cambiar…</Button>
             </div>
           </Field>
+        ) : clip.source.type === 'text' ? (
+          <>
+            <Field label="Texto" hint="Intro para cambiar de línea">
+              <TextInput multiline value={clip.source.text} onCommit={(v) => mut('Texto del rótulo', (c) => { if (c.source.type === 'text') c.source.text = v; })} data-testid="text-content" />
+            </Field>
+            <div className="row2">
+              <Field label="Letra">
+                <Select value={clip.source.font} onChange={(v) => mut('Letra', (c) => { if (c.source.type === 'text') c.source.font = v; })} options={TEXT_FONTS.map((f) => ({ value: f, label: TEXT_FONT_LABELS[f] }))} />
+              </Field>
+              <Toggle checked={clip.source.glow} onChange={(v) => mut('Halo', (c) => { if (c.source.type === 'text') c.source.glow = v; })} label="Halo luminoso" />
+            </div>
+            <div className="row2">
+              <Field label="Color"><input type="color" value={clip.source.color} onChange={(e) => mut('Color', (c) => { if (c.source.type === 'text') c.source.color = e.target.value; })} /></Field>
+              <Field label="Contorno"><input type="color" value={clip.source.outline} onChange={(e) => mut('Contorno', (c) => { if (c.source.type === 'text') c.source.outline = e.target.value; })} /></Field>
+            </div>
+          </>
         ) : (
           <>
             <Field label="Efecto">

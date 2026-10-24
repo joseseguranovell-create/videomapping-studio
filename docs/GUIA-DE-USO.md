@@ -105,6 +105,19 @@ El programa no depende de ningún proveedor: usa cualquier herramienta que expor
 
 No se puede prometer que cualquier vídeo generado sirva para todo. Un personaje necesita **transparencia y continuidad** para entrar y salir de una ventana de forma convincente.
 
+### Quitar el fondo dentro del programa
+
+En **Biblioteca → (recurso) → Quitar fondo** puedes eliminar al reproducir:
+- **un color**: fondo verde, azul o blanco. «Detectar» toma el color de la esquina;
+- **lo oscuro**: fondos negros.
+
+Así puedes usar directamente el MP4 o la imagen que te dé la IA. Si se come partes del personaje, baja la tolerancia; si queda un borde de color, súbela. El archivo original no se modifica.
+
+**Consejos para generar con IA** (Suno para la música; Midjourney, Ideogram, Kling, Runway… para la imagen):
+- Pide **«fondo verde liso, sin sombras, personaje completo y centrado»**.
+- Para vídeo, pide **un gesto corto de 3 a 6 s con el personaje en el sitio** (saludar, parpadear, reír). El programa se encarga de desplazarlo, hacerlo entrar o asomarse.
+- Para que una imagen fija tenga más vida, genera 2 o 3 variantes del mismo personaje (normal, saludando, sorprendido) y encadénalas en clips seguidos.
+
 ## 5. Personajes
 
 **Personajes → nuevo personaje → Añadir animación**: cada animación es un recurso con un movimiento (Flotar, Saltar, Saludar, Asomarse por abajo o por arriba, Entrar o salir por un lado, Cruzar, Aparecer o desaparecer de golpe, Latir, Temblar, Girar…), una intensidad, una velocidad, una duración y una escala. Un mismo dibujo puede tener varias animaciones, y un personaje puede usar varios dibujos (variantes o expresiones).
@@ -122,6 +135,14 @@ No se puede prometer que cualquier vídeo generado sirva para todo. Un personaje
 6. Ejemplo de secuencia: a los 0 s se ilumina la ventana izquierda (efecto «Luz de vela»), a los 2 s aparece un fantasma (personaje Boo, «Aparecer»), a los 4 s se esconde («Desaparecer») y a los 5 s se ilumina la ventana superior.
 
 Para que un personaje **pase de una ventana a otra**, pon un clip «Salir por la derecha» o «Cruzar» en la primera ventana y, justo después, otro «Entrar por la izquierda» en la siguiente. El espectáculo de ejemplo lo hace con el murciélago.
+
+### Rótulos
+
+**Espectáculos → línea de tiempo → Rótulo** añade un texto animado (por defecto «¡Feliz Halloween!») en la superficie elegida. En el panel derecho puedes cambiar:
+- el texto (Intro para varias líneas);
+- el tipo de letra: divertida, gruesa, elegante, manuscrita o simple;
+- el color, el contorno y el halo;
+- el movimiento, igual que en cualquier clip: aparecer, latir, flotar…
 
 ## 7. La noche del espectáculo
 
@@ -145,6 +166,13 @@ Para que un personaje **pase de una ventana a otra**, pon un clip «Salir por la
 - **Manuales**: **Ajustes → Copias de seguridad → Crear copia ahora** (con nombre, por ejemplo «antes de Navidad»). Desde ahí también puedes **restaurar** cualquier copia; se puede deshacer y no se guarda hasta que pulses Guardar.
 - **Copia externa**: **Ajustes → Exportar proyecto completo…** a un USB o a la nube. También vale copiar la carpeta del proyecto desde el Explorador (`Documentos\Videomapping Studio\Proyectos\<nombre>`).
 - **Paquetes**: **Biblioteca → Exportar paquete…** guarda personajes y recursos para reutilizarlos en otros proyectos o compartirlos.
+
+## 9b. Proyectores baratos (HY300 y similares)
+
+- Su resolución real es **1280×720**, aunque digan aceptar 4K. Pon esa resolución en Windows para esa pantalla y elige «1280 × 720» en la instalación.
+- **Desactiva el keystone automático y el enfoque automático**: si el proyector se reajusta solo, descuadra la calibración.
+- Dan poca luz: proyecta de noche cerrada. Rinden mejor las fachadas claras y los colores saturados (naranja, amarillo, blanco) que los oscuros (morado, azul).
+- Si el ventilador es ruidoso o se calienta, déjale espacio alrededor. El programa impide que la pantalla entre en reposo.
 
 ## 10. Problemas frecuentes
 

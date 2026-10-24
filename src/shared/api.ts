@@ -56,6 +56,18 @@ export interface AppSettings {
   lastOutputDisplayLabel: string | null;
   showFps: boolean;
   schedule: ScheduleSettings;
+  agentApi: { enabled: boolean; port: number; token: string };
+}
+
+export interface AgentApiStatus {
+  running: boolean;
+  url: string | null;
+  token: string;
+  port: number;
+  infoFile: string;
+  mcpScript: string;
+  exePath: string;
+  error: string | null;
 }
 
 /** Reproducción automática diaria (p. ej. la noche de Halloween de 18:30 a 22:00). */
@@ -181,6 +193,11 @@ export interface VmApi {
     exportPack(project: Project, opts: { name: string; description: string; assetIds: string[]; characterIds: string[]; includeShows: string[] }): Promise<string | null>;
     importPackFolder(): Promise<PackInfo | null>;
     openUserPacksFolder(): Promise<void>;
+  };
+  agent: {
+    status(): Promise<AgentApiStatus>;
+    configure(p: { enabled: boolean; port?: number; regenerate?: boolean }): Promise<AgentApiStatus>;
+    onRequest(cb: (action: string, params: Record<string, unknown>) => Promise<unknown>): void;
   };
   displays: {
     list(): Promise<DisplayInfo[]>;

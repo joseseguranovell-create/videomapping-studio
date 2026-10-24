@@ -2,7 +2,60 @@
  * Gestión de medios del motor: carga de imágenes/secuencias, elementos de vídeo por clip
  * y texturas asociadas. Libera los recursos cuando un clip deja de estar activo.
  */
-import type { Asset } from '../../shared/model';
+import type { Asset, ClipSource } from '../../shared/model';
+
+type TextSource = Extract<ClipSource, { type: 'text' }>;
+
+const FONT_STACKS: Record<TextSource['font'], string> = {
+  divertida: "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive",
+  gruesa: "'Segoe UI Black', 'Arial Black', Impact, sans-serif",
+  elegante: "Georgia, 'Times New Roman', serif",
+  manuscrita: "'Segoe Print', 'Segoe Script', 'Brush Script MT', cursive",
+  simple: "'Segoe UI', system-ui, Arial, sans-serif",
+};
+
+/** Dibuja un rótulo en un lienzo (contorno, halo y degradado suave). */
+export function renderText(src: TextSource): HTMLCanvasElement {
+  const size = 160;
+  const lines = (src.text || ' ').split('\n');
+  const font = `${src.bold ? '700' : '400'} ${size}px ${FONT_STACKS[src.font] ?? FONT_STACKS.simple}`;
+  const m = document.createElement('canvas').getContext('2d')!;
+  m.font = font;
+  const pad = Math.round(size * 0.45);
+  const lineH = Math.round(size * 1.15);
+  const w = Math.max(1, ...lines.map((l) => Math.ceil(m.measureText(l).width))) + pad * 2;
+  const h = lineH * lines.length + pad * 2;
+  const c = document.createElement('canvas');
+  c.width = Math.min(4096, w);
+  c.height = Math.min(2048, h);
+  const g = c.getContext('2d')!;
+  g.font = font;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.lineJoin = 'round';
+  const y0 = pad + lineH / 2;
+  lines.forEach((line, i) => {
+    const y = y0 + i * lineH;
+    if (src.glow) {
+      g.save();
+      g.shadowColor = src.color;
+      g.shadowBlur = size * 0.4;
+      g.fillStyle = src.color;
+      g.fillText(line, c.width / 2, y);
+      g.restore();
+    }
+    g.lineWidth = size * 0.16;
+    g.strokeStyle = src.outline;
+    g.strokeText(line, c.width / 2, y);
+    const grad = g.createLinearGradient(0, y - size / 2, 0, y + size / 2);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.35, src.color);
+    grad.addColorStop(1, src.color);
+    g.fillStyle = grad;
+    g.fillText(line, c.width / 2, y);
+  });
+  return c;
+}
 import type { GLRenderer } from './glRenderer';
 
 const MAX_IMAGE_SIDE = 2048;
@@ -77,6 +130,7 @@ export class MediaManager {
   private images = new Map<string, ImageEntry>();
   private sequences = new Map<string, SequenceEntry>();
   private videos = new Map<string, VideoEntry>();
+  private texts = new Map<string, { texture: WebGLTexture; aspect: number }>();
   errors = new Map<string, string>();
   base = '';
   key = '';
@@ -167,6 +221,24 @@ export class MediaManager {
     return null;
   }
 
+  /** Textura de un rótulo (se genera una vez por texto y estilo). */
+  text(src: TextSource): { texture: WebGLTexture; aspect: number } {
+    const k = JSON.stringify([src.text, src.font, src.color, src.outline, src.glow, src.bold]);
+    let e = this.texts.get(k);
+    if (!e) {
+      if (this.texts.size > 60) {
+        for (const v of this.texts.values()) this.r.deleteTexture(v.texture);
+        this.texts.clear();
+      }
+      const c = renderText(src);
+      const texture = this.r.createTexture();
+      this.r.upload(texture, c);
+      e = { texture, aspect: c.width / c.height };
+      this.texts.set(k, e);
+    }
+    return e;
+  }
+
   video(key: string, asset: Asset): VideoEntry {
     let v = this.videos.get(key);
     if (v) {
@@ -250,6 +322,8 @@ export class MediaManager {
     this.images.clear();
     for (const s of this.sequences.values()) s.textures.forEach((t) => t && this.r.deleteTexture(t));
     this.sequences.clear();
+    for (const t of this.texts.values()) this.r.deleteTexture(t.texture);
+    this.texts.clear();
     this.errors.clear();
   }
 

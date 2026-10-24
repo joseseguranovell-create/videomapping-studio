@@ -36,6 +36,8 @@ export interface Layer {
   color2?: [number, number, number];
   time?: number;
   aspect?: number;
+  /** Quitar fondo: 1 = por color, 2 = fondos oscuros. */
+  key?: { mode: 0 | 1 | 2; color: [number, number, number]; threshold: number; softness: number; despill: boolean };
 }
 
 const VS = `#version 300 es
@@ -58,6 +60,11 @@ uniform float u_time;
 uniform float u_aspect;
 uniform vec3 u_color;
 uniform vec3 u_color2;
+uniform int u_keyMode;
+uniform vec3 u_keyColor;
+uniform float u_keyTh;
+uniform float u_keySoft;
+uniform int u_despill;
 out vec4 o;
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
@@ -75,6 +82,23 @@ void main() {
   vec4 col;
   if (u_mode == 0) {
     col = texture(u_tex, c); // ya premultiplicado
+    if (u_keyMode > 0 && col.a > 0.0) {
+      // Quitar fondo (croma o fondo negro) para vídeos e imágenes sin transparencia.
+      vec3 rgb = col.rgb / col.a;
+      float k;
+      if (u_keyMode == 1) {
+        float d = distance(rgb, u_keyColor) / 1.7320508;
+        k = smoothstep(u_keyTh, u_keyTh + u_keySoft + 0.001, d);
+        if (u_despill == 1) {
+          if (u_keyColor.g > u_keyColor.r && u_keyColor.g > u_keyColor.b) rgb.g = min(rgb.g, max(rgb.r, rgb.b) + 0.06);
+          else if (u_keyColor.b > u_keyColor.r && u_keyColor.b > u_keyColor.g) rgb.b = min(rgb.b, max(rgb.r, rgb.g) + 0.06);
+        }
+      } else {
+        float l = dot(rgb, vec3(0.299, 0.587, 0.114));
+        k = smoothstep(u_keyTh * 0.6, u_keyTh * 0.6 + u_keySoft + 0.001, l);
+      }
+      col = vec4(rgb * col.a * k, col.a * k);
+    }
   } else if (u_mode == 1) {
     col = vec4(u_color, 1.0);
   } else if (u_mode == 2) {
@@ -190,7 +214,7 @@ export class GLRenderer {
     this.rendererName = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
     this.prog = program(gl, VS, FS);
     this.maskProg = program(gl, VS, MASK_FS);
-    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_aspect', 'u_color', 'u_color2']) {
+    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill']) {
       this.u[n] = gl.getUniformLocation(this.prog, n);
     }
     this.vbo = gl.createBuffer()!;
@@ -312,6 +336,11 @@ export class GLRenderer {
       gl.uniform1f(this.u.u_aspect, l.aspect ?? 1);
       gl.uniform3fv(this.u.u_color, l.color ?? [1, 1, 1]);
       gl.uniform3fv(this.u.u_color2, l.color2 ?? [0, 0, 0]);
+      gl.uniform1i(this.u.u_keyMode, l.key?.mode ?? 0);
+      gl.uniform3fv(this.u.u_keyColor, l.key?.color ?? [0, 1, 0]);
+      gl.uniform1f(this.u.u_keyTh, l.key?.threshold ?? 0.3);
+      gl.uniform1f(this.u.u_keySoft, l.key?.softness ?? 0.1);
+      gl.uniform1i(this.u.u_despill, l.key?.despill ? 1 : 0);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, l.texture ?? null);
       gl.drawArrays(gl.TRIANGLES, 0, data.length / 2);

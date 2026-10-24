@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -81,6 +81,20 @@ export const ASSET_KINDS = ['image', 'video', 'audio', 'sequence'] as const;
 export const AssetKind = z.enum(ASSET_KINDS);
 export type AssetKind = z.infer<typeof AssetKind>;
 
+/** Quitar el fondo de un recurso al reproducirlo (vídeos o imágenes generados con IA, croma…). */
+export const BackgroundKey = z.object({
+  /** 'color': elimina un color (verde, blanco…); 'dark': elimina lo oscuro (fondos negros). */
+  mode: z.enum(['none', 'color', 'dark']).default('none'),
+  color: z.string().default('#00ff00'),
+  /** Tolerancia 0..1: cuánto se parece un píxel al color para eliminarlo. */
+  threshold: z.number().min(0).max(1).default(0.3),
+  /** Suavidad del borde 0..1. */
+  softness: z.number().min(0).max(1).default(0.1),
+  /** Reducir el reflejo del color de fondo en los bordes (útil con croma verde). */
+  despill: z.boolean().default(true),
+});
+export type BackgroundKey = z.infer<typeof BackgroundKey>;
+
 export const Asset = z.object({
   id: z.string(),
   name: z.string(),
@@ -103,6 +117,7 @@ export const Asset = z.object({
   source: z.string().default(''),
   /** Miniatura como data URL pequeña (JPEG/PNG). */
   thumbnail: z.string().default(''),
+  key: BackgroundKey.default({ mode: 'none', color: '#00ff00', threshold: 0.3, softness: 0.1, despill: true }),
   addedAt: z.string(),
 });
 export type Asset = z.infer<typeof Asset>;
@@ -148,7 +163,21 @@ export const EFFECT_KINDS = ['solid', 'glow', 'stars', 'flicker', 'rainbow', 'te
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
+export const TEXT_FONTS = ['divertida', 'gruesa', 'elegante', 'manuscrita', 'simple'] as const;
+export const TextFont = z.enum(TEXT_FONTS);
+export type TextFont = z.infer<typeof TextFont>;
+
 export const ClipSource = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('text'),
+    text: z.string(),
+    font: TextFont.default('divertida'),
+    color: z.string().default('#ffb347'),
+    outline: z.string().default('#2b1240'),
+    /** Halo luminoso alrededor de las letras. */
+    glow: z.boolean().default(true),
+    bold: z.boolean().default(true),
+  }),
   z.object({ type: z.literal('asset'), assetId: z.string() }),
   z.object({
     type: z.literal('effect'),
@@ -323,6 +352,14 @@ export const MOTION_LABELS: Record<MotionPreset, string> = {
   rise: 'Subir desde abajo',
   grow: 'Crecer',
   shrink: 'Encoger',
+};
+
+export const TEXT_FONT_LABELS: Record<TextFont, string> = {
+  divertida: 'Divertida',
+  gruesa: 'Gruesa',
+  elegante: 'Elegante',
+  manuscrita: 'Manuscrita',
+  simple: 'Simple',
 };
 
 export const EFFECT_LABELS: Record<EffectKind, string> = {
