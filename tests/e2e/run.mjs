@@ -357,7 +357,18 @@ try {
     await win.evaluate((id) => window.__vmStore.getState().update('test', (d) => { const c = d.shows.find((x) => x.id === id).scenes[0].clips[1]; c.duration = 9; c.loop = true; const fx = d.shows.find((x) => x.id === id).scenes[0].clips[2]; fx.duration = 9; }), show.id);
     await out.waitForTimeout(300);
     await out.evaluate(() => { window.__vmPlayer.seek(0.2); void window.__vmPlayer.play(); });
-    await out.waitForFunction(() => window.__vmPlayer.media.activeVideos > 0 && window.__vmPlayer.time > 1, null, { timeout: 15000 });
+    const videoDiag = async () => {
+      const diag = await out.evaluate(() => {
+        const p = window.__vmPlayer;
+        const vids = [...p.media.videos.values()].map((v) => ({ status: v.status, rs: v.el.readyState, ns: v.el.networkState, t: v.el.currentTime, paused: v.el.paused, err: v.el.error ? `${v.el.error.code} ${v.el.error.message}` : null, src: v.el.currentSrc.slice(-50), w: v.el.videoWidth }));
+        const sh = p.currentShow();
+        return { vids, playing: p.playing, time: p.time, mode: p.mode.kind, scene: p.status().sceneName, errors: p.status().errors, audio: p.audio.ctx?.state, clips: sh?.scenes[0].clips.map((c) => [c.source.type, c.start, c.duration]) };
+      });
+      console.log('      diagnóstico vídeo: ' + JSON.stringify(diag));
+    };
+    try {
+      await out.waitForFunction(() => window.__vmPlayer.media.activeVideos > 0 && window.__vmPlayer.time > 1, null, { timeout: 15000 });
+    } catch (e) { await videoDiag(); throw e; }
     const st = await out.evaluate(() => window.__vmPlayer.status());
     assert(st.playing && st.time > 1, `la salida reproduce (t=${st.time})`);
     assert(st.activeVideos >= 1, `vídeo activo (${st.activeVideos})`);
@@ -372,15 +383,7 @@ try {
       if (bright(vidPx) > 20) break;
       await out.waitForTimeout(250);
     }
-    if (bright(vidPx) <= 20) {
-      const diag = await out.evaluate(() => {
-        const p = window.__vmPlayer;
-        const vids = [...p.media.videos.values()].map((v) => ({ status: v.status, rs: v.el.readyState, t: v.el.currentTime, paused: v.el.paused, err: v.el.error?.message ?? null, src: v.el.currentSrc.slice(-40), w: v.el.videoWidth }));
-        const sh = p.currentShow();
-        return { vids, time: p.time, scene: p.status().sceneName, errors: p.status().errors, clips: sh.scenes[0].clips.map((c) => [c.surfaceId.slice(-6), c.source.type, c.start, c.duration]) };
-      });
-      console.log('      diagnóstico vídeo: ' + JSON.stringify(diag));
-    }
+    if (bright(vidPx) <= 20) await videoDiag();
     assert(bright(vidPx) > 20, `el vídeo se ve dentro de la ventana 2 (${vidPx})`);
     assert(bright(gapPx) < 5, `nada se proyecta entre ventanas (${gapPx})`);
     assert(bright(doorPx) > 10, `el efecto se ve en la puerta (${doorPx})`);
