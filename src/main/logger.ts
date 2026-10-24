@@ -19,8 +19,13 @@ export function initLogger(dir: string) {
 
 export function log(level: 'info' | 'warn' | 'error', source: string, message: string) {
   const line = `${new Date().toISOString()} [${level.toUpperCase()}] [${source}] ${message.replace(/\s+$/, '')}\n`;
-  if (level === 'error') process.stderr.write(line);
-  else process.stdout.write(line);
+  // En Windows una aplicación gráfica puede no tener consola: escribir en ella nunca debe romper nada.
+  try {
+    if (level === 'error') process.stderr.write(line);
+    else process.stdout.write(line);
+  } catch {
+    /* sin consola */
+  }
   if (!logFile) return;
   try {
     fs.appendFileSync(logFile, line);

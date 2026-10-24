@@ -38,6 +38,7 @@ const userPacksDir = path.join(docsBase, 'Paquetes');
 const logsDir = path.join(app.getPath('userData'), 'logs');
 
 initLogger(logsDir);
+log('info', 'main', `Arrancando (empaquetado=${app.isPackaged}, appPath=${appRoot}, ui=${uiDir})`);
 const settings = new SettingsStore(path.join(app.getPath('userData'), 'settings.json'));
 
 let editorWin: BrowserWindow | null = null;
@@ -55,11 +56,14 @@ process.on('unhandledRejection', (e) => log('error', 'main', `unhandledRejection
 
 // Una sola instancia: abrir el programa dos veces trae al frente la ventana existente.
 if (!app.requestSingleInstanceLock() && !process.env.VMSTUDIO_USER_DATA) {
+  log('info', 'main', 'Ya hay una instancia abierta: se le pide que se muestre y esta se cierra.');
   app.quit();
 }
 app.on('second-instance', () => {
+  log('info', 'main', 'Segunda instancia: mostrando la ventana existente');
   if (editorWin) {
     if (editorWin.isMinimized()) editorWin.restore();
+    editorWin.show();
     editorWin.focus();
   }
 });
@@ -115,11 +119,30 @@ function createEditorWindow() {
     show: false,
     webPreferences: secureWebPreferences('editor.cjs'),
   });
-  editorWin.once('ready-to-show', () => {
-    editorWin?.show();
-    if (wa.width >= 1400 && !process.env.VMSTUDIO_USER_DATA) editorWin?.maximize();
+  let shown = false;
+  const reveal = (why: string) => {
+    if (shown || !editorWin) return;
+    shown = true;
+    log('info', 'main', `Mostrando ventana del editor (${why})`);
+    editorWin.show();
+    if (wa.width >= 1400 && !process.env.VMSTUDIO_USER_DATA) editorWin.maximize();
+  };
+  editorWin.once('ready-to-show', () => reveal('lista'));
+  // Si la interfaz tarda o falla al cargar, la ventana se muestra igualmente: nunca un proceso invisible.
+  setTimeout(() => reveal('tiempo de espera'), 6000);
+  editorWin.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    log('error', 'main', `Fallo al cargar ${url}: ${code} ${desc}`);
+    reveal('fallo de carga');
+    dialog.showErrorBox('Videomapping Studio no pudo cargar la interfaz', `${desc} (${code})\n${url}\n\nRegistro: ${logsDir}`);
   });
-  editorWin.loadURL(`${APP_ORIGIN}/ui/index.html`);
+  editorWin.webContents.on('render-process-gone', (_e, d) => {
+    log('error', 'main', `El proceso de la interfaz terminó: ${d.reason} (${d.exitCode})`);
+    reveal('proceso terminado');
+  });
+  editorWin.webContents.on('console-message', (_e, level, message) => {
+    if (level >= 3) log('error', 'editor-console', message);
+  });
+  editorWin.loadURL(`${APP_ORIGIN}/ui/index.html`).catch((e) => log('error', 'main', `loadURL: ${e}`));
   editorWin.on('close', async (e) => {
     if (quitting || !dirty) return;
     e.preventDefault();
@@ -528,11 +551,23 @@ function hardenWebContents() {
 }
 
 app.whenReady().then(async () => {
+  try {
+    await startApp();
+  } catch (e) {
+    log('error', 'main', `Error al arrancar: ${(e as Error).stack ?? e}`);
+    dialog.showErrorBox('Videomapping Studio no pudo arrancar', `${(e as Error).message}\n\nRegistro: ${logsDir}`);
+    app.quit();
+  }
+});
+
+async function startApp() {
+  log('info', 'main', 'Electron listo');
   if (!fs.existsSync(path.join(uiDir, 'index.html'))) {
     dialog.showErrorBox('Interfaz no compilada', `No se encuentra ${uiDir}. Ejecuta «npm run build».`);
     app.quit();
     return;
   }
+  log('info', 'main', 'Paso: menú');
   Menu.setApplicationMenu(
     isDev
       ? Menu.buildFromTemplate([
@@ -540,14 +575,19 @@ app.whenReady().then(async () => {
         ])
       : null,
   );
+  log('info', 'main', 'Paso: seguridad');
   hardenWebContents();
+  log('info', 'main', 'Paso: protocolo');
   installProtocol({ uiDir, getProjectDir: () => current?.dir ?? null, getPackDir: (id) => packDirs.get(id) ?? null });
+  log('info', 'main', 'Paso: IPC');
   registerIpc();
+  log('info', 'main', 'Paso: paquetes');
   await refreshPacks();
+  log('info', 'main', 'Paso: ventana');
   createEditorWindow();
   watchDisplays();
   log('info', 'main', `Videomapping Studio ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
-});
+}
 
 app.on('before-quit', () => {
   // El cierre con cambios pendientes lo gestiona el evento 'close' del editor.
