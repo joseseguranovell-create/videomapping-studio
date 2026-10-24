@@ -25,19 +25,26 @@ jobs:
       # Cada paso guarda su salida en ci-log.txt y su resultado en ci-status.txt.
       # Los pasos siguen aunque falle uno anterior, para obtener el diagnóstico completo.
       - name: Dependencias
-        run: npm ci 2>&1 | tee -a ci-log.txt; echo "npm ci: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          npm ci 2>&1 | tee -a ci-log.txt; echo "npm ci: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Tipos
-        run: npm run typecheck 2>&1 | tee -a ci-log.txt; echo "typecheck: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          npm run typecheck 2>&1 | tee -a ci-log.txt; echo "typecheck: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Pruebas unitarias
-        run: npm test 2>&1 | tee -a ci-log.txt; echo "unit: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          npm test 2>&1 | tee -a ci-log.txt; echo "unit: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Compilación
-        run: npm run build 2>&1 | tee -a ci-log.txt; echo "build: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          npm run build 2>&1 | tee -a ci-log.txt; echo "build: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Pruebas de extremo a extremo (Electron real)
-        run: node tests/e2e/run.mjs 2>&1 | tee -a ci-log.txt; echo "e2e: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          node tests/e2e/run.mjs 2>&1 | tee -a ci-log.txt; echo "e2e: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Instalador y versión portátil
-        run: npx electron-builder --win --x64 --publish never 2>&1 | tee -a ci-log.txt; echo "package: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          npx electron-builder --win --x64 --publish never 2>&1 | tee -a ci-log.txt; echo "package: ${PIPESTATUS[0]}" >> ci-status.txt
       - name: Arranque del ejecutable empaquetado
-        run: node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe" 2>&1 | tee -a ci-log.txt; echo "packaged-exe: ${PIPESTATUS[0]}" >> ci-status.txt
+        run: |
+          node tests/e2e/packaged.mjs "release/win-unpacked/Videomapping Studio.exe" 2>&1 | tee -a ci-log.txt; echo "packaged-exe: ${PIPESTATUS[0]}" >> ci-status.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -58,4 +65,5 @@ jobs:
           git commit -qm "CI ${GITHUB_SHA::7}" && git push -f origin HEAD:ci-logs
       - name: Resultado
         if: always()
-        run: "! grep -E ': [1-9]' ci-status.txt"
+        run: |
+          ! grep -E ': [1-9]' ci-status.txt
