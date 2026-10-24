@@ -355,7 +355,8 @@ try {
     await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
     // El vídeo importado dura 2 s: se alarga su clip (en bucle) para no depender de la velocidad del equipo.
     await win.evaluate((id) => window.__vmStore.getState().update('test', (d) => { const c = d.shows.find((x) => x.id === id).scenes[0].clips[1]; c.duration = 9; c.loop = true; const fx = d.shows.find((x) => x.id === id).scenes[0].clips[2]; fx.duration = 9; }), show.id);
-    await out.waitForTimeout(300);
+    // La salida recibe el documento modificado de forma asíncrona: se espera a tenerlo antes de reproducir.
+    await out.waitForFunction((id) => window.__vmPlayer.currentShow()?.id === id && window.__vmPlayer.currentShow().scenes[0].clips[1].duration === 9, show.id, { timeout: 10000 });
     await out.evaluate(() => { window.__vmPlayer.seek(0.2); void window.__vmPlayer.play(); });
     const videoDiag = async () => {
       const diag = await out.evaluate(() => {
