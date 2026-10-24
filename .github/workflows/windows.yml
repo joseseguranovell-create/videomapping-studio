@@ -73,6 +73,19 @@ jobs:
             release/*.exe
             release/*.zip
           retention-days: 30
+      - name: Publicar la última versión en «Releases»
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if grep -q "packaged-exe: 0" ci-status.txt; then
+            gh release delete ultima --yes --cleanup-tag || true
+            gh release create ultima release/*.exe release/*.zip --prerelease --target "$GITHUB_SHA" \
+              --title "Última versión (compilada y probada en Windows)" \
+              --notes "Compilada en Windows por GitHub Actions a partir de ${GITHUB_SHA::7}. El ejecutable se ha arrancado automáticamente en Windows antes de publicarse. Descarga el instalador (.exe) o la versión portátil (.zip)."
+          else
+            echo "El ejecutable no arrancó: no se publica."
+          fi
       - name: Publicar diagnóstico en la rama ci-logs
         if: always()
         run: |

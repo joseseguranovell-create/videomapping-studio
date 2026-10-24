@@ -287,7 +287,7 @@ try {
     await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), show.id);
     await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
     // El vídeo importado dura 2 s: se alarga su clip (en bucle) para no depender de la velocidad del equipo.
-    await win.evaluate((id) => window.__vmStore.getState().update('test', (d) => { const c = d.shows.find((x) => x.id === id).scenes[0].clips[1]; c.duration = 9; c.loop = true; }), show.id);
+    await win.evaluate((id) => window.__vmStore.getState().update('test', (d) => { const c = d.shows.find((x) => x.id === id).scenes[0].clips[1]; c.duration = 9; c.loop = true; const fx = d.shows.find((x) => x.id === id).scenes[0].clips[2]; fx.duration = 9; }), show.id);
     await out.waitForTimeout(300);
     await out.evaluate(() => { window.__vmPlayer.seek(0.2); void window.__vmPlayer.play(); });
     await out.waitForFunction(() => window.__vmPlayer.media.activeVideos > 0 && window.__vmPlayer.time > 1, null, { timeout: 15000 });
