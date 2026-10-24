@@ -217,6 +217,22 @@ def giggle():
     return normalize(buf, 0.75)
 
 
+def thunder():
+    """Trueno: chasquido inicial + retumbo grave que se aleja."""
+    d = 5.5
+    t = t_axis(d)
+    noise = rng.standard_normal(len(t))
+    # filtro paso bajo de un polo con frecuencia que baja con el tiempo
+    y = np.zeros_like(noise)
+    for i in range(1, len(noise)):
+        a = 0.02 + 0.25 * np.exp(-t[i] * 3.0)
+        y[i] = y[i - 1] + a * (noise[i] - y[i - 1])
+    crack = noise * np.exp(-t * 18) * 0.6
+    rumble_env = (1 - np.exp(-t * 12)) * np.exp(-t * 0.7) * (0.7 + 0.3 * np.sin(2 * np.pi * 1.3 * t + 1) * np.sin(2 * np.pi * 0.37 * t))
+    x = crack + y * rumble_env * 3.0
+    return normalize(x * env_adsr(len(t), 0.002, 0.05, 1.0, 0.8), 0.9)
+
+
 def main():
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
@@ -230,6 +246,7 @@ def main():
         'campanilla': chime(),
         'whoosh': whoosh(),
         'risita': giggle(),
+        'trueno': thunder(),
     }
     for name, x in items.items():
         write_wav(os.path.join(out, f'{name}.wav'), x)

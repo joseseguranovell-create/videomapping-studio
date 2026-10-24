@@ -22,6 +22,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   0: (doc) => ({ ...doc, schemaVersion: 1, collections: Array.isArray(doc.collections) ? doc.collections : [] }),
   // Versión 1 → 2: rótulos de texto y «quitar fondo» en los recursos. Campos nuevos con valores por defecto.
   1: (doc) => ({ ...doc, schemaVersion: 2 }),
+  // Versión 2 → 3: efectos de contorno y de fachada, siluetas. Campos nuevos con valores por defecto.
+  2: (doc) => ({ ...doc, schemaVersion: 3 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

@@ -16,6 +16,11 @@
 - **Control por agentes de IA**: API local (`src/main/agentApi.ts`, `src/renderer/editor/agent.ts`) y servidor MCP sin dependencias (`resources/mcp/vmstudio-mcp.cjs`). Guía en `docs/AGENTES.md`.
 - Esquema de proyecto v2 (migración automática desde v1).
 
+**2026-10-24, sesión 1 (efectos profesionales)**
+- Contornos con halo fuera de la superficie (neón, trazado progresivo, luces de feria), efectos de ambiente (relámpago, fuego, niebla, lluvia, nieve, luciérnagas, barrido) con modo «fachada», siluetas y plantillas de escena (`src/shared/templates.ts`).
+- Espectáculo de ejemplo ampliado a 10 escenas (~1 min 40 s): neón inicial, tormenta con truenos, sombras chinescas y gran final con luces de feria y rótulo.
+- Esquema v3. Rendimiento: los contornos y el fuego o la niebla son los efectos más costosos. Con renderizado por software bajan a ~10 fps; en una GPU integrada deberían ir fluidos (pendiente de confirmar en el portátil).
+
 ## Limitaciones conocidas (reales)
 
 1. **Sin detección automática** de puertas y ventanas: la calibración es manual (no requiere cámara).

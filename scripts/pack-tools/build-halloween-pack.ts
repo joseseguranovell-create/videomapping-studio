@@ -12,6 +12,8 @@ import { PackManifest, PACK_FORMAT } from '../../src/shared/pack';
 import type { Asset, Character, Clip, Installation, Scene, Show, SoundCue, Vec2, Motion, ClipSource } from '../../src/shared/model';
 import { Clip as ClipSchema, SoundCue as SoundSchema, Surface as SurfaceSchema } from '../../src/shared/model';
 import { rectQuad, quadFromBBox } from '../../src/shared/geometry';
+import { applyTemplate, type TemplateKind } from '../../src/shared/templates';
+import { createScene } from '../../src/shared/factory';
 
 const ROOT = path.resolve(__dirname, '../..');
 const PACK = path.join(ROOT, 'resources/packs/halloween-infantil');
@@ -81,6 +83,7 @@ const A = {
   chime: asset('hx-ast-snd-campanilla', 'Campanilla', 'audio', 'files/sonidos/campanilla.ogg', { tags: ['efecto'] }),
   whoosh: asset('hx-ast-snd-whoosh', 'Whoosh', 'audio', 'files/sonidos/whoosh.ogg', { tags: ['efecto'] }),
   giggle: asset('hx-ast-snd-risita', 'Risita', 'audio', 'files/sonidos/risita.ogg', { tags: ['efecto'] }),
+  thunder: asset('hx-ast-snd-trueno', 'Trueno', 'audio', 'files/sonidos/trueno.ogg', { tags: ['efecto', 'trueno'] }),
 };
 
 // ───────── Personajes ─────────
@@ -194,12 +197,25 @@ function scene(id: string, name: string, duration: number, transition: Scene['tr
 const glowAll = (d: number, op = 0.45) =>
   [S.ai, S.ac, S.ad, S.bi, S.bd].map((s, i) => clip(s, fx('flicker', warm), 0, d, { fit: 'stretch', opacity: op, fadeIn: 0.8, fadeOut: 0.8, z: -10, name: 'Luz de vela' }));
 
+/** Clips de una plantilla de escena con ids estables (para que el paquete no cambie al regenerarlo). */
+function fromTemplate(kind: TemplateKind, duration: number, start = 0, exclude: string[] = []) {
+  const r = applyTemplate(kind, installation, createScene('t', duration), { start, thunderAssetId: A.thunder });
+  const clips = r.clips.filter((c) => !exclude.includes(c.surfaceId)).map((c) => ({ ...c, id: `hx-clp-${++clipN}` }));
+  const sounds = r.sounds.map((s) => ({ ...s, id: `hx-snd-${++sndN}` }));
+  return { clips, sounds };
+}
+const neonIntro = fromTemplate('neonDibujo', 10);
+const storm = fromTemplate('tormenta', 9);
+const finaleLights = fromTemplate('lucesFeria', 11);
+const shadowsLight = fromTemplate('cascadaLuz', 10, 0, [S.fronton, S.desvan]);
+const sil = (p: Partial<Clip>) => ({ silhouette: true, silhouetteColor: '#120806', ...p });
+
 const scenes: Scene[] = [
-  scene('hx-scn-1', 'La casa despierta', 8, { type: 'fade', duration: 1.5 }, [
-    ...[S.ai, S.ac, S.ad, S.bi, S.bd].map((s, i) => clip(s, fx('flicker', warm), 0.5 + i * 0.8, 7.5 - i * 0.8, { fit: 'stretch', fadeIn: 1, fadeOut: 0.6, opacity: 0.85, name: 'Se enciende la luz' })),
-    clip(S.fronton, fx('stars', '#fff6c2', '#7b2ff7'), 0, 8, { fit: 'stretch', fadeIn: 2, name: 'Estrellas' }),
-    clip(S.desvan, img(A.moon), 2, 6, { ...ch('hx-chr-luna', 0), motion: M('pulse', 0.6, 0.5), scale: 0.9, fadeIn: 1.5, name: 'Luna' }),
-  ], [snd(A.chime, 0.3), snd(A.sparkle, 2.2, { volume: 0.6 })], 'Las ventanas se iluminan una a una como velas.'),
+  scene('hx-scn-1', 'La casa despierta', 10, { type: 'fade', duration: 1.5 }, [
+    ...neonIntro.clips,
+    clip(S.fronton, fx('stars', '#fff6c2', '#7b2ff7'), 4, 6, { fit: 'stretch', fadeIn: 2, name: 'Estrellas' }),
+    clip(S.desvan, img(A.moon), 4.5, 5.5, { ...ch('hx-chr-luna', 0), motion: M('pulse', 0.6, 0.5), scale: 0.9, fadeIn: 1.5, name: 'Luna' }),
+  ], [snd(A.whoosh, 0.2, { volume: 0.6 }), snd(A.sparkle, 2.5, { volume: 0.7 }), snd(A.chime, 4.5)], 'El contorno de la casa se dibuja con neón, ventana a ventana.'),
   scene('hx-scn-2', '¡Hola, Boo!', 10, { type: 'crossfade', duration: 1 }, [
     ...glowAll(10, 0.4).filter((c) => c.surfaceId !== S.ac),
     clip(S.ac, fx('glow', '#9a7bff', '#140a28'), 0, 10, { fit: 'stretch', z: -10, fadeIn: 0.5, name: 'Resplandor' }),
@@ -217,6 +233,11 @@ const scenes: Scene[] = [
     clip(S.ac, img(A.ghost), 0, 10, { motion: M('float'), scale: 0.6, opacity: 0.85, name: 'Boo mira' }),
     clip(S.fronton, fx('rainbow', '#ffffff'), 0, 10, { fit: 'stretch', opacity: 0.35, name: 'Arcoíris suave' }),
   ], [snd(A.boing, 0.6), snd(A.boing, 1.5, { volume: 0.8 }), snd(A.boing, 2.4, { volume: 0.7 }), snd(A.boing, 3.3, { volume: 0.6 }), snd(A.pop, 5), snd(A.giggle, 6.5)], 'Dos calabazas saltan en las ventanas bajas.'),
+  scene('hx-scn-tormenta', 'Tormenta', 9, { type: 'crossfade', duration: 1 }, [
+    ...storm.clips,
+    clip(S.ac, img(A.ghost), 1.5, 6, { ...ch('hx-chr-boo', 1), motion: M('shake', 1.4), scale: 0.7, y: 0.55, fadeIn: 0.4, name: 'Boo tiembla' }),
+    clip(S.puerta, img(A.pumpkinOh), 2.5, 6, { ...ch('hx-chr-calabaza', 2), motion: M('shake', 1.2), scale: 0.85, y: 0.6, name: '¡Qué susto!' }),
+  ], [...storm.sounds, snd(A.giggle, 7.5, { volume: 0.8 })], 'Relámpagos en toda la fachada, lluvia y truenos (Boo y la calabaza tiemblan).'),
   scene('hx-scn-4', 'Vuelo de murciélagos', 9, { type: 'fade', duration: 0.8 }, [
     clip(S.ai, img(A.bat), 0.5, 3, { ...ch('hx-chr-murci', 0), motion: M('crossLeftToRight'), scale: 0.55, fadeIn: 0.2, fadeOut: 0.2, name: 'Murci cruza' }),
     clip(S.ac, img(A.bat), 3.2, 3, { ...ch('hx-chr-murci', 0), motion: M('crossLeftToRight'), scale: 0.55, fadeIn: 0.2, fadeOut: 0.2, name: 'Murci cruza' }),
@@ -225,6 +246,15 @@ const scenes: Scene[] = [
     clip(S.fronton, fx('stars', '#fff6c2', '#7b2ff7'), 0, 9, { fit: 'stretch', name: 'Estrellas' }),
     clip(S.desvan, img(A.moon), 0, 9, { motion: M('pulse', 0.6, 0.5), scale: 0.9, name: 'Luna' }),
   ], [snd(A.whoosh, 0.4), snd(A.flutter, 0.8), snd(A.flutter, 3.5), snd(A.flutter, 6.2)], 'Un murciélago vuela de ventana en ventana por la planta alta.'),
+  scene('hx-scn-sombras', 'Sombras chinescas', 10, { type: 'crossfade', duration: 1 }, [
+    ...shadowsLight.clips,
+    clip(S.bi, img(A.cat), 1, 5, { ...ch('hx-chr-gatito', 1), ...sil({ motion: M('crossLeftToRight', 0.6), scale: 0.75, y: 0.62, fadeIn: 0.2, fadeOut: 0.2, name: 'Sombra del gatito' }) }),
+    clip(S.bd, img(A.cat), 5.5, 4, { ...sil({ motion: M('crossLeftToRight', 0.6), scale: 0.75, y: 0.62, fadeIn: 0.2, fadeOut: 0.2, name: 'Sombra del gatito' }) }),
+    clip(S.ad, img(A.ghostWave), 2, 6, { ...ch('hx-chr-boo', 2), ...sil({ motion: M('wave'), scale: 0.8, name: 'Sombra de Boo saludando' }) }),
+    clip(S.ai, img(A.spider), 3, 6, { ...ch('hx-chr-aranita', 0), ...sil({ motion: M('peekTop'), scale: 0.8, y: 0.35, name: 'Sombra de la arañita' }) }),
+    clip(S.ac, img(A.monster), 5, 4.5, { ...ch('hx-chr-ojito', 1), ...sil({ motion: M('bounce', 0.8), scale: 0.7, y: 0.58, name: 'Sombra de Ojito' }) }),
+    clip(S.fronton, fx('stars', '#fff6c2', '#7b2ff7'), 0, 10, { fit: 'stretch', name: 'Estrellas' }),
+  ], [snd(A.giggle, 2.3), snd(A.boing, 5.4, { volume: 0.6 }), snd(A.boing, 6.3, { volume: 0.5 })], 'Las ventanas se iluminan y por detrás pasan las sombras de los personajes.'),
   scene('hx-scn-5', 'Gatito y arañita', 10, { type: 'crossfade', duration: 1 }, [
     ...glowAll(10, 0.35).filter((c) => c.surfaceId !== S.ad),
     clip(S.puerta, img(A.cat), 0.5, 5.5, { ...ch('hx-chr-gatito', 0), motion: M('peekBottom'), scale: 0.9, y: 0.66, name: 'Gatito se asoma' }),
@@ -241,6 +271,17 @@ const scenes: Scene[] = [
     clip(S.desvan, fx('rainbow', '#ffffff'), 0, 10, { fit: 'stretch', name: 'Arcoíris' }),
     clip(S.fronton, fx('glow', '#ffd93d', '#3a0f5c'), 0, 10, { fit: 'stretch', name: 'Resplandor' }),
   ], [snd(A.sparkle, 0.5), snd(A.sparkle, 5, { volume: 0.7 }), snd(A.boo, 2, { volume: 0.6 })], 'Toda la casa se llena de estrellas; Boo flota en la puerta (vídeo con transparencia).'),
+  scene('hx-scn-final', '¡Feliz Halloween!', 11, { type: 'crossfade', duration: 1 }, [
+    ...finaleLights.clips,
+    ...[S.ai, S.ac, S.ad, S.bi, S.bd].map((s) => clip(s, { type: 'effect', effect: 'sweep', color: '#ff9a3c', color2: '#5a1f8c', width: 6, space: 'facade' }, 0, 11, { fit: 'stretch', opacity: 0.7, z: -10, name: 'Barrido de luz' })),
+    // El rótulo se parte a ambos lados de la ventana del desván (el frontón tiene ese hueco enmascarado).
+    clip(S.fronton, { type: 'text', text: '¡Feliz', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1, 10, { motion: M('popIn'), scale: 0.3, x: 0.27, y: 0.74, fadeIn: 0, name: 'Rótulo «¡Feliz»' }),
+    clip(S.fronton, { type: 'text', text: 'Halloween!', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1.4, 9.6, { motion: M('popIn'), scale: 0.36, x: 0.75, y: 0.74, fadeIn: 0, name: 'Rótulo «Halloween!»' }),
+    clip(S.puerta, img(A.ghostWave), 2, 9, { ...ch('hx-chr-boo', 2), motion: M('wave'), scale: 0.95, y: 0.5, name: 'Boo celebra' }),
+    clip(S.bi, img(A.pumpkin), 2.5, 8.5, { motion: M('bounce'), scale: 0.75, y: 0.55, name: 'Calabaza' }),
+    clip(S.bd, img(A.pumpkin), 3, 8, { motion: M('bounce', 1, 1.2), scale: 0.75, y: 0.55, flipX: true, name: 'Calabaza' }),
+    clip(S.desvan, img(A.moon), 0, 11, { motion: M('pulse', 0.6, 0.5), scale: 0.9, name: 'Luna' }),
+  ], [snd(A.sparkle, 0.5), snd(A.pop, 1.1), snd(A.boo, 2.2, { volume: 0.7 }), snd(A.giggle, 4), snd(A.sparkle, 7, { volume: 0.7 })], 'Gran final: luces de feria en todos los contornos, barrido de color y rótulo.'),
   scene('hx-scn-7', '¡Buenas noches!', 7, { type: 'fade', duration: 1 }, [
     ...glowAll(7, 0.4),
     clip(S.ac, img(A.ghostWave), 0, 5, { ...ch('hx-chr-boo', 2), motion: M('wave'), scale: 0.85, fadeOut: 0, name: 'Boo se despide' }),
@@ -253,7 +294,7 @@ const scenes: Scene[] = [
 ];
 
 const show: Show = {
-  id: 'hx-shw-halloween', name: 'Halloween infantil (ejemplo)', description: 'Espectáculo de ejemplo de 1 minuto en bucle para una casa con seis ventanas, puerta y desván.',
+  id: 'hx-shw-halloween', name: 'Halloween infantil (ejemplo)', description: 'Espectáculo de ejemplo (~1 min 40 s, en bucle) para una casa con seis ventanas, puerta y desván: neón, tormenta, sombras chinescas y gran final.',
   tags: ['Halloween', 'infantil', 'ejemplo'], installationId: installation.id, scenes,
   music: [{ id: 'hx-mus-1', assetId: A.music, start: 0, volume: 0.55, fadeIn: 2, fadeOut: 2, loop: true }],
   masterVolume: 1, loop: true, loopGap: 4, createdAt: NOW, updatedAt: NOW,

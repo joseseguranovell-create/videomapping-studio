@@ -84,6 +84,7 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 | `anadir_rotulo` | `superficieId`, `texto`, `letra?`, `color?`, `contorno?`, `halo?` + campos de clip | Rótulo animado. |
 | `anadir_clip` | `superficieId` + `recursoId` **o** `personajeId`+`animacion` **o** `efecto` + campos de clip | Imagen, vídeo, personaje o efecto. |
 | `editar_clip` / `eliminar_clip` | `clipId`, … | |
+| `aplicar_plantilla` | `plantilla` (neonDibujo, cascadaLuz, tormenta, lucesFeria, barrido, incendio, nieveMagica, luciernagas), `escenaId?`, `inicio?` | Coreografía en todas las superficies. |
 | `anadir_sonido` | `recursoId`, `inicio`, `volumen?`, `bucle?`, `continuar?` | Efecto de sonido en la escena. |
 | `anadir_musica` | `recursoId`, `volumen?` | Música continua del espectáculo. |
 | `importar_recurso` | `ruta`, `nombre?` | Copia un archivo al proyecto. |
@@ -99,6 +100,8 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 - `inicio`, `duracion`, `x`, `y` (0..1 dentro de la superficie), `escala`, `rotacion`, `opacidad`, `fundidoEntrada`, `fundidoSalida`, `bucle`, `voltear`, `capa`, `ajuste` (contain, cover, stretch).
 - `movimiento`: none, float, bounce, wave, lookAround, pulse, shake, spin, popIn, popOut, peekLeft, peekRight, peekBottom, peekTop, enterLeft, enterRight, exitLeft, exitRight, crossLeftToRight, crossRightToLeft, rise, grow o shrink.
 - `intensidad` y `velocidad` del movimiento.
+- `silueta` (true/false) y `colorSilueta`, para dibujar un personaje como sombra.
+- Efectos (`efecto`): solid, glow, stars, flicker, rainbow, **neon, drawOn, chase** (contornos; `grosor` en px), **sweep, lightning, fire, fog, rain, snow, fireflies**. `espacio: "fachada"` hace que vayan sincronizados en toda la casa.
 
 ## Opción 4: editar el archivo del proyecto
 

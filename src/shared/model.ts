@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -159,7 +159,17 @@ export const Motion = z.object({
 });
 export type Motion = z.infer<typeof Motion>;
 
-export const EFFECT_KINDS = ['solid', 'glow', 'stars', 'flicker', 'rainbow', 'testPattern'] as const;
+export const EFFECT_KINDS = [
+  'solid', 'glow', 'stars', 'flicker', 'rainbow', 'testPattern',
+  // contornos: se dibujan sobre el borde de la superficie y brillan hacia fuera
+  'neon', 'drawOn', 'chase',
+  // ambiente
+  'sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies',
+] as const;
+/** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
+export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase'] as const;
+/** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
@@ -184,6 +194,10 @@ export const ClipSource = z.discriminatedUnion('type', [
     effect: EffectKind,
     color: z.string().default('#ffb347'),
     color2: z.string().default('#7b2ff7'),
+    /** Grosor de los contornos en píxeles (para una salida de 1080 líneas). */
+    width: z.number().min(0.5).max(80).default(6),
+    /** 'surface': el efecto se adapta a cada superficie; 'facade': continuo en toda la fachada. */
+    space: z.enum(['surface', 'facade']).default('surface'),
   }),
 ]);
 export type ClipSource = z.infer<typeof ClipSource>;
@@ -213,6 +227,9 @@ export const Clip = z.object({
   motion: Motion.default({ preset: 'none', intensity: 1, speed: 1 }),
   /** Orden de capa dentro de la superficie (mayor = encima). */
   z: z.number().default(0),
+  /** Dibujar el recurso como silueta de un solo color (sombras chinescas). */
+  silhouette: z.boolean().default(false),
+  silhouetteColor: z.string().default('#000000'),
 });
 export type Clip = z.infer<typeof Clip>;
 
@@ -369,4 +386,14 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   flicker: 'Parpadeo de vela',
   rainbow: 'Arcoíris',
   testPattern: 'Patrón de prueba',
+  neon: 'Contorno de neón',
+  drawOn: 'Contorno que se dibuja',
+  chase: 'Luces de feria en el contorno',
+  sweep: 'Barrido de luz',
+  lightning: 'Relámpago',
+  fire: 'Fuego',
+  fog: 'Niebla',
+  rain: 'Lluvia',
+  snow: 'Nieve',
+  fireflies: 'Luciérnagas',
 };

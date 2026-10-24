@@ -7,13 +7,14 @@
 import { useStore } from './store';
 import { afterOpen, assetFromImported, saveProject, transport, vm, refreshMissing } from './services';
 import { parseProject } from '../../shared/schema';
-import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation } from '../../shared/factory';
+import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource } from '../../shared/factory';
 import { layoutShow } from '../../shared/timeline';
+import { applyTemplate, TEMPLATE_KINDS, type TemplateKind } from '../../shared/templates';
 import { newId } from '../../shared/ids';
 import { orderQuad } from '../../shared/geometry';
 import {
   Clip as ClipSchema, MOTION_PRESETS, EFFECT_KINDS, TEXT_FONTS, SURFACE_KINDS,
-  type Clip, type ClipSource, type Project, type Scene, type Show, type MotionPreset,
+  type Clip, type ClipSource, type Project, type Scene, type Show, type MotionPreset, type EffectKind,
 } from '../../shared/model';
 import type { ImportedFile, OpenedProject } from '../../shared/api';
 
@@ -83,7 +84,7 @@ function summary() {
     recursos: pr.assets.map((a) => ({ id: a.id, nombre: a.name, tipo: a.kind, duracion: a.duration, transparencia: a.hasAlpha })),
     personajes: pr.characters.map((c) => ({ id: c.id, nombre: c.name, animaciones: c.animations.map((a) => ({ id: a.id, nombre: a.name, movimiento: a.motion.preset })) })),
     salida: { abierta: s.output.open, modo: s.outputMode, espectaculoId: s.outputShowId, reproduciendo: s.outputStatus?.playing ?? false, tiempo: s.outputStatus?.cycleTime ?? 0, escena: s.outputStatus?.sceneName ?? null },
-    opciones: { movimientos: MOTION_PRESETS, efectos: EFFECT_KINDS, letras: TEXT_FONTS, tiposSuperficie: SURFACE_KINDS },
+    opciones: { movimientos: MOTION_PRESETS, efectos: EFFECT_KINDS, letras: TEXT_FONTS, tiposSuperficie: SURFACE_KINDS, plantillas: TEMPLATE_KINDS },
   };
 }
 const round = (n: number) => Math.round(n * 10000) / 10000;
@@ -102,7 +103,12 @@ function buildSource(p: P): { source: ClipSource; extra: Partial<Clip> } {
   if (p.efecto !== undefined) {
     const e = String(p.efecto);
     if (!(EFFECT_KINDS as readonly string[]).includes(e)) fail(`Efecto no válido: ${EFFECT_KINDS.join(', ')}`);
-    return { source: { type: 'effect', effect: e as any, color: (p.color as string) ?? '#ff9a3c', color2: (p.color2 as string) ?? '#3a0f5c' }, extra: { fit: 'stretch' } };
+    const over: Record<string, unknown> = {};
+    if (p.color !== undefined) over.color = String(p.color);
+    if (p.color2 !== undefined) over.color2 = String(p.color2);
+    if (p.grosor !== undefined) over.width = num(p, 'grosor');
+    if (p.espacio !== undefined) over.space = p.espacio === 'fachada' || p.espacio === 'facade' ? 'facade' : 'surface';
+    return { source: effectSource(e as EffectKind, over), extra: { fit: 'stretch' } };
   }
   if (p.personajeId !== undefined) {
     const ch = pr.characters.find((c) => c.id === p.personajeId || c.name === p.personajeId) ?? fail(`No existe el personaje «${p.personajeId}»`);
@@ -117,7 +123,7 @@ function buildSource(p: P): { source: ClipSource; extra: Partial<Clip> } {
 
 const CLIP_FIELDS: Record<string, keyof Clip> = {
   inicio: 'start', duracion: 'duration', bucle: 'loop', x: 'x', y: 'y', escala: 'scale', rotacion: 'rotation',
-  opacidad: 'opacity', fundidoEntrada: 'fadeIn', fundidoSalida: 'fadeOut', capa: 'z', voltear: 'flipX', ajuste: 'fit', velocidadReproduccion: 'playbackRate', nombre: 'name',
+  opacidad: 'opacity', fundidoEntrada: 'fadeIn', fundidoSalida: 'fadeOut', capa: 'z', voltear: 'flipX', ajuste: 'fit', velocidadReproduccion: 'playbackRate', nombre: 'name', silueta: 'silhouette', colorSilueta: 'silhouetteColor',
 };
 
 function applyClipFields(c: Clip, p: P) {
@@ -257,6 +263,17 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
       const id = str(p, 'clipId');
       edit('eliminar clip', (d) => { for (const sc of d.shows.find((x) => x.id === sh.id)!.scenes) sc.clips = sc.clips.filter((c) => c.id !== id); });
       return { ok: true };
+    }
+    case 'aplicar_plantilla': {
+      const sh = findShow(p);
+      const sc = findScene(sh, p);
+      const kind = str(p, 'plantilla') as TemplateKind;
+      if (!(TEMPLATE_KINDS as readonly string[]).includes(kind)) fail(`Plantilla no válida. Opciones: ${TEMPLATE_KINDS.join(', ')}`);
+      const inst = project().installations.find((i) => i.id === sh.installationId) ?? fail('El espectáculo no tiene instalación');
+      const thunder = project().assets.find((a) => a.kind === 'audio' && (a.tags.includes('trueno') || /trueno/i.test(a.name)));
+      const r = applyTemplate(kind, inst, sc, { start: num(p, 'inicio', 0), thunderAssetId: thunder?.id ?? null });
+      edit(`plantilla ${kind}`, (d) => { const x = d.shows.find((s) => s.id === sh.id)!.scenes.find((s) => s.id === sc.id)!; x.clips.push(...r.clips); x.sounds.push(...r.sounds); });
+      return { clips: r.clips.length, sonidos: r.sounds.length };
     }
     case 'anadir_sonido': {
       const sh = findShow(p);

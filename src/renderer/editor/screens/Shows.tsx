@@ -1,7 +1,7 @@
 /** Editor de espectáculos: escenas, línea de tiempo por superficie, clips, sonidos y música. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type,
+  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type, Wand2,
 } from 'lucide-react';
 import { useStore, selShow, selScene } from '../store';
 import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, Modal, confirmDialog, promptDialog } from '../components/ui';
@@ -9,13 +9,14 @@ import { AssetPicker } from '../components/pickers';
 import { ShowPreview, previewControl, usePreview } from '../components/ShowPreview';
 import { AssetThumb } from './Library';
 import {
-  createShow, createScene, createClip, createSoundCue, duplicateScene, duplicateShow, suggestSurfaceMap, remapShowSurfaces,
+  createShow, createScene, createClip, createSoundCue, duplicateScene, duplicateShow, suggestSurfaceMap, remapShowSurfaces, effectSource,
 } from '../../../shared/factory';
 import { newId } from '../../../shared/ids';
 import {
-  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project,
+  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, CONTOUR_EFFECTS, FACADE_EFFECTS, type EffectKind, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project,
 } from '../../../shared/model';
 import { layoutShow, formatTime } from '../../../shared/timeline';
+import { applyTemplate, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
 import { transport } from '../services';
 
 function useShowMut() {
@@ -310,7 +311,7 @@ function SceneTimeline({ show }: { show: Show }) {
   const L = useMemo(() => layoutShow(show), [show]);
   const slot = scene ? L.slots.find((s) => s.scene.id === scene.id) : null;
   const trackRef = useRef<HTMLDivElement>(null);
-  const [picker, setPicker] = useState<null | 'asset' | 'sound' | 'character' | 'effect'>(null);
+  const [picker, setPicker] = useState<null | 'asset' | 'sound' | 'character' | 'effect' | 'template'>(null);
   const [rowSurface, setRowSurface] = useState<string | null>(null);
   const drag = useRef<null | { kind: 'move' | 'resize'; id: string; isSound: boolean; x0: number; start0: number; dur0: number; pxPerSec: number; rowY0: number }>(null);
 
@@ -433,6 +434,7 @@ function SceneTimeline({ show }: { show: Show }) {
         <Button small icon={<Film size={14} />} disabled={!surfaces.length} onClick={() => setPicker('asset')} data-testid="add-clip">Recurso</Button>
         <Button small icon={<Ghost size={14} />} disabled={!surfaces.length || !project.characters.length} onClick={() => setPicker('character')} data-testid="add-character">Personaje</Button>
         <Button small icon={<Sparkles size={14} />} disabled={!surfaces.length} onClick={() => setPicker('effect')} data-testid="add-effect">Efecto</Button>
+        <Button small variant="primary" icon={<Wand2 size={14} />} disabled={!surfaces.length} onClick={() => setPicker('template')} data-testid="add-template" title="Coreografías listas en todas las superficies">Plantilla</Button>
         <Button
           small
           icon={<Type size={14} />}
@@ -532,21 +534,56 @@ function SceneTimeline({ show }: { show: Show }) {
           }}
         />
       )}
-      {picker === 'effect' && (
-        <Modal title="Añadir efecto" onClose={() => setPicker(null)}>
-          <div className="effect-grid">
-            {EFFECT_KINDS.filter((k) => k !== 'testPattern').map((k) => (
-              <Button key={k} onClick={() => {
-                addClip(createClip(defaultSurface!, { type: 'effect', effect: k, color: k === 'stars' ? '#fff6c2' : '#ff9a3c', color2: k === 'glow' ? '#3a0f5c' : '#7b2ff7' }, { start: startAt, duration: Math.min(4, D - startAt), fit: 'stretch' }));
-                setPicker(null);
-              }} data-testid={`effect-${k}`}>{EFFECT_LABELS[k]}</Button>
+      {picker === 'template' && inst && (
+        <Modal title="Plantillas de escena" onClose={() => setPicker(null)} wide>
+          <p className="muted small">Se añaden a esta escena, en todas las superficies visibles, escalonadas de izquierda a derecha a partir de {startAt.toFixed(1)} s. Después puedes retocar cada clip (o deshacer con Ctrl+Z).</p>
+          <div className="template-grid">
+            {TEMPLATE_KINDS.map((k) => (
+              <button
+                key={k}
+                className="template-card"
+                data-testid={`template-${k}`}
+                onClick={() => {
+                  const thunder = project.assets.find((a) => a.kind === 'audio' && (a.tags.includes('trueno') || /trueno/i.test(a.name)));
+                  const r = applyTemplate(k, inst, scene, { start: startAt, thunderAssetId: thunder?.id ?? null });
+                  mutScene(false, (sc) => { sc.clips.push(...r.clips); sc.sounds.push(...r.sounds); }, `Plantilla: ${TEMPLATE_INFO[k].name}`);
+                  if (k === 'tormenta' && !thunder) useStore.getState().toast('info', 'Añade un sonido con «trueno» en el nombre (el paquete Halloween incluye uno) para que suenen truenos.', 7000);
+                  setPicker(null);
+                }}
+              >
+                <b>{TEMPLATE_INFO[k].name}</b>
+                <span>{TEMPLATE_INFO[k].description}</span>
+              </button>
             ))}
           </div>
+        </Modal>
+      )}
+      {picker === 'effect' && (
+        <Modal title="Añadir efecto" onClose={() => setPicker(null)} wide>
+          {EFFECT_GROUPS.map((g) => (
+            <div key={g.title}>
+              <h4 className="sub">{g.title}</h4>
+              <div className="effect-grid">
+                {g.kinds.map((k) => (
+                  <Button key={k} onClick={() => {
+                    addClip(createClip(defaultSurface!, effectSource(k), { start: startAt, duration: Math.min(k === 'drawOn' ? 3 : 4, D - startAt), fit: 'stretch', fadeIn: k === 'lightning' ? 0 : 0.5 }));
+                    setPicker(null);
+                  }} data-testid={`effect-${k}`}>{EFFECT_LABELS[k]}</Button>
+                ))}
+              </div>
+            </div>
+          ))}
         </Modal>
       )}
     </div>
   );
 }
+
+const EFFECT_GROUPS: { title: string; kinds: EffectKind[] }[] = [
+  { title: 'Bordes y contornos (brillan fuera de la superficie)', kinds: ['neon', 'drawOn', 'chase'] },
+  { title: 'Luz y color', kinds: ['flicker', 'glow', 'sweep', 'rainbow', 'solid'] },
+  { title: 'Ambiente', kinds: ['lightning', 'fire', 'fog', 'rain', 'snow', 'stars', 'fireflies'] },
+];
 
 function CharacterPicker({ onPick, onClose }: { onPick: (chId: string, animId: string) => void; onClose: () => void }) {
   const project = useStore((s) => s.project)!;
@@ -708,6 +745,12 @@ function ClipInspector({ clip }: { clip: Clip }) {
               <Field label="Color"><input type="color" value={clip.source.color} onChange={(e) => mut('Color', (c) => { if (c.source.type === 'effect') c.source.color = e.target.value; })} /></Field>
               <Field label="Color 2"><input type="color" value={clip.source.color2} onChange={(e) => mut('Color', (c) => { if (c.source.type === 'effect') c.source.color2 = e.target.value; })} /></Field>
             </div>
+            {(CONTOUR_EFFECTS as readonly string[]).includes(clip.source.effect) && (
+              <Field label="Grosor del contorno"><NumberInput value={clip.source.width} min={0.5} max={80} step={0.5} suffix="px" onCommit={(v) => mut('Grosor', (c) => { if (c.source.type === 'effect') c.source.width = v; })} /></Field>
+            )}
+            {(FACADE_EFFECTS as readonly string[]).includes(clip.source.effect) && (
+              <Toggle checked={clip.source.space === 'facade'} onChange={(v) => mut('Espacio del efecto', (c) => { if (c.source.type === 'effect') c.source.space = v ? 'facade' : 'surface'; })} label="Continuo en toda la fachada (sincronizado entre ventanas)" />
+            )}
           </>
         )}
         <Field label="Superficie">
@@ -752,6 +795,12 @@ function ClipInspector({ clip }: { clip: Clip }) {
           <Field label="Capa"><NumberInput value={clip.z} step={1} precision={0} onCommit={(v) => mut('Capa', (c) => { c.z = v; })} /></Field>
         </div>
         <Toggle checked={clip.flipX} onChange={(v) => mut('Voltear', (c) => { c.flipX = v; })} label="Voltear horizontalmente" />
+        {clip.source.type === 'asset' && (
+          <div className="row2">
+            <Toggle checked={clip.silhouette} onChange={(v) => mut('Silueta', (c) => { c.silhouette = v; })} label="Silueta (sombra chinesca)" data-testid="clip-silhouette" />
+            {clip.silhouette && <input type="color" value={clip.silhouetteColor} onChange={(e) => mut('Color de silueta', (c) => { c.silhouetteColor = e.target.value; })} />}
+          </div>
+        )}
       </Panel>
       <div className="btn-row">
         <Button icon={<Copy size={15} />} onClick={() => {

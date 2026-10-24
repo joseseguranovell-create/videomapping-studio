@@ -136,6 +136,28 @@ Así puedes usar directamente el MP4 o la imagen que te dé la IA. Si se come pa
 
 Para que un personaje **pase de una ventana a otra**, pon un clip «Salir por la derecha» o «Cruzar» en la primera ventana y, justo después, otro «Entrar por la izquierda» en la siguiente. El espectáculo de ejemplo lo hace con el murciélago.
 
+### Efectos profesionales y plantillas
+
+**Efecto** (en la línea de tiempo) incluye tres grupos:
+
+- **Bordes y contornos**: contorno de neón, contorno que se dibuja y luces de feria. Siguen el borde exacto de cada ventana o puerta (también arcos y polígonos) y **su halo ilumina la pared de alrededor**. Ajusta el grosor en el panel derecho.
+- **Luz y color**: luz de vela, resplandor, **barrido de luz**, arcoíris y color.
+- **Ambiente**: **relámpago**, fuego, niebla, lluvia, nieve, estrellas y luciérnagas. Con «Continuo en toda la fachada», el efecto va sincronizado entre ventanas: el relámpago ilumina toda la casa a la vez y la lluvia cae «a través» de las ventanas.
+
+**Plantilla** genera en un clic una coreografía en todas las superficies, escalonada de izquierda a derecha:
+- neón que se dibuja;
+- cascada de luz;
+- **tormenta** (con truenos sincronizados);
+- luces de feria;
+- barrido;
+- ventanas en llamas;
+- nieve mágica;
+- luciérnagas.
+
+Después puedes retocar cada clip o deshacer con Ctrl+Z.
+
+**Siluetas (sombras chinescas):** en cualquier clip de personaje, activa «Silueta». Pon debajo una luz en la ventana (luz de vela o color), y el personaje se verá como una sombra pasando por detrás de la cortina.
+
 ### Rótulos
 
 **Espectáculos → línea de tiempo → Rótulo** añade un texto animado (por defecto «¡Feliz Halloween!») en la superficie elegida. En el panel derecho puedes cambiar:

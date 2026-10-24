@@ -4,7 +4,7 @@
  */
 import type { Asset, Installation, Project, Show, Surface, Vec2 } from '../../shared/model';
 import type { OutputMode, OutputStatus } from '../../shared/api';
-import { GLRenderer, hexToRgb, type Layer, type LayerMode } from './glRenderer';
+import { GLRenderer, hexToRgb, type Layer, type LayerMode, type ContourLayer } from './glRenderer';
 import { MediaManager } from './media';
 import { AudioEngine } from './audio';
 import { IDENTITY, outputToSurfaceUV, surfaceAspect, surfaceOutline, centroid, squareToQuad, applyH } from '../../shared/geometry';
@@ -30,7 +30,9 @@ export interface OverlayOptions {
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
   solid: 'solid', glow: 'glow', stars: 'stars', flicker: 'flicker', rainbow: 'rainbow', testPattern: 'testPattern',
+  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies',
 };
+const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase']);
 
 export class Player {
   readonly r: GLRenderer;
@@ -333,6 +335,7 @@ export class Player {
       arr.push(e);
     }
     const keepVideos = new Set<string>();
+    const contoursToDraw: { outline: Vec2[]; layers: ContourLayer[] }[] = [];
     for (const s of inst.surfaces) {
       const list = bySurface.get(s.id);
       if (!list || !s.visible) continue;
@@ -341,12 +344,31 @@ export class Player {
       const A = surfaceAspect(s, inst.output);
       list.sort((a, b) => a.order - b.order);
       const layers: Layer[] = [];
+      const contours: ContourLayer[] = [];
       for (const e of list) {
+        if (e.source.type === 'effect' && CONTOUR_KINDS.has(e.source.effect)) {
+          if (e.opacity > 0) {
+            contours.push({
+              mode: e.source.effect as ContourLayer['mode'],
+              opacity: e.opacity * e.scale,
+              color: hexToRgb(e.source.color),
+              color2: hexToRgb(e.source.color2, [1, 1, 1]),
+              width: e.source.width,
+              time: e.clipTime,
+              duration: e.clip.duration,
+            });
+          }
+          continue;
+        }
         const layer = this.layerFor(e, A, keepVideos);
         if (layer) layers.push(layer);
       }
       this.r.drawSurface(surfaceOutline(s), H, this.exclusions(inst, s), layers);
+      if (contours.length) contoursToDraw.push({ outline: surfaceOutline(s), layers: contours });
     }
+    // Los contornos van encima de todo (su halo se extiende por la pared entre ventanas).
+    const globalEx = inst.masks.filter((m) => m.enabled && m.points.length >= 3).map((m) => m.points);
+    for (const c of contoursToDraw) this.r.drawContour(c.outline, globalEx, c.layers);
     this.media.releaseVideosExcept(keepVideos);
     if (ov && (this.overlay.outlines || this.overlay.labels || this.overlay.grid)) drawOverlay(ov, inst, this.overlay);
   }
@@ -362,8 +384,10 @@ export class Player {
         opacity: e.opacity,
         color: hexToRgb(e.source.color),
         color2: hexToRgb(e.source.color2, [0, 0, 0]),
-        time: e.clipTime,
+        // En modo fachada se usa el reloj de la escena: todas las ventanas van sincronizadas.
+        time: e.source.space === 'facade' ? e.clipTime + clip.start : e.clipTime,
         aspect: surfAspect,
+        global: e.source.space === 'facade',
       };
     }
     if (e.source.type === 'text') {
@@ -412,7 +436,7 @@ export class Player {
     if (!tex || e.opacity <= 0) return null;
     const k = asset.key;
     const key = k && k.mode !== 'none' ? { mode: (k.mode === 'color' ? 1 : 2) as 1 | 2, color: hexToRgb(k.color, [0, 1, 0]), threshold: k.threshold, softness: k.softness, despill: k.despill } : undefined;
-    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key };
+    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key, silhouette: clip.silhouette ? hexToRgb(clip.silhouetteColor, [0, 0, 0]) : null };
   }
 
   status(): OutputStatus {

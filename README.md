@@ -12,6 +12,7 @@ Funciona sin conexión, sin suscripciones y sin depender de servicios de IA. Cad
 - **Espectáculos**: escenas con duración, transiciones (corte, fundido, fundido cruzado) y una línea de tiempo por superficie con clips que se arrastran. También sonidos puntuales, música continua, bucle para toda la noche y previsualización.
 - **Personajes**: cada uno agrupa varias animaciones (recurso + movimiento: flotar, saltar, saludar, asomarse, cruzar…).
 - **Biblioteca**: importación con miniaturas y metadatos, búsqueda, etiquetas, colecciones, detección de transparencia, recursos ausentes y relocalización, y paquetes reutilizables (importar y exportar).
+- **Efectos profesionales**: contornos de neón que se dibujan, luces de feria, relámpagos sincronizados con truenos, fuego, niebla, lluvia, nieve, barridos de luz, siluetas (sombras chinescas) y **plantillas de escena** de un clic.
 - **Rótulos de texto animados** y **quitar fondo** (croma verde, blanco o negro) para usar directamente vídeos e imágenes generados con IA.
 - **Una o dos pantallas**: pantalla completa siempre, «Preparar» y empezar con Espacio, y **calibración directa sobre la imagen proyectada** con ratón y teclado.
 - **Control por agentes de IA** (Claude Desktop/Code vía MCP o HTTP local): ver [docs/AGENTES.md](docs/AGENTES.md).

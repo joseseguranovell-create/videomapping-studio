@@ -351,7 +351,7 @@ try {
         const sh = d.shows.find((x) => x.name === 'Halloween 2026');
         const door = d.installations[0].surfaces[2];
         sh.scenes[0].clips = sh.scenes[0].clips.filter((c) => c.surfaceId !== door.id);
-        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0 });
+        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0, silhouette: false, silhouetteColor: '#000000' });
       });
     });
     await out.evaluate(() => { window.__vmPlayer.seek(2); void window.__vmPlayer.play(); });
@@ -480,7 +480,7 @@ try {
     await prompt(win, 'Ejemplo Halloween');
     await win.waitForSelector('[data-testid="timeline"]', { timeout: 15000 });
     const s = await S(win);
-    assert(s.project.shows[0].scenes.length === 7 && s.project.installations[0].surfaces.length === 8, 'espectáculo de ejemplo con 7 escenas y 8 superficies');
+    assert(s.project.shows[0].scenes.length === 10 && s.project.installations[0].surfaces.length === 8, 'espectáculo de ejemplo con 10 escenas y 8 superficies');
     const [w] = await Promise.all([app.waitForEvent('window'), win.click('[data-testid="output-open"]')]);
     out = w;
     await out.waitForFunction(() => !!window.__vmPlayer);
@@ -490,9 +490,10 @@ try {
     const r = await out.evaluate(async () => {
       const p = window.__vmPlayer;
       let maxVideos = 0, maxTex = 0;
-      for (let cycle = 0; cycle < 5; cycle++) {
-        for (let t = 0; t < 64; t += 0.5) {
-          p.seek(cycle * 64 + t);
+      const period = p.duration() + p.currentShow().loopGap;
+      for (let cycle = 0; cycle < 4; cycle++) {
+        for (let t = 0; t < period; t += 0.5) {
+          p.seek(cycle * period + t);
           p.renderFrame();
           maxVideos = Math.max(maxVideos, p.media.activeVideos);
           maxTex = Math.max(maxTex, p.r.textureCount);
@@ -656,22 +657,59 @@ try {
     assert(after === before - 1, `los cambios del agente se deshacen (${before} → ${after})`);
   });
 
+  await step('18e. Contornos de neón (brillan fuera de la ventana), plantillas y siluetas', async () => {
+    const { url, token } = JSON.parse(fs.readFileSync(path.join(userData, 'agent-api.json'), 'utf8'));
+    const api = async (accion, parametros = {}) => (await fetch(`${url}/api`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ accion, parametros }) })).json();
+    const sh = (await api('estado')).resultado.espectaculos[0];
+    const sc = await api('crear_escena', { espectaculoId: sh.id, nombre: 'Prueba efectos', duracion: 8, transicion: 'cut', posicion: 0 });
+    const esc = sc.resultado.escenaId;
+    assert((await api('anadir_clip', { espectaculoId: sh.id, escenaId: esc, superficieId: 'Ventana alta izquierda', efecto: 'neon', inicio: 0, duracion: 8, fundidoEntrada: 0 })).ok, 'añadir neón');
+    // silueta de Boo sobre luz de vela en la ventana central
+    assert((await api('anadir_clip', { espectaculoId: sh.id, escenaId: esc, superficieId: 'Ventana alta central', efecto: 'solid', color: '#ffb347', inicio: 0, duracion: 8, fundidoEntrada: 0, capa: -5 })).ok, 'fondo');
+    assert((await api('anadir_clip', { espectaculoId: sh.id, escenaId: esc, superficieId: 'Ventana alta central', personajeId: 'Boo, el fantasma', animacion: 'Flotar', inicio: 0, duracion: 8, fundidoEntrada: 0, movimiento: 'none', silueta: true, colorSilueta: '#000000', escala: 0.9 })).ok, 'silueta');
+    const tp = await api('aplicar_plantilla', { espectaculoId: sh.id, escenaId: esc, plantilla: 'lucesFeria', inicio: 6 });
+    assert(tp.ok && tp.resultado.clips === 8, `plantilla en las 8 superficies (${JSON.stringify(tp)})`);
+    await out.evaluate(() => { window.__vmPlayer.pause(); window.__vmPlayer.seek(2); });
+    await out.waitForTimeout(600);
+    const inst = (await S(win)).project.installations[0];
+    const sf = (n) => inst.surfaces.find((x) => x.name === n);
+    const L = sf('Ventana alta izquierda');
+    const x0 = L.quad[0].x * 1920, y0 = L.quad[0].y * 1080, y1 = L.quad[2].y * 1080, x1 = L.quad[1].x * 1920;
+    const my = (y0 + y1) / 2;
+    const [edge, outside, inside, far] = await outputPixel(out, [[x0, my], [x0 - 14, my], [(x0 + x1) / 2, my], [x0 - 200, my]]);
+    assert(bright(edge) > 150, `línea de neón sobre el borde (${edge})`);
+    assert(bright(outside) > 25, `el halo ilumina fuera de la ventana (${outside})`);
+    assert(bright(inside) < 25, `el interior queda oscuro (${inside})`);
+    assert(bright(far) < 8, `lejos del contorno no hay luz (${far})`);
+    const C = sf('Ventana alta central');
+    const cx = ((C.quad[0].x + C.quad[1].x) / 2) * 1920, cy = ((C.quad[0].y + C.quad[2].y) / 2) * 1080;
+    let body, corner;
+    for (let k = 0; k < 20; k++) { [body, corner] = await outputPixel(out, [[cx, cy + 10], [C.quad[0].x * 1920 + 5, C.quad[0].y * 1080 + 5]]); if (bright(body) < 30) break; await out.waitForTimeout(200); }
+    assert(bright(corner) > 120, `fondo iluminado (${corner})`);
+    assert(bright(body) < 30, `la silueta de Boo tapa la luz (${body})`);
+    for (let i = 0; i < 5; i++) await api('deshacer');
+  });
+
   if (LONG) {
-    await step('19. Reproducción en tiempo real de un ciclo completo con bucle (~70 s)', async () => {
+    await step('19. Reproducción en tiempo real de un ciclo completo con bucle', async () => {
       await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), (await S(win)).project.shows[0].id);
       await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
       await out.evaluate(() => { window.__vmPlayer.seek(0); void window.__vmPlayer.play(); });
+      const period = await out.evaluate(() => window.__vmPlayer.duration() + window.__vmPlayer.currentShow().loopGap);
+      const nSamples = Math.ceil((period + 6) / 5);
       const samples = [];
-      for (let i = 0; i < 14; i++) {
+      const t0 = Date.now();
+      for (let i = 0; i < nSamples; i++) {
         await out.waitForTimeout(5000);
-        samples.push(await out.evaluate(() => { const s = window.__vmPlayer.status(); return { t: s.time, c: s.cycleTime, fps: s.fps, v: s.activeVideos, e: s.errors.length, a: window.__vmPlayer.audio.activeCount }; }));
+        samples.push(await out.evaluate(() => { const s = window.__vmPlayer.status(); return { t: s.time, c: s.cycleTime, fps: s.fps, v: s.activeVideos, e: s.errors.length, a: window.__vmPlayer.audio.activeCount, w: Date.now() }; }));
       }
       console.log('      ' + samples.map((x) => `t=${x.t.toFixed(1)} c=${x.c.toFixed(1)} fps=${Math.round(x.fps)} v=${x.v} audio=${x.a}`).join('\n      '));
       const last = samples[samples.length - 1];
-      assert(last.t > 68, `el reloj avanza (${last.t})`);
+      assert(last.t > period, `el reloj avanza (${last.t})`);
       assert(last.c < 10, `el espectáculo vuelve a empezar en bucle (ciclo ${last.c})`);
       assert(samples.every((x) => x.e === 0), 'sin errores durante la reproducción');
-      const drift = Math.abs(last.t - 70);
+      // deriva = tiempo del reproductor frente a tiempo real transcurrido (desde que se pidió reproducir)
+      const drift = Math.abs(last.t - (last.w - t0) / 1000);
       assert(drift < 1.5, `deriva del reloj respecto al tiempo real < 1,5 s (${drift.toFixed(2)})`);
     });
   }
