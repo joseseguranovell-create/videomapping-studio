@@ -237,7 +237,7 @@ void main() {
       p.x += p.y * 0.12;
       float cx = floor(p.x);
       float off = hash1(cx * 1.7 + float(l) * 13.0);
-      float y = fract(p.y * 0.25 + t * (1.3 + off) + off * 10.0);
+      float y = fract(p.y * 0.25 - t * (1.3 + off) + off * 10.0);
       float dx = abs(fract(p.x) - 0.5);
       a += smoothstep(0.08, 0.0, dx) * smoothstep(0.0, 0.25, y) * smoothstep(0.45, 0.25, y) * (0.5 + 0.5 * off);
     }
