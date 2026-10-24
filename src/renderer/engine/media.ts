@@ -3,56 +3,67 @@
  * y texturas asociadas. Libera los recursos cuando un clip deja de estar activo.
  */
 import type { Asset, ClipSource } from '../../shared/model';
+import { fontFor } from './fonts';
 
 type TextSource = Extract<ClipSource, { type: 'text' }>;
 
-const FONT_STACKS: Record<TextSource['font'], string> = {
-  divertida: "'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive",
-  gruesa: "'Segoe UI Black', 'Arial Black', Impact, sans-serif",
-  elegante: "Georgia, 'Times New Roman', serif",
-  manuscrita: "'Segoe Print', 'Segoe Script', 'Brush Script MT', cursive",
-  simple: "'Segoe UI', system-ui, Arial, sans-serif",
-};
+function mixHex(hex: string, to: [number, number, number], k: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  const n = m ? parseInt(m[1], 16) : 0xffffff;
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v, i) => Math.round(v + (to[i] - v) * k));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
 
-/** Dibuja un rótulo en un lienzo (contorno, halo y degradado suave). */
+/**
+ * Dibuja un rótulo en un lienzo ajustado a las letras: halo del color del texto, contorno oscuro
+ * (en la proyección separa las letras de la pared) y relleno con degradado de arriba (claro) a abajo (intenso).
+ */
 export function renderText(src: TextSource): HTMLCanvasElement {
   const size = 160;
   const lines = (src.text || ' ').split('\n');
-  const font = `${src.bold ? '700' : '400'} ${size}px ${FONT_STACKS[src.font] ?? FONT_STACKS.simple}`;
+  const { css, overhang } = fontFor(src.font, size);
   const m = document.createElement('canvas').getContext('2d')!;
-  m.font = font;
-  const pad = Math.round(size * 0.45);
-  const lineH = Math.round(size * 1.15);
-  const w = Math.max(1, ...lines.map((l) => Math.ceil(m.measureText(l).width))) + pad * 2;
-  const h = lineH * lines.length + pad * 2;
+  m.font = css;
+  const metrics = lines.map((l) => m.measureText(l));
+  const asc = Math.max(...metrics.map((x) => x.actualBoundingBoxAscent || size * 0.75));
+  const desc = Math.max(...metrics.map((x) => x.actualBoundingBoxDescent || size * 0.2));
+  const lineH = Math.round((asc + desc) * 1.12);
+  const pad = Math.round(size * ((src.glow ? 0.3 : 0.08) + overhang * 0.5));
+  const w = Math.max(1, ...metrics.map((x) => Math.ceil((x.actualBoundingBoxLeft || 0) + (x.actualBoundingBoxRight || x.width)))) + pad * 2;
+  const h = Math.ceil(lineH * (lines.length - 1) + asc + desc) + pad * 2;
   const c = document.createElement('canvas');
   c.width = Math.min(4096, w);
   c.height = Math.min(2048, h);
   const g = c.getContext('2d')!;
-  g.font = font;
+  g.font = css;
   g.textAlign = 'center';
-  g.textBaseline = 'middle';
+  g.textBaseline = 'alphabetic';
   g.lineJoin = 'round';
-  const y0 = pad + lineH / 2;
+  g.miterLimit = 2;
+  const cx = c.width / 2;
   lines.forEach((line, i) => {
-    const y = y0 + i * lineH;
+    const base = pad + asc + i * lineH;
     if (src.glow) {
       g.save();
-      g.shadowColor = src.color;
-      g.shadowBlur = size * 0.4;
       g.fillStyle = src.color;
-      g.fillText(line, c.width / 2, y);
+      g.shadowColor = src.color;
+      g.shadowBlur = size * 0.45;
+      g.globalAlpha = 0.85;
+      g.fillText(line, cx, base);
+      g.shadowBlur = size * 0.16;
+      g.globalAlpha = 1;
+      g.fillText(line, cx, base);
       g.restore();
     }
-    g.lineWidth = size * 0.16;
+    g.lineWidth = size * 0.11;
     g.strokeStyle = src.outline;
-    g.strokeText(line, c.width / 2, y);
-    const grad = g.createLinearGradient(0, y - size / 2, 0, y + size / 2);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.35, src.color);
-    grad.addColorStop(1, src.color);
+    g.strokeText(line, cx, base);
+    const grad = g.createLinearGradient(0, base - asc, 0, base + desc);
+    grad.addColorStop(0, mixHex(src.color, [255, 255, 240], 0.55));
+    grad.addColorStop(0.45, src.color);
+    grad.addColorStop(1, mixHex(src.color, [40, 0, 20], 0.45));
     g.fillStyle = grad;
-    g.fillText(line, c.width / 2, y);
+    g.fillText(line, cx, base);
   });
   return c;
 }
@@ -222,6 +233,12 @@ export class MediaManager {
   }
 
   /** Textura de un rótulo (se genera una vez por texto y estilo). */
+  /** Vuelve a dibujar los rótulos (p. ej. cuando terminan de cargarse las fuentes). */
+  clearTexts() {
+    for (const t of this.texts.values()) this.r.deleteTexture(t.texture);
+    this.texts.clear();
+  }
+
   text(src: TextSource): { texture: WebGLTexture; aspect: number } {
     const k = JSON.stringify([src.text, src.font, src.color, src.outline, src.glow, src.bold]);
     let e = this.texts.get(k);

@@ -64,3 +64,5 @@ Documentación: [arquitectura y decisiones](docs/ARQUITECTURA.md) · [guía de u
 ## Licencia
 
 Código: MIT. Contenido del paquete «Halloween infantil» (ilustraciones, música y sonidos): CC0, creado para este proyecto.
+
+Tipos de letra de los rótulos (`src/renderer/engine/fonts/`): Creepster, Eater, Henny Penny, Griffy, Mystery Quest, Jolly Lodger, Pirata One, Cinzel Decorative, Bangers y Fredoka, todas con licencia SIL Open Font License 1.1 (el texto de cada licencia está junto a su archivo). Se incluyen en la aplicación; no se descarga nada.
