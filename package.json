@@ -1,0 +1,43 @@
+{
+  "name": "videomapping-studio",
+  "version": "0.1.0",
+  "description": "Estudio de videomapping para fachadas, ventanas y escenarios",
+  "main": "dist/main/main.cjs",
+  "scripts": {
+    "build:main": "node scripts/build-main.mjs",
+    "build:renderer": "vite build",
+    "build": "npm run build:main && npm run build:renderer",
+    "start": "npm run build && electron .",
+    "dev": "node scripts/build-main.mjs && vite build && electron .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:dir": "npm run build && electron-builder --dir"
+  },
+  "author": "Videomapping Studio",
+  "license": "MIT",
+  "dependencies": {
+    "earcut": "3.0.2",
+    "immer": "10.1.3",
+    "lucide-react": "0.548.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "zod": "4.1.12",
+    "zustand": "5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.12",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "5.1.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.0.12",
+    "esbuild": "0.25.11",
+    "typescript": "5.9.3",
+    "vite": "7.1.12",
+    "vitest": "3.2.4"
+  },
+  "productName": "Videomapping Studio",
+  "private": true
+}

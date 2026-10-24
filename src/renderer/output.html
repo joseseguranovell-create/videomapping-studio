@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: vmapp:; media-src 'self' blob: vmapp:; connect-src 'self' vmapp:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+    <title>Salida de proyección</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+      #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+      #wrap { position: relative; }
+      #wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+      #msg { position: fixed; left: 16px; bottom: 12px; color: #777; font: 13px system-ui, sans-serif; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><div id="wrap"><canvas id="gl"></canvas><canvas id="ov"></canvas></div></div>
+    <div id="msg"></div>
+    <script type="module" src="./output/main.ts"></script>
+  </body>
+</html>
