@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { layoutShow, sceneWeight, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot } from '../../src/shared/timeline';
+import { layoutShow, sceneWeight, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime } from '../../src/shared/timeline';
 import { applyH } from '../../src/shared/geometry';
 import { evaluateMotion } from '../../src/shared/motion';
 import { MOTION_PRESETS } from '../../src/shared/model';
@@ -134,5 +134,31 @@ describe('audio', () => {
     expect(boo.start).toBe(9); // escena B empieza en 8
     expect(boo.end).toBe(14);
     expect(cues.find((c) => c.assetId === 'bell')!.end).toBeNull();
+  });
+});
+
+describe('modo directo (escena en bucle)', () => {
+  it('la escena suelta se repite sin fundido de escena y conserva sus clips', () => {
+    const sh = show3();
+    const b = sh.scenes[1];
+    b.clips = [createClip('s1', { type: 'effect', effect: 'glow', color: '#ffffff', color2: '#000000', width: 6, space: 'surface' }, { start: 0, duration: 6, fadeIn: 0, fadeOut: 0 })];
+    const L = sceneLoopLayout(b);
+    expect(L.duration).toBe(6);
+    expect(L.slots[0]).toMatchObject({ fadeIn: 0, fadeOut: 0, crossIn: 0, crossOut: 0 });
+    // al principio de cada vuelta ya se ve entera (en el espectáculo empezaría fundiéndose)
+    expect(evaluateClipsAt(L, 0.01)[0].opacity).toBeCloseTo(1);
+    expect(b.transition.type).toBe('crossfade'); // no modifica la escena original
+  });
+  it('cuenta las vueltas', () => {
+    expect(loopTime(13, 6)).toEqual({ time: 1, loop: 2 });
+    expect(loopTime(-1, 6)).toEqual({ time: 0, loop: 0 });
+    expect(loopTime(5, 0)).toEqual({ time: 0, loop: 0 });
+  });
+  it('los sonidos de la escena van sin la música del espectáculo', () => {
+    const sh = show3();
+    sh.music = [{ id: 'm', assetId: 'mus', start: 0, volume: 1, fadeIn: 0, fadeOut: 0, loop: true }];
+    sh.scenes[2].sounds = [createSoundCue('pop', { start: 1 })];
+    const cues = sceneLoopCues(sh.scenes[2]);
+    expect(cues.map((c) => [c.assetId, c.start, c.kind])).toEqual([['pop', 1, 'sfx']]);
   });
 });

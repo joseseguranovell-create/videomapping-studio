@@ -11,6 +11,8 @@ interface Playing {
   src: AudioBufferSourceNode;
   gain: GainNode;
   cycle: number;
+  /** Grupo de sonidos (el modo directo usa uno por escena para poder apagarlos al cambiar). */
+  group: string;
 }
 
 export class AudioEngine {
@@ -91,12 +93,12 @@ export class AudioEngine {
    * @param cycleStartCtx tiempo de AudioContext en el que empieza el ciclo actual del espectáculo
    * @param cycleNow tiempo actual dentro del ciclo
    */
-  sync(cues: AudioCue[], assets: Map<string, Asset>, base: string, key: string, cycle: number, cycleStartCtx: number, cycleNow: number, masterVolume: number) {
+  sync(cues: AudioCue[], assets: Map<string, Asset>, base: string, key: string, cycle: number, cycleStartCtx: number, cycleNow: number, masterVolume: number, group = '') {
     const ctx = this.ctx;
     if (!ctx || !this.master) return;
     const now = ctx.currentTime;
     for (const cue of cues) {
-      const pid = `${cycle}:${cue.id}`;
+      const pid = `${group}${cycle}:${cue.id}`;
       if (this.playing.has(pid)) continue;
       // Solo se programan los cues que empiezan pronto (o ya han empezado y siguen activos).
       if (cue.start > cycleNow + 1.0) continue;
@@ -108,7 +110,7 @@ export class AudioEngine {
       const naturalEnd = cue.loop ? Infinity : cue.start + buf.duration;
       const end = Math.min(cue.end ?? Infinity, naturalEnd);
       if (end <= cycleNow) {
-        this.playing.set(pid, { src: null as any, gain: null as any, cycle }); // marcado como terminado
+        this.playing.set(pid, { src: null as any, gain: null as any, cycle, group }); // marcado como terminado
         continue;
       }
       const when = cycleStartCtx + cue.start;
@@ -140,7 +142,7 @@ export class AudioEngine {
         g.linearRampToValueAtTime(0, endCtx);
         src.stop(endCtx + 0.02);
       }
-      const entry: Playing = { src, gain, cycle };
+      const entry: Playing = { src, gain, cycle, group };
       src.onended = () => {
         try { gain.disconnect(); } catch { /* ignorar */ }
         // Se conserva la entrada (para no volver a programarlo en este ciclo) pero sin nodos.
@@ -149,14 +151,25 @@ export class AudioEngine {
       this.playing.set(pid, entry);
     }
     // Limpieza de entradas de ciclos antiguos.
-    for (const [pid, p] of this.playing) if (p.cycle < cycle - 1) this.playing.delete(pid);
+    for (const [pid, p] of this.playing) if (p.group === group && p.cycle < cycle - 1) this.playing.delete(pid);
   }
 
   /** Detiene todos los sonidos con un fundido muy breve para evitar chasquidos. */
   stopAll(fade = 0.05) {
+    this.stopWhere(() => true, fade);
+    this.playing.clear();
+  }
+
+  /** Apaga con fundido los sonidos de los grupos que cumplan la condición. */
+  stopGroups(match: (group: string) => boolean, fade = 0.5) {
+    this.stopWhere((p) => match(p.group), fade);
+    for (const [pid, p] of this.playing) if (match(p.group)) this.playing.delete(pid);
+  }
+
+  private stopWhere(match: (p: Playing) => boolean, fade: number) {
     const ctx = this.ctx;
     for (const p of this.playing.values()) {
-      if (!p.src) continue;
+      if (!p.src || !match(p)) continue;
       try {
         if (ctx) {
           p.gain.gain.cancelScheduledValues(ctx.currentTime);
@@ -168,7 +181,6 @@ export class AudioEngine {
         /* ya detenido */
       }
     }
-    this.playing.clear();
   }
 
   get activeCount() {

@@ -63,6 +63,9 @@ api.onCommand((cmd: OutputCommand) => {
     case 'audio':
       player.setAudio(cmd.enabled, cmd.volume);
       break;
+    case 'live':
+      ui.live(cmd.target);
+      break;
     case 'ping':
       break;
   }

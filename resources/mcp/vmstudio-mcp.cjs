@@ -104,6 +104,7 @@ const TOOLS = [
   { name: 'pausar', description: 'Pausa la reproducción.', inputSchema: S({}), accion: 'pausar' },
   { name: 'detener', description: 'Detiene y vuelve al principio.', inputSchema: S({}), accion: 'detener' },
   { name: 'ir_a', description: 'Salta a un segundo del espectáculo.', inputSchema: S({ segundos: num('') }, ['segundos']), accion: 'ir_a' },
+  { name: 'escena_en_bucle', description: 'Modo directo: repite una escena en bucle hasta que se pida otra (con fundido). Elegir una escena la pone en marcha.', inputSchema: S({ escena: { type: ['number', 'string'], description: 'Número (desde 1) o nombre de la escena' }, accion: str('escena (por defecto si hay «escena»), siguiente, anterior, mantener (la actual) o salir (seguir el espectáculo)'), espectaculoId: str('') }), accion: 'escena_en_bucle' },
   { name: 'guardar', description: 'Guarda el proyecto.', inputSchema: S({}), accion: 'guardar' },
   { name: 'deshacer', description: 'Deshace el último cambio.', inputSchema: S({}), accion: 'deshacer' },
   { name: 'accion', description: 'Llamada genérica a cualquier acción de la API (ver docs/AGENTES.md), p. ej. obtener_proyecto o reemplazar_proyecto.', inputSchema: S({ accion: str('Nombre de la acción'), parametros: { type: 'object' } }, ['accion']), accion: null },

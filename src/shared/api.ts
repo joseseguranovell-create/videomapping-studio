@@ -106,7 +106,12 @@ export type OutputCommand =
   | { type: 'transport'; action: 'play' | 'pause' | 'stop'; at?: number }
   | { type: 'seek'; time: number }
   | { type: 'audio'; enabled: boolean; volume: number }
+  /** Modo directo: escena en bucle hasta que se pida otra. */
+  | { type: 'live'; target: LiveTarget }
   | { type: 'ping' };
+
+/** Índice de escena (entre las activas), siguiente/anterior, 'hold' para quedarse en la actual o null para salir. */
+export type LiveTarget = number | 'next' | 'prev' | 'hold' | null;
 
 export type OutputMode =
   | { kind: 'black' }
@@ -128,6 +133,8 @@ export interface OutputStatus {
   playing: boolean;
   time: number;
   cycleTime: number;
+  /** Modo directo activo: escena que se repite. */
+  live?: { index: number; count: number; name: string } | null;
   duration: number;
   sceneName: string | null;
   fps: number;

@@ -2,13 +2,13 @@
  * Reproductor: une reloj, línea de tiempo, medios, audio y renderizado.
  * Se usa igual en la ventana de salida (proyector) y en la previsualización del editor.
  */
-import type { Asset, Installation, Project, Show, Surface, Vec2 } from '../../shared/model';
-import type { OutputMode, OutputStatus } from '../../shared/api';
+import type { Asset, Installation, Project, Scene, Show, Surface, Vec2 } from '../../shared/model';
+import type { LiveTarget, OutputMode, OutputStatus } from '../../shared/api';
 import { GLRenderer, hexToRgb, type Layer, type LayerMode, type ContourLayer } from './glRenderer';
 import { MediaManager } from './media';
 import { AudioEngine } from './audio';
 import { IDENTITY, outputToSurfaceUV, surfaceAspect, surfaceOutline, centroid, squareToQuad, applyH } from '../../shared/geometry';
-import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
+import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
 
 export interface PlayerOptions {
   audio: boolean;
@@ -33,6 +33,21 @@ const EFFECT_TO_MODE: Record<string, LayerMode> = {
   sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies',
 };
 const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase']);
+/** Fundido entre escenas en el modo directo (segundos). */
+const LIVE_FADE = 1;
+const MUSIC = 'M:';
+
+interface LiveState {
+  /** Índice entre las escenas activas del espectáculo. */
+  index: number;
+  /** Tiempo del reproductor en que empezó a repetirse. */
+  since: number;
+  serial: number;
+  prev: { index: number; since: number; switchAt: number } | null;
+  /** La música sigue su curso sin cortes: referencia de tiempo y ciclo con que sonaba. */
+  musicSince: number;
+  musicCycle: number;
+}
 
 export class Player {
   readonly r: GLRenderer;
@@ -66,6 +81,9 @@ export class Player {
   private lastSceneName: string | null = null;
   /** Hay que redibujar aunque no se esté reproduciendo (cambio de documento, modo, posición…). */
   private needsRender = true;
+  private live: LiveState | null = null;
+  private liveSerial = 0;
+  private liveCache = new WeakMap<Scene, { layout: ShowLayout; cues: AudioCue[] }>();
   private lastPausedRender = 0;
 
   constructor(readonly canvas: HTMLCanvasElement, readonly opts: PlayerOptions) {
@@ -143,6 +161,7 @@ export class Player {
   }
 
   stop() {
+    this.live = null;
     this.playing = false;
     this.baseShow = 0;
     this.audio.stopAll();
@@ -151,12 +170,80 @@ export class Player {
 
   seek(t: number) {
     this.needsRender = true;
+    this.live = null;
     const was = this.playing;
     this.audio.stopAll(0.03);
     this.baseShow = Math.max(0, t);
     this.baseClock = this.clock();
     this.playing = was;
     this.lastCycle = -1;
+  }
+
+  // ───────── modo directo ─────────
+
+  /**
+   * Modo directo: la escena elegida se repite en bucle hasta que se pide otra (con fundido entre ambas).
+   * 'hold' congela en bucle la escena que está sonando; null sale y el espectáculo sigue desde esa escena.
+   */
+  setLive(target: LiveTarget) {
+    const show = this.currentShow();
+    if (!show) return;
+    const { layout } = this.layoutFor(show);
+    const slots = layout.slots;
+    if (!slots.length) return;
+    const now = this.time;
+    if (target === null) {
+      if (!this.live) return;
+      const slot = slots[Math.min(this.live.index, slots.length - 1)];
+      this.seek(slot.start + (slot.crossIn || slot.fadeIn));
+      return;
+    }
+    const ct = cycleTime(show, layout, now);
+    const curIdx = this.live ? this.live.index : Math.max(0, slots.indexOf(activeSlot(layout, ct.time) ?? slots[0]));
+    let idx: number;
+    if (target === 'hold') {
+      if (this.live) return;
+      const slot = slots[curIdx];
+      // Se queda en la escena actual sin saltos: el bucle empieza donde empezó la escena.
+      this.audio.stopGroups((g) => g === '', 0.3);
+      this.live = { index: curIdx, since: now - Math.max(0, ct.time - slot.start), serial: ++this.liveSerial, prev: null, musicSince: now - ct.time, musicCycle: ct.cycle };
+      this.needsRender = true;
+      return;
+    }
+    if (target === 'next') idx = curIdx + 1;
+    else if (target === 'prev') idx = curIdx - 1;
+    else idx = target;
+    idx = ((idx % slots.length) + slots.length) % slots.length;
+    const old = this.live;
+    if (old) this.audio.stopGroups((g) => g === `L${old.serial}:`, LIVE_FADE);
+    else this.audio.stopGroups((g) => g === '', 0.4);
+    this.live = {
+      index: idx,
+      since: now,
+      serial: ++this.liveSerial,
+      prev: old ? { index: old.index, since: old.since, switchAt: now } : null,
+      musicSince: old ? old.musicSince : now - ct.time,
+      musicCycle: old ? old.musicCycle : ct.cycle,
+    };
+    this.needsRender = true;
+  }
+
+  liveInfo(): { index: number; count: number; name: string } | null {
+    const show = this.currentShow();
+    if (!this.live || !show) return null;
+    const slots = this.layoutFor(show).layout.slots;
+    const slot = slots[Math.min(this.live.index, slots.length - 1)];
+    return slot ? { index: this.live.index, count: slots.length, name: slot.scene.name } : null;
+  }
+
+  private liveFor(scene: Scene) {
+    let e = this.liveCache.get(scene);
+    if (!e) {
+      const layout = sceneLoopLayout(scene);
+      e = { layout, cues: sceneLoopCues(scene, layout) };
+      this.liveCache.set(scene, e);
+    }
+    return e;
   }
 
   setAudio(enabled: boolean, volume: number) {
@@ -306,6 +393,7 @@ export class Player {
 
   private renderShow(inst: Installation, ov: CanvasRenderingContext2D | null) {
     const show = this.currentShow()!;
+    if (this.live) return this.renderLive(inst, ov, show);
     const { layout, cues } = this.layoutFor(show);
     const abs = this.time;
     const ct = cycleTime(show, layout, abs);
@@ -324,10 +412,47 @@ export class Player {
     // Audio
     if (this.playing && this.audio.ctx && !ct.inGap) {
       const cycleStartCtx = this.audio.ctx.currentTime - t;
-      this.audio.sync(cues, this.assets, this.base, this.key, ct.cycle, cycleStartCtx, t, show.masterVolume);
+      // La música va en su propio grupo para que el modo directo la mantenga sin cortes.
+      this.audio.sync(cues.filter((c) => c.kind === 'music'), this.assets, this.base, this.key, ct.cycle, cycleStartCtx, t, show.masterVolume, MUSIC);
+      this.audio.sync(cues.filter((c) => c.kind !== 'music'), this.assets, this.base, this.key, ct.cycle, cycleStartCtx, t, show.masterVolume);
     }
 
     const evals = ct.inGap ? [] : evaluateClipsAt(layout, t, 1.5);
+    this.drawEvals(inst, ov, evals);
+  }
+
+  private renderLive(inst: Installation, ov: CanvasRenderingContext2D | null, show: Show) {
+    const { layout: full, cues: fullCues } = this.layoutFor(show);
+    const slots = full.slots;
+    const live = this.live!;
+    if (!slots.length) { this.live = null; return; }
+    if (live.index >= slots.length) live.index = slots.length - 1;
+    const now = this.time;
+    const scene = slots[live.index].scene;
+    const cur = this.liveFor(scene);
+    const lt = loopTime(now - live.since, cur.layout.duration);
+    let evals = evaluateClipsAt(cur.layout, lt.time, 1.5);
+    this.lastSceneName = scene.name;
+    const k = live.prev ? Math.min(1, (now - live.prev.switchAt) / LIVE_FADE) : 1;
+    if (live.prev && k < 1 && live.prev.index < slots.length) {
+      // Fundido: la escena anterior sigue moviéndose mientras se apaga.
+      const p = this.liveFor(slots[live.prev.index].scene);
+      const pt = loopTime(now - live.prev.since, p.layout.duration);
+      const before = evaluateClipsAt(p.layout, pt.time, 0).map((e) => ({ ...e, key: `prev:${e.key}`, opacity: e.opacity * (1 - k) }));
+      evals = [...before, ...evals.map((e) => ({ ...e, opacity: e.opacity * k, order: e.order + 100000 }))];
+      this.needsRender = true;
+    } else if (live.prev) live.prev = null;
+
+    if (this.playing && this.audio.ctx && full.duration > 0) {
+      const nowCtx = this.audio.ctx.currentTime;
+      const m = loopTime(now - live.musicSince, full.duration);
+      this.audio.sync(fullCues.filter((c) => c.kind === 'music'), this.assets, this.base, this.key, live.musicCycle + m.loop, nowCtx - m.time, m.time, show.masterVolume, MUSIC);
+      this.audio.sync(cur.cues, this.assets, this.base, this.key, lt.loop, nowCtx - lt.time, lt.time, show.masterVolume, `L${live.serial}:`);
+    }
+    this.drawEvals(inst, ov, evals);
+  }
+
+  private drawEvals(inst: Installation, ov: CanvasRenderingContext2D | null, evals: ClipEval[]) {
     const bySurface = new Map<string, ClipEval[]>();
     for (const e of evals) {
       let arr = bySurface.get(e.surfaceId);
@@ -450,6 +575,7 @@ export class Player {
       playing: this.playing,
       time: abs,
       cycleTime: ct.time,
+      live: this.liveInfo(),
       duration: layout?.duration ?? 0,
       sceneName: this.lastSceneName,
       fps: Math.round(this.fps * 10) / 10,

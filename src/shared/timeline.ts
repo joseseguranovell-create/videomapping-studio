@@ -75,6 +75,26 @@ export function sceneWeight(slot: SceneSlot, t: number): number {
   return Math.max(0, Math.min(1, w));
 }
 
+// ───────────────────────── Modo directo (una escena en bucle) ─────────────────────────
+
+/** Maqueta de una sola escena que se repite sin fundidos de escena (los clips conservan los suyos). */
+export function sceneLoopLayout(scene: Scene): ShowLayout {
+  return layoutShow({ scenes: [{ ...scene, enabled: true, transition: { type: 'cut', duration: 0 } }] } as Show);
+}
+
+/** Sonidos de una escena suelta (la música del espectáculo va aparte y no se corta al cambiar de escena). */
+export function sceneLoopCues(scene: Scene, layout: ShowLayout = sceneLoopLayout(scene)): AudioCue[] {
+  return audioCues({ scenes: layout.slots.map((s) => s.scene), music: [] } as unknown as Show, layout);
+}
+
+/** Tiempo dentro de la escena y número de repetición, a partir del tiempo desde que empezó a repetirse. */
+export function loopTime(elapsed: number, duration: number): { time: number; loop: number } {
+  if (duration <= 0) return { time: 0, loop: 0 };
+  const e = Math.max(0, elapsed);
+  const loop = Math.floor(e / duration);
+  return { time: e - loop * duration, loop };
+}
+
 /** Convierte tiempo absoluto (que puede crecer sin límite en bucle) en tiempo dentro del ciclo. */
 export function cycleTime(show: Show, layout: ShowLayout, t: number): { time: number; cycle: number; inGap: boolean; ended: boolean } {
   const D = layout.duration;

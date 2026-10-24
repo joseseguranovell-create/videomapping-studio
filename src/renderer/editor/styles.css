@@ -386,6 +386,11 @@ table.map-table select { width: 100%; }
 .chip { border: 1px solid var(--line2); background: var(--panel2); border-radius: 14px; padding: 4px 12px; cursor: pointer; font-size: 12px; }
 .chip.on { border-color: var(--ok); color: #bbf7d0; }
 .chip:disabled { opacity: 0.45; cursor: default; }
+.live-panel { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line2); }
+.live-panel .play-scenes { margin-top: 8px; }
+.live-panel .btn-row { margin-top: 10px; }
+.chip.live.on { border-color: var(--accent); color: var(--text); background: color-mix(in srgb, var(--accent) 22%, var(--panel2)); }
+.chip kbd { font-size: 10px; padding: 0 4px; margin-right: 2px; border: 1px solid var(--line2); border-radius: 3px; opacity: 0.8; }
 
 /* ── ajustes ── */
 .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; padding: 16px; align-content: start; width: 100%; }

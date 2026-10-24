@@ -1,6 +1,6 @@
 /** Reproducción en directo: control del espectáculo en el proyector y comprobaciones previas. */
 import { useMemo, useState } from 'react';
-import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock } from 'lucide-react';
+import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock, Repeat } from 'lucide-react';
 import { useStore } from '../store';
 import { openOutput, closeOutput, transport, vm, startScheduler, preferredOutputDisplayId, outputCoversEditor } from '../services';
 import { Button, Panel, Toggle } from '../components/ui';
@@ -118,16 +118,40 @@ export function PlaybackScreen() {
             />
             <div className="play-time">
               <span data-testid="play-time">{formatTime(status?.cycleTime ?? 0)}</span> / {formatTime(status?.duration ?? L?.duration ?? 0)}
-              <span className="scene">{live ? status?.sceneName ?? '(pausa entre repeticiones)' : '—'}</span>
+              <span className="scene">{live ? (status?.live ? `En bucle: ${status.live.name}` : status?.sceneName ?? '(pausa entre repeticiones)') : '—'}</span>
             </div>
           </div>
           {L && (
             <div className="play-scenes">
               {L.slots.map((s) => (
-                <button key={s.scene.id} className={`chip${live && status?.sceneName === s.scene.name ? ' on' : ''}`} disabled={!live} onClick={() => vm.output.send({ type: 'seek', time: s.start })} title="Saltar a esta escena">
+                <button key={s.scene.id} className={`chip${live && !status?.live && status?.sceneName === s.scene.name ? ' on' : ''}`} disabled={!live} onClick={() => vm.output.send({ type: 'seek', time: s.start })} title="Saltar a esta escena (el espectáculo sigue después)">
                   {s.scene.name}
                 </button>
               ))}
+            </div>
+          )}
+          {L && (
+            <div className="live-panel" data-testid="live-panel">
+              <h4 className="sub"><Repeat size={14} /> Modo directo: una escena en bucle hasta que elijas otra</h4>
+              <div className="play-scenes">
+                {L.slots.map((s, i) => (
+                  <button
+                    key={s.scene.id}
+                    className={`chip live${status?.live?.index === i ? ' on' : ''}`}
+                    disabled={!live}
+                    onClick={() => { vm.output.send({ type: 'live', target: i }); }}
+                    data-testid={`live-scene-${i}`}
+                    title={i < 9 ? `Tecla ${i + 1} sobre la proyección` : undefined}
+                  >
+                    {i < 9 && <kbd>{i + 1}</kbd>} {s.scene.name}
+                  </button>
+                ))}
+              </div>
+              <div className="btn-row">
+                <Button small onClick={() => vm.output.send({ type: 'live', target: 'hold' })} disabled={!live || !!status?.live} data-testid="live-hold">Repetir la escena actual (L)</Button>
+                <Button small onClick={() => vm.output.send({ type: 'live', target: null })} disabled={!status?.live} data-testid="live-exit">Seguir con el espectáculo (Intro)</Button>
+              </div>
+              <p className="muted small">Sobre la proyección: <kbd>1</kbd>–<kbd>9</kbd> escena · <kbd>→</kbd>/<kbd>←</kbd> siguiente/anterior (también con un mando de presentaciones) · <kbd>L</kbd> repetir la actual · <kbd>Intro</kbd> seguir el espectáculo. Ideal para tener una escena tranquila mientras llega la gente y lanzar la buena cuando quieras.</p>
             </div>
           )}
         </Panel>

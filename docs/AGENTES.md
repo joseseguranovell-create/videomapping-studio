@@ -92,6 +92,7 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 | `pantallas` / `abrir_salida` / `cerrar_salida` | `pantallaId?` | Proyector. |
 | `modo_salida` | `modo` (negro, calibracion, espectaculo) | |
 | `reproducir` / `pausar` / `detener` / `ir_a` | `espectaculoId?`, `desde?` / `segundos` | Transporte. |
+| `escena_en_bucle` | `escena?` (número desde 1 o nombre), `accion?` (escena, siguiente, anterior, mantener, salir), `espectaculoId?` | Modo directo: la escena se repite hasta que se pida otra. |
 | `captura` | `de?` (salida, editor) | PNG en base64 de lo que se proyecta. |
 | `guardar` / `deshacer` / `rehacer` | — | |
 

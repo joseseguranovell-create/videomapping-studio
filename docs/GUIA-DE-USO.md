@@ -24,6 +24,9 @@
 | **Espacio** | Empezar / pausar el espectáculo |
 | **Inicio** | Volver al principio |
 | **B** | Negro (otra vez: vuelve el espectáculo) |
+| En espectáculo: **1–9** | Modo directo: esa escena se repite en bucle hasta que elijas otra (si estaba preparado, empieza) |
+| En espectáculo: **→** / **←** (o **AvPág** / **RePág**) | Escena siguiente / anterior en bucle (sirve un mando de presentaciones) |
+| En espectáculo: **L** / **Intro** | Dejar en bucle la escena que suena / salir del bucle y seguir el espectáculo desde ahí |
 | **C** / **P** | Pasar a calibración / a espectáculo |
 | **F**, **F11** o doble clic | Pantalla completa sí/no |
 | **Esc** | Salir de pantalla completa |
@@ -170,8 +173,9 @@ Después puedes retocar cada clip o deshacer con Ctrl+Z.
 
 1. **Reproducción**: elige el espectáculo y revisa las **comprobaciones previas** (calibración, recursos ausentes, audio, pantallas).
 2. **Preparar** abre la salida a pantalla completa en negro y en espera; el espectáculo empieza con **Empezar** en el editor o con **Espacio** sobre la proyección. **Empezar** directamente hace las dos cosas. Con «Repetir en bucle» se repite toda la noche (con la pausa en negro configurada).
-3. **Negro** apaga la imagen al instante sin cerrar nada. La salida es independiente: puedes minimizar el editor.
-4. El panel **Diagnóstico** muestra fps, vídeos activos y errores. Si indica «por software», actualiza los controladores de la GPU.
+3. **Modo directo** (para recibir a las visitas o dejar algo tranquilo mientras llega «la parte buena»): con las teclas **1–9** sobre la proyección, o los botones del panel «Modo directo» en Reproducción, una escena se repite en bucle; al elegir otra, cambia con un fundido de 1 s sin cortar la música. **Intro** devuelve al espectáculo normal desde esa escena. Un mando inalámbrico de presentaciones (de los que pasan diapositivas) funciona como cambiador de escenas con sus botones de avanzar y retroceder.
+4. **Negro** apaga la imagen al instante sin cerrar nada. La salida es independiente: puedes minimizar el editor.
+5. El panel **Diagnóstico** muestra fps, vídeos activos y errores. Si indica «por software», actualiza los controladores de la GPU.
 
 ## 8. Otra casa, otro año, otra celebración
 

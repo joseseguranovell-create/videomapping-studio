@@ -2,13 +2,15 @@
  * Interacción directa sobre la ventana de salida (útil con una sola pantalla o para calibrar «in situ»):
  * - Siempre: Espacio reproducir/pausa · Inicio volver al principio · B negro · F/F11/doble clic pantalla completa
  *            Esc salir de pantalla completa · H mostrar/ocultar ayuda · C calibración · P espectáculo
+ * - En espectáculo (modo directo): 1-9 escena en bucle · →/AvPág siguiente · ←/RePág anterior
+ *            L dejar en bucle la escena actual · Intro seguir con el espectáculo (los mandos de presentación sirven)
  * - En calibración: arrastrar esquinas o vértices · arrastrar dentro de una superficie para moverla
  *            Tab/Mayús+Tab cambiar de superficie · 1-4 elegir esquina · flechas mover 1 px (Mayús: 10 px)
  *            R añadir ventana · D añadir puerta · Ctrl+Z/Ctrl+Y deshacer/rehacer · Ctrl+S guardar
  * El editor es quien modifica el documento; aquí solo se envían peticiones.
  */
 import type { Player } from '../engine/player';
-import type { VmOutputApi } from '../../shared/api';
+import type { LiveTarget, VmOutputApi } from '../../shared/api';
 import type { Surface, Vec2 } from '../../shared/model';
 import { pointInPolygon, surfaceOutline } from '../../shared/geometry';
 
@@ -48,8 +50,12 @@ export function setupInteraction(player: Player, api: VmOutputApi, wrap: HTMLEle
         + `Arrastra las esquinas · ${K('Tab')} siguiente superficie · ${K('1')}–${K('4')} esquina · ${K('←↑→↓')} 1 px (${K('Mayús')} 10 px) · ${K('R')} ventana · ${K('D')} puerta · ${K('Ctrl+Z')} deshacer · ${K('Ctrl+S')} guardar · ${K('P')} espectáculo · ${K('H')} ocultar ayuda · ${K('Esc')} salir de pantalla completa`;
     }
     if (m.kind === 'show') {
-      return `${player.playing ? '<b>Reproduciendo</b>' : '<b>Preparado</b> — pulsa ' + K('Espacio') + ' para empezar'}<br>`
-        + `${K('Espacio')} reproducir/pausa · ${K('Inicio')} al principio · ${K('B')} negro · ${K('C')} calibrar · ${K('F')} pantalla completa · ${K('Esc')} salir de pantalla completa · ${K('H')} ayuda`;
+      const live = player.liveInfo();
+      const state = live
+        ? `<b>Directo</b> · escena ${live.index + 1}/${live.count} «${live.name}» en bucle${player.playing ? '' : ' (en pausa)'}`
+        : player.playing ? '<b>Reproduciendo</b>' : '<b>Preparado</b> — pulsa ' + K('Espacio') + ' para empezar o ' + K('1') + '–' + K('9') + ' para una escena';
+      return `${state}<br>`
+        + `${K('Espacio')} reproducir/pausa · ${K('1')}–${K('9')} escena en bucle · ${K('→')} ${K('←')} siguiente/anterior · ${K('L')} repetir esta escena · ${K('Intro')} seguir el espectáculo · ${K('Inicio')} al principio · ${K('B')} negro · ${K('C')} calibrar · ${K('F')} pantalla completa · ${K('H')} ayuda`;
     }
     return `<b>Salida en negro</b><br>${K('P')} espectáculo · ${K('C')} calibrar · ${K('F')} pantalla completa · ${K('Esc')} salir de pantalla completa · ${K('H')} ayuda`;
   }
@@ -61,7 +67,8 @@ export function setupInteraction(player: Player, api: VmOutputApi, wrap: HTMLEle
   }
   // En calibración la ayuda se queda fija (salvo que se oculte con H); en reproducción desaparece sola.
   setInterval(() => {
-    const k = `${mode().kind}:${player.playing}`;
+    const li = player.liveInfo();
+    const k = `${mode().kind}:${player.playing}:${li ? li.index : '-'}`;
     document.body.classList.toggle('calib', mode().kind === 'calibration');
     if (k !== lastKind) {
       lastKind = k;
@@ -90,6 +97,14 @@ export function setupInteraction(player: Player, api: VmOutputApi, wrap: HTMLEle
     if (k.toLowerCase() === 'b') { api.request({ type: 'key', action: 'black' }); return; }
     if (k.toLowerCase() === 'c') { api.request({ type: 'key', action: 'calibration' }); return; }
     if (k.toLowerCase() === 'p') { api.request({ type: 'key', action: 'show' }); return; }
+    if (mode().kind === 'show') {
+      if (/^[1-9]$/.test(k)) { live(parseInt(k, 10) - 1); return; }
+      if (k === 'ArrowRight' || k === 'PageDown') { e.preventDefault(); live('next'); return; }
+      if (k === 'ArrowLeft' || k === 'PageUp') { e.preventDefault(); live('prev'); return; }
+      if (k.toLowerCase() === 'l') { live(player.liveInfo() ? null : 'hold'); return; }
+      if (k === 'Enter') { live(null); return; }
+      return;
+    }
     if (mode().kind !== 'calibration') return;
     const s = selected();
     if (k === 'Tab') { e.preventDefault(); active = null; api.request({ type: 'selectNext', dir: e.shiftKey ? -1 : 1 }); return; }
@@ -110,6 +125,16 @@ export function setupInteraction(player: Player, api: VmOutputApi, wrap: HTMLEle
       api.request({ type: 'nudge', surfaceId: s.id, target: a.target, index: a.index, dx, dy });
     }
   });
+
+  /** Cambio de escena en directo; elegir una escena estando preparado la pone en marcha. */
+  function live(target: LiveTarget) {
+    if (mode().kind !== 'show') return;
+    const count = player.currentShow()?.scenes.filter((s) => s.enabled).length ?? 0;
+    if (typeof target === 'number' && target >= count) return;
+    player.setLive(target);
+    if (target !== null && target !== 'hold' && !player.playing) void player.play();
+    showHud(2500);
+  }
 
   // ── Ratón ──
   let lastPointer: Vec2 | null = null;
@@ -169,5 +194,5 @@ export function setupInteraction(player: Player, api: VmOutputApi, wrap: HTMLEle
   events.addEventListener('pointerup', end);
   events.addEventListener('pointercancel', end);
 
-  return { showHud, activeVertex: () => active };
+  return { showHud, live, activeVertex: () => active };
 }

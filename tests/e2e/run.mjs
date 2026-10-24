@@ -559,6 +559,40 @@ try {
     await out.evaluate(() => window.__vmPlayer.pause());
   });
 
+  await step('18a2. Modo directo: escena en bucle con teclas, cambio con flechas y seguir el espectáculo', async () => {
+    await win.click('[data-testid="nav-play"]');
+    if (await win.locator('[data-testid="play-prepare"]').isEnabled()) await win.click('[data-testid="play-prepare"]');
+    await win.waitForFunction(() => { const s = window.__vmStore.getState(); return s.outputStatus?.mode === 'show' && !s.outputStatus.playing; }, null, { timeout: 10000 });
+    await out.waitForTimeout(400);
+    const info = () => out.evaluate(() => ({ live: window.__vmPlayer.liveInfo(), playing: window.__vmPlayer.playing, scene: window.__vmPlayer.status().sceneName }));
+    await out.keyboard.press('2');
+    let i = await info();
+    assert(i.live?.index === 1 && i.playing, `la tecla 2 pone la escena 2 en bucle y arranca (${JSON.stringify(i)})`);
+    // Se adelanta el reloj del bucle casi una vuelta entera: sigue en la misma escena.
+    const name = i.live.name;
+    await out.evaluate(() => { const p = window.__vmPlayer; const D = p.currentShow().scenes.filter((s) => s.enabled)[1].duration; p.live.since -= D * 1.5; p.renderFrame(); });
+    i = await info();
+    assert(i.scene === name && i.live.index === 1, `al acabar la escena vuelve a empezar (${i.scene})`);
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.live?.index === 1, null, { timeout: 5000 });
+    await out.keyboard.press('ArrowRight');
+    i = await info();
+    assert(i.live?.index === 2, 'flecha derecha: siguiente escena');
+    await out.keyboard.press('PageUp');
+    await out.keyboard.press('PageUp');
+    i = await info();
+    assert(i.live?.index === 0, 'RePág dos veces: dos escenas atrás');
+    await win.click('[data-testid="live-scene-3"]');
+    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 3, null, { timeout: 5000 });
+    await out.keyboard.press('Enter');
+    i = await info();
+    const sh = await out.evaluate(() => window.__vmPlayer.currentShow().scenes.filter((s) => s.enabled).map((s) => s.name));
+    assert(i.live === null && i.playing && i.scene === sh[3], `Intro: sigue el espectáculo desde esa escena (${i.scene})`);
+    await out.keyboard.press('l');
+    i = await info();
+    assert(i.live?.index === 3, 'L deja en bucle la escena que suena');
+    await out.evaluate(() => window.__vmPlayer.pause());
+  });
+
   await step('18b. Mover y escalar un clip arrastrando sobre la previsualización', async () => {
     await out.evaluate(() => window.__vmPlayer.pause());
     await win.click('[data-testid="nav-shows"]');
@@ -660,6 +694,12 @@ try {
     assert(bright(edge) < 10 && edge[1] < 10, `el fondo verde se ha quitado (${edge})`);
     const cap = await api('captura');
     assert(cap.ok && cap.resultado.png.length > 1000, 'captura devuelve una imagen');
+    assert((await api('escena_en_bucle', { espectaculoId: sh.id, escena: 2 })).ok, 'escena_en_bucle');
+    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 1, null, { timeout: 5000 });
+    assert((await api('escena_en_bucle', { accion: 'salir' })).ok, 'salir del modo directo');
+    await out.waitForFunction(() => window.__vmPlayer.liveInfo() === null, null, { timeout: 5000 });
+    assert(!(await api('escena_en_bucle', { escena: 99 })).ok, 'escena inexistente rechazada');
+    await out.evaluate(() => { window.__vmPlayer.pause(); window.__vmPlayer.seek(1); });
     if (SHOTS) fs.writeFileSync(`${SHOTS}/e2e-agente-captura.png`, Buffer.from(cap.resultado.png, 'base64'));
     // MCP por stdio
     const { spawn } = await import('node:child_process');

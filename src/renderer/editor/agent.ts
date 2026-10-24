@@ -16,7 +16,7 @@ import {
   Clip as ClipSchema, MOTION_PRESETS, EFFECT_KINDS, TEXT_FONTS, SURFACE_KINDS,
   type Clip, type ClipSource, type Project, type Scene, type Show, type MotionPreset, type EffectKind,
 } from '../../shared/model';
-import type { ImportedFile, OpenedProject } from '../../shared/api';
+import type { ImportedFile, LiveTarget, OpenedProject } from '../../shared/api';
 
 type P = Record<string, unknown>;
 const st = () => useStore.getState();
@@ -338,6 +338,27 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
     case 'ir_a':
       vm.output.send({ type: 'seek', time: num(p, 'segundos') });
       return { ok: true };
+    case 'escena_en_bucle': {
+      // Modo directo: la escena se repite hasta que se pida otra.
+      if (!st().output.open) fail('La salida está cerrada: usa primero «abrir_salida»');
+      const sh = findShow(p);
+      const active = sh.scenes.filter((x) => x.enabled);
+      const acc = (p.accion as string | undefined) ?? (p.escena === undefined ? 'mantener' : 'escena');
+      let target: LiveTarget;
+      if (acc === 'siguiente') target = 'next';
+      else if (acc === 'anterior') target = 'prev';
+      else if (acc === 'mantener') target = 'hold';
+      else if (acc === 'salir') target = null;
+      else if (acc === 'escena') {
+        const e = p.escena;
+        const idx = typeof e === 'number' ? e - 1 : active.findIndex((x) => x.id === e || x.name === e);
+        if (idx < 0 || idx >= active.length) fail(`No existe la escena «${String(e)}» (número desde 1 o nombre de una escena activa)`);
+        target = idx;
+      } else fail('«accion» debe ser escena, siguiente, anterior, mantener o salir');
+      if (st().outputMode !== 'show' || st().outputShowId !== sh.id) st().set({ outputShowId: sh.id, outputMode: 'show' });
+      setTimeout(() => vm.output.send({ type: 'live', target }), 250);
+      return { ok: true };
+    }
     case 'guardar':
       if (!(await saveProject())) fail('No se pudo guardar');
       return { ok: true, archivo: st().file };
