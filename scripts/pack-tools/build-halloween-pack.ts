@@ -275,8 +275,8 @@ const scenes: Scene[] = [
     ...finaleLights.clips,
     ...[S.ai, S.ac, S.ad, S.bi, S.bd].map((s) => clip(s, { type: 'effect', effect: 'sweep', color: '#ff9a3c', color2: '#5a1f8c', width: 6, space: 'facade' }, 0, 11, { fit: 'stretch', opacity: 0.7, z: -10, name: 'Barrido de luz' })),
     // El rótulo se parte a ambos lados de la ventana del desván (el frontón tiene ese hueco enmascarado).
-    clip(S.fronton, { type: 'text', text: '¡Feliz', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1, 10, { motion: M('popIn'), scale: 0.3, x: 0.27, y: 0.74, fadeIn: 0, name: 'Rótulo «¡Feliz»' }),
-    clip(S.fronton, { type: 'text', text: 'Halloween!', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1.4, 9.6, { motion: M('popIn'), scale: 0.36, x: 0.75, y: 0.74, fadeIn: 0, name: 'Rótulo «Halloween!»' }),
+    clip(S.fronton, { type: 'text', text: '¡Feliz', font: 'terror', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1, 10, { motion: M('popIn'), scale: 0.3, x: 0.27, y: 0.74, fadeIn: 0, name: 'Rótulo «¡Feliz»' }),
+    clip(S.fronton, { type: 'text', text: 'Halloween!', font: 'terror', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, 1.4, 9.6, { motion: M('popIn'), scale: 0.36, x: 0.75, y: 0.74, fadeIn: 0, name: 'Rótulo «Halloween!»' }),
     clip(S.puerta, img(A.ghostWave), 2, 9, { ...ch('hx-chr-boo', 2), motion: M('wave'), scale: 0.95, y: 0.5, name: 'Boo celebra' }),
     clip(S.bi, img(A.pumpkin), 2.5, 8.5, { motion: M('bounce'), scale: 0.75, y: 0.55, name: 'Calabaza' }),
     clip(S.bd, img(A.pumpkin), 3, 8, { motion: M('bounce', 1, 1.2), scale: 0.75, y: 0.55, flipX: true, name: 'Calabaza' }),

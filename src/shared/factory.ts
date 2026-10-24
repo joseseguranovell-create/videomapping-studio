@@ -236,21 +236,23 @@ export function referencedAssetIds(p: Project): Set<string> {
 /** Colores y ajustes por defecto de cada efecto (elegidos para que luzcan proyectados). */
 export const EFFECT_DEFAULTS: Record<EffectKind, { color: string; color2: string; width?: number; space?: 'surface' | 'facade'; fit?: Clip['fit'] }> = {
   solid: { color: '#ff9a3c', color2: '#000000' },
-  glow: { color: '#ff9a3c', color2: '#3a0f5c' },
+  glow: { color: '#ff7a1a', color2: '#1a0526' },
   stars: { color: '#fff6c2', color2: '#7b2ff7' },
   flicker: { color: '#ffb347', color2: '#000000' },
   rainbow: { color: '#ffffff', color2: '#000000' },
   testPattern: { color: '#ffffff', color2: '#000000' },
   neon: { color: '#ff7a1a', color2: '#ffe0a8', width: 6 },
-  drawOn: { color: '#5ff2ff', color2: '#ffffff', width: 5 },
-  chase: { color: '#ffd84a', color2: '#ff3d6e', width: 7 },
-  sweep: { color: '#ffb347', color2: '#7b2ff7', space: 'facade' },
+  drawOn: { color: '#ff8a1c', color2: '#ffe0a8', width: 5 },
+  chase: { color: '#ff8a1c', color2: '#9b4dff', width: 7 },
+  sweep: { color: '#ff8a1c', color2: '#5a1f8c', space: 'facade' },
   lightning: { color: '#e6ecff', color2: '#7f9dff', space: 'facade' },
   fire: { color: '#ff5a00', color2: '#ffd23a' },
   fog: { color: '#b9c4d8', color2: '#6d5a99', space: 'facade' },
   rain: { color: '#a9c8ff', color2: '#203060', space: 'facade' },
   snow: { color: '#ffffff', color2: '#9fd0ff', space: 'facade' },
   fireflies: { color: '#d8ff6a', color2: '#ffb347' },
+  eyes: { color: '#ffd23a', color2: '#7dff3a' },
+  spirits: { color: '#cfe0ff', color2: '#7b5cff', space: 'facade' },
 };
 
 export function effectSource(effect: EffectKind, over: Partial<{ color: string; color2: string; width: number; space: 'surface' | 'facade' }> = {}): ClipSource {

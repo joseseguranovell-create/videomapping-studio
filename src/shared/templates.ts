@@ -7,14 +7,15 @@ import type { Clip, Installation, Scene, SoundCue, Surface } from './model';
 import { createClip, createSoundCue, effectSource } from './factory';
 import { centroid, surfaceOutline } from './geometry';
 
-export const TEMPLATE_KINDS = ['neonDibujo', 'cascadaLuz', 'tormenta', 'lucesFeria', 'barrido', 'incendio', 'nieveMagica', 'luciernagas'] as const;
+export const TEMPLATE_KINDS = ['neonDibujo', 'cascadaLuz', 'tormenta', 'ojos', 'lucesFeria', 'barrido', 'incendio', 'nieveMagica', 'luciernagas'] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 
 export const TEMPLATE_INFO: Record<TemplateKind, { name: string; description: string }> = {
   neonDibujo: { name: 'Neón que se dibuja', description: 'El contorno de cada ventana y puerta se traza en cascada y queda encendido en neón.' },
   cascadaLuz: { name: 'Cascada de luz', description: 'Las ventanas se encienden una tras otra como velas, de izquierda a derecha.' },
   tormenta: { name: 'Tormenta', description: 'Relámpagos sincronizados en toda la fachada, lluvia y truenos.' },
-  lucesFeria: { name: 'Luces de feria', description: 'Bombillas de colores corriendo por todos los contornos.' },
+  ojos: { name: 'Ojos en la oscuridad', description: 'Parejas de ojos que se abren y parpadean en cada ventana, con espíritus subiendo por la fachada.' },
+  lucesFeria: { name: 'Luces de feria', description: 'Bombillas naranjas y moradas corriendo por todos los contornos.' },
   barrido: { name: 'Barrido de luz', description: 'Una ola de luz cruza toda la casa de lado a lado.' },
   incendio: { name: 'Ventanas en llamas', description: 'Fuego que prende ventana a ventana (de broma, sin miedo).' },
   nieveMagica: { name: 'Nieve mágica', description: 'Nieve continua en toda la fachada con estrellas (ideal para Navidad).' },
@@ -82,8 +83,14 @@ export function applyTemplate(kind: TemplateKind, inst: Installation, scene: Sce
         for (const t of lightningStrikes(scene.duration)) if (t >= start && t + 0.4 < scene.duration) sounds.push(createSoundCue(opts.thunderAssetId, { start: t + 0.35, volume: 0.9 }));
       }
       break;
+    case 'ojos':
+      surfaces.forEach((s, i) => {
+        if (s.kind === 'wall') clip(s, effectSource('spirits'), 0, D, { fadeIn: 1.5, opacity: 0.7, z: -8 });
+        else clip(s, effectSource('eyes', i % 2 ? { color: '#7dff3a', color2: '#ffd23a' } : {}), i * step * 0.7, D - i * step * 0.7, { fadeIn: 0.2 });
+      });
+      break;
     case 'lucesFeria':
-      surfaces.forEach((s, i) => clip(s, effectSource('chase', i % 2 ? { color: '#5ff2ff', color2: '#ffd84a' } : {}), i * step * 0.5, D - i * step * 0.5, { fadeIn: 0.3, z: 5 }));
+      surfaces.forEach((s, i) => clip(s, effectSource('chase', i % 2 ? { color: '#9b4dff', color2: '#ff8a1c' } : {}), i * step * 0.5, D - i * step * 0.5, { fadeIn: 0.3, z: 5 }));
       break;
     case 'barrido':
       surfaces.forEach((s) => clip(s, effectSource('sweep'), 0, D, { fadeIn: 0.6 }));

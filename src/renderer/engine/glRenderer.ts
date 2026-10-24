@@ -29,6 +29,8 @@ export const EFFECT_MODE = {
   rain: 12,
   snow: 13,
   fireflies: 14,
+  eyes: 15,
+  spirits: 16,
 } as const;
 
 export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2 } as const;
@@ -149,8 +151,8 @@ void main() {
     vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
     float r = length(d) / max(0.5 * max(u_aspect, 1.0), 0.0001);
     float pulse = 0.75 + 0.25 * sin(u_time * 2.2);
-    float k = smoothstep(1.05, 0.0, r) * pulse;
-    col = vec4(mix(u_color2, u_color, k) * (0.25 + 0.75 * k), 1.0);
+    float k = pow(smoothstep(1.05, 0.0, r), 1.6) * pulse;
+    col = vec4(mix(u_color2, u_color, k) * (0.06 + 0.94 * k), 1.0);
   } else if (u_mode == 3) {
     vec2 g = q * 14.0;
     vec2 id = floor(g);
@@ -163,9 +165,13 @@ void main() {
     float a = clamp(star + cross_ * 0.6, 0.0, 1.0);
     col = vec4(mix(u_color2, u_color, 0.5 + 0.5 * h) * a, a);
   } else if (u_mode == 4) {
-    float n = 0.65 + 0.2 * sin(u_time * 7.3) + 0.1 * sin(u_time * 13.1 + 1.3) + 0.05 * sin(u_time * 23.7);
-    float v = smoothstep(1.2, 0.0, length((c - vec2(0.5, 0.65)) * vec2(u_aspect, 1.0)));
-    col = vec4(u_color * n * (0.35 + 0.65 * v), 1.0);
+    // Vela: la luz nace abajo (como una vela en el alféizar), tiembla y deja la parte alta en penumbra.
+    float fl = 0.8 + 0.1 * sin(t * 7.3) + 0.07 * sin(t * 13.1 + 1.3) + 0.04 * sin(t * 23.7) - 0.3 * smoothstep(0.86, 0.97, vnoise(vec2(t * 2.7, 3.0)));
+    vec2 src = vec2(0.5 + 0.04 * sin(t * 1.7) + 0.02 * sin(t * 5.3), 1.05);
+    vec2 dd = (c - src) * vec2(u_aspect * 0.75, 1.0);
+    float v = exp(-dot(dd, dd) * 2.4);
+    vec3 warm = mix(u_color * vec3(0.7, 0.35, 0.15), u_color, v);
+    col = vec4(warm * v * fl * 1.15, 1.0);
   } else if (u_mode == 5) {
     col = vec4(hsv2rgb(vec3(fract(qn.x * 0.6 + qn.y * 0.2 + u_time * 0.1), 0.65, 1.0)), 1.0);
   } else if (u_mode == 6) {
@@ -195,8 +201,10 @@ void main() {
     // Barrido: una banda de luz cruza (en modo fachada, toda la casa) de izquierda a derecha.
     float x = qn.x + (qn.y - 0.5) * 0.25;
     float b = fract(t * 0.28) * 1.8 - 0.4;
-    float k = exp(-pow((x - b) / 0.09, 2.0)) + 0.5 * exp(-pow((x - b + 0.22) / 0.06, 2.0));
-    col = vec4(u_color2 * 0.22 + u_color * k * 1.2, 1.0);
+    float k = exp(-pow((x - b) / 0.08, 2.0)) + 0.45 * exp(-pow((x - b + 0.2) / 0.05, 2.0));
+    vec3 bc = mix(u_color2, u_color, clamp(k, 0.0, 1.0));
+    float a = clamp(k * 1.1, 0.0, 1.0);
+    col = vec4(bc * a, a);
   } else if (u_mode == 9) {
     // Relámpago: destellos irregulares (iguales en todas las superficies) y rayo en zigzag.
     float period = 3.7;
@@ -226,7 +234,8 @@ void main() {
   } else if (u_mode == 11) {
     // Niebla que se desliza.
     float n = fbm(q * 2.2 + vec2(t * 0.06, t * 0.015)) * 0.65 + fbm(q * 4.5 - vec2(t * 0.11, 0.0)) * 0.35;
-    float a = smoothstep(0.32, 0.85, n) * 0.8 * (0.55 + 0.45 * qn.y);
+    float edge = smoothstep(0.0, 0.12, c.x) * smoothstep(1.0, 0.88, c.x) * smoothstep(0.0, 0.15, c.y);
+    float a = smoothstep(0.32, 0.85, n) * 0.8 * (0.55 + 0.45 * qn.y) * edge;
     col = vec4(mix(u_color2, u_color, n) * a, a);
   } else if (u_mode == 12) {
     // Lluvia: gotas alargadas cayendo en diagonal.
@@ -278,6 +287,52 @@ void main() {
     }
     a = clamp(a, 0.0, 1.0);
     col = vec4(clamp(acc, 0.0, 1.0), a);
+  } else if (u_mode == 15) {
+    // Ojos en la oscuridad: parejas de ojos que se abren, parpadean, miran a los lados y se cierran.
+    vec2 g = q * 1.7;
+    vec2 id = floor(g);
+    vec2 f = fract(g);
+    float h = hash(id + 0.37);
+    vec3 acc = vec3(0.0);
+    float a = 0.0;
+    if (h > 0.42) {
+      float h2 = hash(id + 5.1), h3 = hash(id + 9.7);
+      float P = 4.0 + 4.0 * h2;
+      float lt = mod(t + h3 * P, P);
+      // abiertos de 0,4 s a 3 s, con un parpadeo a mitad
+      float open = smoothstep(0.4, 0.7, lt) * (1.0 - smoothstep(2.7, 3.0, lt));
+      float blink = 1.0 - (smoothstep(1.55, 1.62, lt) - smoothstep(1.66, 1.75, lt));
+      float o = open * blink;
+      vec2 cen = vec2(0.3 + 0.4 * h2, 0.35 + 0.3 * h3);
+      float sep = 0.26 + 0.06 * h;
+      float rx = 0.1 + 0.03 * h3, ry = 0.075;
+      float look = 0.35 * sin(t * 0.9 + h * 20.0);
+      vec3 ec = h3 > 0.5 ? u_color : u_color2;
+      for (int k = 0; k < 2; k++) {
+        vec2 e = cen + vec2(k == 0 ? -sep * 0.5 : sep * 0.5, 0.0);
+        vec2 d = (f - e) / vec2(rx, ry * max(o, 0.001));
+        // forma almendrada: más estrecha en los extremos
+        float dist = length(vec2(d.x, d.y * (1.0 + 0.6 * d.x * d.x)));
+        float iris = smoothstep(1.0, 0.75, dist) * step(0.02, o);
+        float px = d.x - look;
+        float slit = h > 0.7 ? smoothstep(0.22, 0.12, abs(px)) : smoothstep(0.45, 0.32, length(vec2(px, d.y * 0.8)));
+        float glow = exp(-length((f - e) / vec2(rx, ry)) * 1.1) * 0.7 * o;
+        acc += ec * (iris * (1.0 - 0.92 * slit) * (0.8 + 0.4 * (1.0 - dist))) + ec * glow;
+        a += iris + glow;
+      }
+    }
+    a = clamp(a, 0.0, 1.0);
+    col = vec4(clamp(acc, 0.0, 1.0), a);
+  } else if (u_mode == 16) {
+    // Espíritus: jirones de humo pálido que suben y se deshacen.
+    vec2 p = vec2(q.x * 3.0, qn.y * 1.2);
+    vec2 w = vec2(fbm(p * 1.1 + vec2(0.0, t * 0.3)), fbm(p * 1.1 + vec2(4.3, t * 0.25)));
+    float n = fbm(vec2(p.x * 2.6 + w.x * 2.2, p.y * 0.9 + t * 0.55 + w.y * 0.6));
+    // jirones finos: solo la cresta del ruido
+    float streak = smoothstep(0.6, 0.72, n) * (1.0 - smoothstep(0.78, 0.95, n) * 0.4);
+    float fade = smoothstep(0.02, 0.5, qn.y) * (0.55 + 0.45 * smoothstep(1.0, 0.55, qn.y));
+    float a = streak * fade * 0.6 * smoothstep(0.0, 0.08, c.x) * smoothstep(1.0, 0.92, c.x);
+    col = vec4(mix(u_color2, u_color, smoothstep(0.55, 0.9, n)) * a, a);
   } else {
     // Recurso ausente: rayas magenta (solo en previsualización).
     float st = step(0.5, fract((c.x + c.y) * 10.0));

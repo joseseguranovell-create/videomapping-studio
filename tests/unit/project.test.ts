@@ -55,6 +55,15 @@ describe('formato de proyecto', () => {
     expect(r.migratedFrom).toBe(1);
     expect(r.project.assets[0].key.mode).toBe('none');
   });
+  it('migra proyectos v3 conservando sus rótulos y efectos', () => {
+    const p = sample() as any;
+    p.schemaVersion = 3;
+    p.shows[0].scenes[0].clips.push(createClip(p.installations[0].surfaces[0].id, { type: 'text', text: 'Hola', font: 'divertida', color: '#fff', outline: '#000', glow: true, bold: true }));
+    const r = parseProject(p);
+    expect(r.migratedFrom).toBe(3);
+    expect(r.project.schemaVersion).toBe(4);
+    expect(r.project.shows[0].scenes[0].clips[1].source).toMatchObject({ type: 'text', font: 'divertida' });
+  });
   it('acepta clips de texto', () => {
     const p = sample();
     p.shows[0].scenes[0].clips.push(createClip(p.installations[0].surfaces[0].id, { type: 'text', text: '¡Hola!', font: 'divertida', color: '#fff', outline: '#000', glow: true, bold: true }));

@@ -24,6 +24,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   1: (doc) => ({ ...doc, schemaVersion: 2 }),
   // Versión 2 → 3: efectos de contorno y de fachada, siluetas. Campos nuevos con valores por defecto.
   2: (doc) => ({ ...doc, schemaVersion: 3 }),
+  // Versión 3 → 4: nuevas letras de rótulo y efectos «ojos» y «espíritus». Los valores antiguos siguen siendo válidos.
+  3: (doc) => ({ ...doc, schemaVersion: 4 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

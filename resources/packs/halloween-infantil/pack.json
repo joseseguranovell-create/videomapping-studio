@@ -1540,8 +1540,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1612,8 +1612,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1684,8 +1684,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1756,8 +1756,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1828,8 +1828,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1900,8 +1900,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -1972,8 +1972,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -2044,8 +2044,8 @@
               "source": {
                 "type": "effect",
                 "effect": "drawOn",
-                "color": "#5ff2ff",
-                "color2": "#ffffff",
+                "color": "#ff8a1c",
+                "color2": "#ffe0a8",
                 "width": 5,
                 "space": "surface"
               },
@@ -5439,8 +5439,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#ffd84a",
-                "color2": "#ff3d6e",
+                "color": "#ff8a1c",
+                "color2": "#9b4dff",
                 "width": 7,
                 "space": "surface"
               },
@@ -5475,8 +5475,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#5ff2ff",
-                "color2": "#ffd84a",
+                "color": "#9b4dff",
+                "color2": "#ff8a1c",
                 "width": 7,
                 "space": "surface"
               },
@@ -5511,8 +5511,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#ffd84a",
-                "color2": "#ff3d6e",
+                "color": "#ff8a1c",
+                "color2": "#9b4dff",
                 "width": 7,
                 "space": "surface"
               },
@@ -5547,8 +5547,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#5ff2ff",
-                "color2": "#ffd84a",
+                "color": "#9b4dff",
+                "color2": "#ff8a1c",
                 "width": 7,
                 "space": "surface"
               },
@@ -5583,8 +5583,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#ffd84a",
-                "color2": "#ff3d6e",
+                "color": "#ff8a1c",
+                "color2": "#9b4dff",
                 "width": 7,
                 "space": "surface"
               },
@@ -5619,8 +5619,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#5ff2ff",
-                "color2": "#ffd84a",
+                "color": "#9b4dff",
+                "color2": "#ff8a1c",
                 "width": 7,
                 "space": "surface"
               },
@@ -5655,8 +5655,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#ffd84a",
-                "color2": "#ff3d6e",
+                "color": "#ff8a1c",
+                "color2": "#9b4dff",
                 "width": 7,
                 "space": "surface"
               },
@@ -5691,8 +5691,8 @@
               "source": {
                 "type": "effect",
                 "effect": "chase",
-                "color": "#5ff2ff",
-                "color2": "#ffd84a",
+                "color": "#9b4dff",
+                "color2": "#ff8a1c",
                 "width": 7,
                 "space": "surface"
               },
@@ -5907,7 +5907,7 @@
               "source": {
                 "type": "text",
                 "text": "¡Feliz",
-                "font": "divertida",
+                "font": "terror",
                 "color": "#ffb347",
                 "outline": "#2b1240",
                 "glow": true,
@@ -5944,7 +5944,7 @@
               "source": {
                 "type": "text",
                 "text": "Halloween!",
-                "font": "divertida",
+                "font": "terror",
                 "color": "#ffb347",
                 "outline": "#2b1240",
                 "glow": true,

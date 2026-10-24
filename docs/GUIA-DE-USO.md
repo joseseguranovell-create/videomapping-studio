@@ -165,7 +165,7 @@ Después puedes retocar cada clip o deshacer con Ctrl+Z.
 
 **Espectáculos → línea de tiempo → Rótulo** añade un texto animado (por defecto «¡Feliz Halloween!») en la superficie elegida. En el panel derecho puedes cambiar:
 - el texto (Intro para varias líneas);
-- el tipo de letra: divertida, gruesa, elegante, manuscrita o simple;
+- el tipo de letra: Terror (Creepster), Monstruo (Eater), Bruja (Henny Penny), Cuento (Griffy), Misterio (Mystery Quest), Calabaza (Jolly Lodger), Gótica (Pirata One), Elegante (Cinzel Decorative), Cómic (Bangers), Redondeada (Fredoka) o Simple. Son fuentes libres (licencia SIL OFL) incluidas en el programa: se ven igual en cualquier PC;
 - el color, el contorno y el halo;
 - el movimiento, igual que en cualquier clip: aparecer, latir, flotar…
 

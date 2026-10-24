@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -165,15 +165,18 @@ export const EFFECT_KINDS = [
   'neon', 'drawOn', 'chase',
   // ambiente
   'sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies',
+  // Halloween
+  'eyes', 'spirits',
 ] as const;
 /** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
 export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase'] as const;
 /** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
-export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars'] as const;
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
-export const TEXT_FONTS = ['divertida', 'gruesa', 'elegante', 'manuscrita', 'simple'] as const;
+/** Tipos de letra de los rótulos (fuentes libres OFL incluidas en la aplicación, salvo «simple»). */
+export const TEXT_FONTS = ['terror', 'monstruo', 'bruja', 'cuento', 'misterio', 'calabaza', 'gotica', 'elegante', 'gruesa', 'divertida', 'manuscrita', 'simple'] as const;
 export const TextFont = z.enum(TEXT_FONTS);
 export type TextFont = z.infer<typeof TextFont>;
 
@@ -372,11 +375,18 @@ export const MOTION_LABELS: Record<MotionPreset, string> = {
 };
 
 export const TEXT_FONT_LABELS: Record<TextFont, string> = {
-  divertida: 'Divertida',
-  gruesa: 'Gruesa',
-  elegante: 'Elegante',
-  manuscrita: 'Manuscrita',
-  simple: 'Simple',
+  terror: 'Terror (Creepster)',
+  monstruo: 'Monstruo (Eater)',
+  bruja: 'Bruja (Henny Penny)',
+  cuento: 'Cuento (Griffy)',
+  misterio: 'Misterio (Mystery Quest)',
+  calabaza: 'Calabaza (Jolly Lodger)',
+  gotica: 'Gótica (Pirata One)',
+  elegante: 'Elegante (Cinzel Decorative)',
+  gruesa: 'Cómic (Bangers)',
+  divertida: 'Redondeada (Fredoka)',
+  manuscrita: 'Manuscrita (Mystery Quest)',
+  simple: 'Simple (del sistema)',
 };
 
 export const EFFECT_LABELS: Record<EffectKind, string> = {
@@ -396,4 +406,6 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   rain: 'Lluvia',
   snow: 'Nieve',
   fireflies: 'Luciérnagas',
+  eyes: 'Ojos en la oscuridad',
+  spirits: 'Espíritus (humo que sube)',
 };

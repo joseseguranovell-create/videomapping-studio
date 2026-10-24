@@ -440,7 +440,7 @@ function SceneTimeline({ show }: { show: Show }) {
           icon={<Type size={14} />}
           disabled={!surfaces.length}
           data-testid="add-text"
-          onClick={() => addClip(createClip(defaultSurface!, { type: 'text', text: '¡Feliz Halloween!', font: 'divertida', color: '#ffb347', outline: '#2b1240', glow: true, bold: true }, {
+          onClick={() => addClip(createClip(defaultSurface!, { type: 'text', text: '¡Feliz Halloween!', font: 'terror', color: '#ff8a1c', outline: '#1a0526', glow: true, bold: true }, {
             name: '', start: startAt, duration: Math.max(0.5, Math.min(5, D - startAt)), scale: 0.9, motion: { preset: 'popIn', intensity: 1, speed: 1 },
           }))}
         >
@@ -582,7 +582,8 @@ function SceneTimeline({ show }: { show: Show }) {
 const EFFECT_GROUPS: { title: string; kinds: EffectKind[] }[] = [
   { title: 'Bordes y contornos (brillan fuera de la superficie)', kinds: ['neon', 'drawOn', 'chase'] },
   { title: 'Luz y color', kinds: ['flicker', 'glow', 'sweep', 'rainbow', 'solid'] },
-  { title: 'Ambiente', kinds: ['lightning', 'fire', 'fog', 'rain', 'snow', 'stars', 'fireflies'] },
+  { title: 'Halloween', kinds: ['eyes', 'spirits', 'lightning', 'fog'] },
+  { title: 'Ambiente', kinds: ['fire', 'rain', 'snow', 'stars', 'fireflies'] },
 ];
 
 function CharacterPicker({ onPick, onClose }: { onPick: (chId: string, animId: string) => void; onClose: () => void }) {

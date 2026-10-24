@@ -7,8 +7,9 @@ import type { LiveTarget, OutputMode, OutputStatus } from '../../shared/api';
 import { GLRenderer, hexToRgb, type Layer, type LayerMode, type ContourLayer } from './glRenderer';
 import { MediaManager } from './media';
 import { AudioEngine } from './audio';
+import { loadFonts } from './fonts';
 import { IDENTITY, outputToSurfaceUV, surfaceAspect, surfaceOutline, centroid, squareToQuad, applyH } from '../../shared/geometry';
-import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
+import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, textMaxScale, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
 
 export interface PlayerOptions {
   audio: boolean;
@@ -30,7 +31,7 @@ export interface OverlayOptions {
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
   solid: 'solid', glow: 'glow', stars: 'stars', flicker: 'flicker', rainbow: 'rainbow', testPattern: 'testPattern',
-  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies',
+  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits',
 };
 const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase']);
 /** Fundido entre escenas en el modo directo (segundos). */
@@ -97,6 +98,13 @@ export class Player {
     this.media = new MediaManager(this.r, onErr);
     this.audio = new AudioEngine(onErr);
     if (!opts.audio) this.audio.setEnabled(false, 0);
+    // Los rótulos se redibujan con las fuentes incluidas en cuanto están cargadas.
+    void loadFonts().then(() => { this.media.clearTexts(); this.invalidate(); });
+  }
+
+  /** Se resuelve cuando las fuentes de los rótulos están listas. */
+  fontsReady(): Promise<void> {
+    return loadFonts();
   }
 
   setProject(project: Project | null, base: string, key: string) {
@@ -541,7 +549,8 @@ export class Player {
     if (e.source.type === 'text') {
       if (e.opacity <= 0) return null;
       const t = this.media.text(e.source);
-      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(clip, surfAspect, t.aspect, motion), opacity: e.opacity };
+      const fitted = { ...clip, scale: Math.min(clip.scale, textMaxScale(clip, surfAspect, t.aspect)) };
+      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity };
     }
     const asset = this.assets.get(e.source.assetId);
     if (!asset || this.media.errors.has(asset.id)) {

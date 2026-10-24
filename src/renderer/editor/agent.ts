@@ -96,7 +96,7 @@ function sceneDetail(sh: Show, sc: Scene) {
 function buildSource(p: P): { source: ClipSource; extra: Partial<Clip> } {
   const pr = project();
   if (p.texto !== undefined) {
-    const font = (p.letra as string) ?? 'divertida';
+    const font = (p.letra as string) ?? 'terror';
     if (!(TEXT_FONTS as readonly string[]).includes(font)) fail(`Letra no válida: ${TEXT_FONTS.join(', ')}`);
     return { source: { type: 'text', text: String(p.texto), font: font as any, color: (p.color as string) ?? '#ffb347', outline: (p.contorno as string) ?? '#2b1240', glow: p.halo !== false, bold: true }, extra: {} };
   }
