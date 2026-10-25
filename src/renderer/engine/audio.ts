@@ -73,6 +73,8 @@ export class AudioEngine {
         })
         .then((ab) => ctx.decodeAudioData(ab))
         .catch((e) => {
+          // El sonido de un vídeo es opcional: si el vídeo no tiene pista de audio, simplemente no suena.
+          if (asset.kind === 'video') return null;
           const msg = `Audio «${asset.name}»: ${String(e.message) === 'ausente' ? 'archivo ausente' : 'formato no compatible'}`;
           if (!this.errors.has(asset.id)) this.onError(msg);
           this.errors.set(asset.id, msg);

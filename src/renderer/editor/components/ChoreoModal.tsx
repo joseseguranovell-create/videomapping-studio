@@ -8,6 +8,7 @@ import { choreography, CHOREO_KINDS, CHOREO_INFO, type ChoreoKind } from '../../
 import { soundKitFrom } from '../../../shared/generator';
 import { orderedSurfaces } from '../../../shared/templates';
 import type { Show } from '../../../shared/model';
+import { createSoundCue } from '../../../shared/factory';
 
 export interface ChoreoPreset {
   kind?: ChoreoKind;
@@ -48,6 +49,8 @@ export function ChoreoModal({ show, sceneId, start, preset, onClose }: { show: S
       actor: { name: o.label, source: { type: 'asset', assetId: o.asset.id }, aspect: o.pro.aspect, characterId: o.pro.characterId ?? null, animationId: o.pro.animationId ?? null },
       sounds: { whoosh: k.whoosh, pop: k.pop, giggle: k.giggle },
     });
+    // Si el protagonista es un vídeo con sonido, suena una vez al empezar la coreografía.
+    if (o.asset.kind === 'video') r.sounds.push(createSoundCue(o.pro.audioId ?? o.asset.id, { start: at, volume: 0.9 }));
     update(`Coreografía: ${CHOREO_INFO[kind].name}`, (d) => {
       const sc = d.shows.find((x) => x.id === show.id)?.scenes.find((x) => x.id === sceneId);
       if (!sc) return;

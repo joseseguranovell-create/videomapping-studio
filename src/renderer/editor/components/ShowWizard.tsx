@@ -21,8 +21,8 @@ export function protagonistOptions(p: Project): { key: string; label: string; as
   const out: { key: string; label: string; asset: Asset; pro: Protagonist }[] = [];
   const byId = new Map(p.assets.map((a) => [a.id, a]));
   const aspectOf = (a: Asset) => (a.width && a.height ? a.width / a.height : 1);
-  // El sonido propio de un vídeo se reconoce por el nombre «<vídeo> (sonido)».
-  const audioFor = (a: Asset) => p.assets.find((x) => x.kind === 'audio' && x.name === `${a.name} (sonido)`)?.id ?? null;
+  // Sonido propio: un audio llamado «<vídeo> (sonido)» o, si no, el del propio vídeo (si no tiene, no suena).
+  const audioFor = (a: Asset) => p.assets.find((x) => x.kind === 'audio' && x.name === `${a.name} (sonido)`)?.id ?? a.id;
   for (const a of p.assets) {
     if (a.kind !== 'video') continue;
     out.push({ key: `a:${a.id}`, label: a.name, asset: a, pro: { name: a.name, assetId: a.id, aspect: aspectOf(a), duration: a.duration, audioId: audioFor(a) } });

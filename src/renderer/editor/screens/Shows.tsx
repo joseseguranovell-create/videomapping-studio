@@ -715,8 +715,8 @@ function SceneTimeline({ show }: { show: Show }) {
       )}
       {picker === 'sound' && (
         <AssetPicker
-          kinds={['audio']}
-          title="Añadir sonido a la escena"
+          kinds={['audio', 'video']}
+          title="Añadir sonido a la escena (también el sonido de un vídeo)"
           onClose={() => setPicker(null)}
           onPick={(id) => {
             const s = createSoundCue(id, { start: startAt });
@@ -1024,6 +1024,7 @@ function ClipInspector({ clip }: { clip: Clip }) {
             {clip.silhouette && <input type="color" value={clip.silhouetteColor} onChange={(e) => mut('Color de silueta', (c) => { c.silhouetteColor = e.target.value; })} />}
           </div>
         )}
+        {clip.source.type === 'asset' && <VideoSoundToggle clip={clip} />}
         {clip.source.type !== 'effect' && <TravelEditor clip={clip} mut={mut} />}
       </Panel>
       <div className="btn-row">
@@ -1041,6 +1042,30 @@ function ClipInspector({ clip }: { clip: Clip }) {
         <AssetPicker kinds={['image', 'video', 'sequence']} title="Cambiar recurso" onClose={() => setPick(false)} onPick={(id) => { mut('Cambiar recurso', (c) => { c.source = { type: 'asset', assetId: id }; }); setPick(false); }} />
       )}
     </div>
+  );
+}
+
+/** Sonido propio de un vídeo, sincronizado con el clip. */
+function VideoSoundToggle({ clip }: { clip: Clip }) {
+  const project = useStore((s) => s.project)!;
+  const scene = useStore(selScene);
+  const show = useStore(selShow);
+  const update = useStore((s) => s.update);
+  const asset = clip.source.type === 'asset' ? project.assets.find((a) => a.id === (clip.source as { assetId: string }).assetId) : null;
+  if (!asset || asset.kind !== 'video' || !scene || !show) return null;
+  const cue = scene.sounds.find((s) => s.assetId === asset.id && Math.abs(s.start - clip.start) < 0.05);
+  return (
+    <Toggle
+      checked={!!cue}
+      onChange={(v) => update(v ? 'Sonido del vídeo' : 'Quitar sonido del vídeo', (d) => {
+        const sc = d.shows.find((x) => x.id === show.id)?.scenes.find((x) => x.id === scene.id);
+        if (!sc) return;
+        if (v) sc.sounds.push(createSoundCue(asset.id, { start: clip.start, duration: clip.duration, volume: 1 }));
+        else sc.sounds = sc.sounds.filter((s) => s !== sc.sounds.find((x) => x.assetId === asset.id && Math.abs(x.start - clip.start) < 0.05));
+      })}
+      label="Con su sonido (el del propio vídeo, sincronizado)"
+      data-testid="clip-video-sound"
+    />
   );
 }
 
