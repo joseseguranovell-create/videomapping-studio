@@ -81,15 +81,30 @@ export async function checkForUpdate(): Promise<UpdateCheck> {
   };
 }
 
+/** Devuelve la URL a la que redirige una petición, o null si responde directamente. */
+function redirectTarget(url: string, h: Record<string, string>): Promise<string | null> {
+  return new Promise((resolve, reject) => {
+    const req = net.request({ url, redirect: 'manual' });
+    for (const [k, v] of Object.entries(h)) req.setHeader(k, v);
+    let settled = false;
+    const done = (v: string | null) => { if (!settled) { settled = true; resolve(v); } };
+    req.on('redirect', (_status, _method, redirectUrl) => { done(redirectUrl); req.abort(); });
+    req.on('response', (res) => { done(null); res.on('data', () => undefined); req.abort(); });
+    req.on('error', (e) => { if (!settled) { settled = true; reject(e); } });
+    req.on('abort', () => done(null));
+    req.end();
+  });
+}
+
 async function download(assetId: number, dest: string, onProgress?: (done: number) => void): Promise<string> {
   const url = `https://api.github.com/repos/${UPDATE_REPO}/releases/assets/${assetId}`;
-  // GitHub redirige a una URL firmada de descarga: se sigue a mano para no reenviar allí la clave.
-  let r = await net.fetch(url, { headers: headers('application/octet-stream'), redirect: 'manual' });
-  const loc = r.status >= 300 && r.status < 400 ? r.headers.get('location') : null;
+  // GitHub redirige a una URL firmada de descarga: se averigua a dónde (sin seguirla) para no reenviar allí la clave.
+  const loc = await redirectTarget(url, headers('application/octet-stream'));
+  let r: Response;
   if (loc) {
     if (!/^https:\/\/([a-z0-9-]+\.)*(github\.com|githubusercontent\.com)\//i.test(loc)) throw new Error('Redirección de descarga inesperada.');
-    r = await net.fetch(loc, { headers: { 'User-Agent': 'Videomapping-Studio' } });
-  } else if (r.status === 0 || (r.status >= 300 && r.status < 400)) {
+    r = await net.fetch(loc, { headers: { 'User-Agent': 'Videomapping-Studio', Accept: 'application/octet-stream' } });
+  } else {
     r = await net.fetch(url, { headers: headers('application/octet-stream') });
   }
   if (!r.ok || !r.body) throw new Error(`No se pudo descargar (${r.status}).`);
