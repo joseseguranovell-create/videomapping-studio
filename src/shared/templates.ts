@@ -7,7 +7,7 @@ import type { Clip, Installation, Scene, SoundCue, Surface } from './model';
 import { createClip, createSoundCue, effectSource } from './factory';
 import { centroid, surfaceOutline } from './geometry';
 
-export const TEMPLATE_KINDS = ['neonDibujo', 'cascadaLuz', 'tormenta', 'ojos', 'lucesFeria', 'barrido', 'incendio', 'nieveMagica', 'luciernagas'] as const;
+export const TEMPLATE_KINDS = ['neonDibujo', 'cascadaLuz', 'tormenta', 'ojos', 'sombras', 'telon', 'cristalRoto', 'lucesFeria', 'barrido', 'incendio', 'navidad', 'fuegosArtificiales', 'nieveMagica', 'luciernagas'] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 
 export const TEMPLATE_INFO: Record<TemplateKind, { name: string; description: string }> = {
@@ -15,6 +15,11 @@ export const TEMPLATE_INFO: Record<TemplateKind, { name: string; description: st
   cascadaLuz: { name: 'Cascada de luz', description: 'Las ventanas se encienden una tras otra como velas, de izquierda a derecha.' },
   tormenta: { name: 'Tormenta', description: 'Relámpagos sincronizados en toda la fachada, lluvia y truenos.' },
   ojos: { name: 'Ojos en la oscuridad', description: 'Parejas de ojos que se abren y parpadean en cada ventana, con espíritus subiendo por la fachada.' },
+  sombras: { name: 'Alguien pasa por dentro', description: 'Las ventanas se encienden y una sombra cruza la casa de lado a lado, de ventana en ventana.' },
+  telon: { name: 'Se abre el telón', description: 'Cortinas de teatro en cada ventana que se abren una tras otra (y se cierran al final).' },
+  cristalRoto: { name: 'Cristales rotos', description: 'Destello y grietas que se extienden por las ventanas, una detrás de otra.' },
+  navidad: { name: 'Noche de Navidad', description: 'Escarcha en las ventanas, nieve y aurora en la fachada, bombillas rojas y verdes en los contornos.' },
+  fuegosArtificiales: { name: 'Fuegos artificiales', description: 'Fuegos artificiales en toda la fachada y bombillas en los contornos: para un gran final.' },
   lucesFeria: { name: 'Luces de feria', description: 'Bombillas naranjas y moradas corriendo por todos los contornos.' },
   barrido: { name: 'Barrido de luz', description: 'Una ola de luz cruza toda la casa de lado a lado.' },
   incendio: { name: 'Ventanas en llamas', description: 'Fuego que prende ventana a ventana (de broma, sin miedo).' },
@@ -87,6 +92,38 @@ export function applyTemplate(kind: TemplateKind, inst: Installation, scene: Sce
       surfaces.forEach((s, i) => {
         if (s.kind === 'wall') clip(s, effectSource('spirits'), 0, D, { fadeIn: 1.5, opacity: 0.7, z: -8 });
         else clip(s, effectSource('eyes', i % 2 ? { color: '#7dff3a', color2: '#ffd23a' } : {}), i * step * 0.7, D - i * step * 0.7, { fadeIn: 0.2 });
+      });
+      break;
+    case 'sombras':
+      surfaces.forEach((s) => {
+        if (s.kind === 'window' || s.kind === 'door' || s.kind === 'shopwindow') clip(s, effectSource('shadowPass'), 0, D, { fadeIn: 0.8 });
+      });
+      break;
+    case 'telon':
+      surfaces.forEach((s, i) => {
+        if (s.kind !== 'wall') clip(s, effectSource('curtains'), i * step * 0.6, D - i * step * 0.6, { fadeIn: 0, fadeOut: 0, z: 8 });
+      });
+      break;
+    case 'cristalRoto':
+      surfaces.forEach((s, i) => {
+        if (s.kind !== 'wall') clip(s, effectSource('cracks', { width: 6 + i }), i * Math.min(0.7, step * 1.4), D - i * Math.min(0.7, step * 1.4), { fadeIn: 0, fadeOut: 0.6, z: 6 });
+      });
+      break;
+    case 'navidad':
+      surfaces.forEach((s, i) => {
+        if (s.kind === 'wall') {
+          clip(s, effectSource('aurora'), 0, D, { fadeIn: 2, opacity: 0.7, z: -8 });
+        } else {
+          clip(s, effectSource('frost'), 0, D, { fadeIn: 0, z: 2 });
+          clip(s, effectSource('chase', i % 2 ? { color: '#ff2a2a', color2: '#2aff6a' } : { color: '#2aff6a', color2: '#ff2a2a' }), i * step * 0.5, D - i * step * 0.5, { fadeIn: 0.3, z: 5 });
+        }
+        clip(s, effectSource('snow'), 0, D, { fadeIn: 1, opacity: 0.8, z: 3 });
+      });
+      break;
+    case 'fuegosArtificiales':
+      surfaces.forEach((s, i) => {
+        clip(s, effectSource('fireworks'), 0, D, { fadeIn: 0.3, z: 4 });
+        if (s.kind !== 'wall') clip(s, effectSource('chase'), i * step * 0.4, D - i * step * 0.4, { fadeIn: 0.3, z: 5 });
       });
       break;
     case 'lucesFeria':
