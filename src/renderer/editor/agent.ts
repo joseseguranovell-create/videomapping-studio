@@ -8,6 +8,8 @@ import { useStore } from './store';
 import { afterOpen, assetFromImported, saveProject, transport, vm, refreshMissing, addPackToProject } from './services';
 import { generateShow, soundKitFrom, defaultMusic, SHOW_STYLES, type ShowStyle } from '../../shared/generator';
 import { protagonistOptions } from './components/ShowWizard';
+import { choreography, CHOREO_KINDS, type ChoreoKind } from '../../shared/choreo';
+import { orderedSurfaces } from '../../shared/templates';
 import { parseProject } from '../../shared/schema';
 import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource } from '../../shared/factory';
 import { layoutShow } from '../../shared/timeline';
@@ -293,6 +295,36 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
       edit(`generar espectáculo «${sh.name}»`, (d) => { d.shows.push(sh); });
       st().set({ showId: sh.id, sceneId: sh.scenes[0]?.id ?? null, clipId: null });
       return { ok: true, espectaculoId: sh.id, escenas: sh.scenes.map((x) => x.name), duracion: layoutShow(sh).duration };
+    }
+    case 'coreografia': {
+      // Un personaje que se asoma y pasa a otra ventana, juega al escondite o vuela en arco.
+      const sh = findShow(p);
+      const sc = findScene(sh, p);
+      const kind = str(p, 'tipo') as ChoreoKind;
+      if (!CHOREO_KINDS.includes(kind)) fail(`«tipo» debe ser ${CHOREO_KINDS.join(', ')}`);
+      const pr = project();
+      const inst = pr.installations.find((i) => i.id === sh.installationId) ?? fail('El espectáculo no tiene instalación');
+      const who = str(p, 'protagonista');
+      const opt = protagonistOptions(pr).find((o) => o.label === who || o.asset.id === who) ?? null;
+      const img = opt ? null : pr.assets.find((a) => (a.id === who || a.name === who) && (a.kind === 'image' || a.kind === 'video' || a.kind === 'sequence'));
+      if (!opt && !img) fail(`No encuentro «${who}» (nombre de un vídeo, imagen o personaje)`);
+      const asset = opt ? opt.asset : img!;
+      const surf = (k: string) => { const id = p[k] as string; return inst.surfaces.find((s) => s.id === id || s.name.toLowerCase() === String(id).toLowerCase()) ?? fail(`No existe la superficie «${id}»`); };
+      const surfaces = kind === 'escondite' ? orderedSurfaces(inst).filter((s) => s.kind !== 'wall') : [surf('desde'), surf('hasta')];
+      const kit = soundKitFrom(pr.assets);
+      const r = choreography({
+        kind, installation: inst, surfaces, start: p.inicio !== undefined ? num(p, 'inicio') : 0,
+        actor: { name: opt?.label ?? asset.name, source: { type: 'asset', assetId: asset.id }, aspect: asset.width && asset.height ? asset.width / asset.height : 1, characterId: opt?.pro.characterId ?? null, animationId: opt?.pro.animationId ?? null },
+        sounds: { whoosh: kit.whoosh, pop: kit.pop, giggle: kit.giggle },
+      });
+      edit(`coreografía ${kind}`, (d) => {
+        const x = d.shows.find((y) => y.id === sh.id)?.scenes.find((y) => y.id === sc.id);
+        if (!x) return;
+        x.clips.push(...r.clips);
+        x.sounds.push(...r.sounds);
+        if (r.end > x.duration) x.duration = Math.ceil(r.end * 2) / 2;
+      });
+      return { ok: true, clips: r.clips.map((c) => c.id), termina: r.end };
     }
     case 'aplicar_plantilla': {
       const sh = findShow(p);

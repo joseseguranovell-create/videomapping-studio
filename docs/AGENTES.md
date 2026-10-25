@@ -84,6 +84,7 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 | `anadir_rotulo` | `superficieId`, `texto`, `letra?` (terror, monstruo, bruja, cuento, misterio, calabaza, gotica, elegante, gruesa, divertida, manuscrita, simple), `color?`, `contorno?`, `halo?` + campos de clip | Rótulo animado. |
 | `anadir_clip` | `superficieId` + `recursoId` **o** `personajeId`+`animacion` **o** `efecto` + campos de clip | Imagen, vídeo, personaje o efecto. |
 | `editar_clip` / `eliminar_clip` | `clipId`, … | |
+| `coreografia` | `tipo` (pasar, escondite, lanzar), `protagonista`, `desde?`, `hasta?`, `inicio?`, `escenaId?` | Un personaje que se asoma y pasa a otra ventana por detrás de la pared, juega al escondite o vuela en arco. |
 | `generar_espectaculo` | `estilo` (infantil, terror, navidad), `nombre?`, `protagonistas?` [nombres de vídeos o personajes], `duracion?`, `rotulo?`, `despedida?`, `instalacionId?` | Asistente: compone un espectáculo entero listo para retocar. |
 | `aplicar_plantilla` | `plantilla` (neonDibujo, cascadaLuz, tormenta, ojos, sombras, telon, cristalRoto, navidad, fuegosArtificiales, lucesFeria, barrido, incendio, nieveMagica, luciernagas), `escenaId?`, `inicio?` | Coreografía en todas las superficies. |
 | `anadir_sonido` | `recursoId`, `inicio`, `volumen?`, `bucle?`, `continuar?` | Efecto de sonido en la escena. |
