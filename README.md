@@ -15,6 +15,9 @@ Funciona sin conexión, sin suscripciones y sin depender de servicios de IA. Cad
 - **Efectos profesionales**: contornos de neón que se dibujan, luces de feria, relámpagos sincronizados con truenos, fuego, niebla, lluvia, nieve, barridos de luz, siluetas (sombras chinescas) y **plantillas de escena** de un clic.
 - **Rótulos de texto animados** y **quitar fondo** (croma verde, blanco o negro) para usar directamente vídeos e imágenes generados con IA.
 - **Una o dos pantallas**: pantalla completa siempre, «Preparar» y empezar con Espacio, y **calibración directa sobre la imagen proyectada** con ratón y teclado.
+- **Luces de casa sincronizadas** (opcional, con Home Assistant): relámpagos, colores, parpadeo y vela al ritmo del espectáculo; solo las luces que permitas y, al terminar, vuelven a como estaban. Sin Home Assistant se simulan en pantalla.
+- **Vídeo de demostración**: graba el espectáculo con sonido (MP4) sobre la foto de la fachada de noche, para enviarlo.
+- **Fácil de aprender**: guía de primeros pasos en Inicio y ayuda de cada pantalla con F1.
 - **Control por agentes de IA** (Claude Desktop/Code vía MCP o HTTP local): ver [docs/AGENTES.md](docs/AGENTES.md).
 - **Fiabilidad**: guardado atómico, copias de seguridad automáticas, guardado automático con recuperación tras un cierre inesperado, migración de versiones de formato y registro técnico.
 - **Paquete «Halloween infantil»** con 7 personajes ilustrados originales, decorados, música y efectos sintetizados, una casa de ejemplo con 6 ventanas, puerta, desván y frontón, y un **espectáculo de 1 minuto** listo para adaptar.

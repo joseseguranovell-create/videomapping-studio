@@ -16,6 +16,7 @@ Por ejemplo, puedes pedirle: *«Crea una escena de 8 segundos en la que Boo apar
 - Solo acepta conexiones **desde el propio PC** (127.0.0.1) que lleven la **clave**. Rechaza peticiones que vengan de páginas web.
 - Todo lo que hace el agente pasa por el historial («Agente: …»): se puede **deshacer con Ctrl+Z** y no se guarda en disco hasta que el agente o tú lo guardéis.
 - La URL y la clave se guardan en `%APPDATA%\Videomapping Studio\agent-api.json` mientras está activo.
+- Los agentes pueden crear luces y efectos de luz, pero **no** pueden conectar el programa a Home Assistant, ver su clave ni elegir qué luces reales se tocan: eso solo se hace a mano en la pantalla **Luces**.
 
 ## Opción 1: Claude Desktop (recomendado)
 
@@ -89,6 +90,9 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 | `aplicar_plantilla` | `plantilla` (neonDibujo, casaDespierta, portales, fiesta, cascadaLuz, tormenta, ojos, sombras, telon, cristalRoto, navidad, fuegosArtificiales, lucesFeria, barrido, incendio, nieveMagica, luciernagas), `escenaId?`, `inicio?` | Coreografía en todas las superficies. |
 | `anadir_sonido` | `recursoId`, `inicio`, `volumen?`, `bucle?`, `continuar?` | Efecto de sonido en la escena. |
 | `anadir_musica` | `recursoId`, `volumen?` | Música continua del espectáculo. |
+| `crear_luz` | `nombre`, `tipo?` (color, white, plug) | Luz de casa del proyecto. Se simula en pantalla; conectarla a una luz real de Home Assistant solo lo puede hacer la persona en la pantalla **Luces**. |
+| `anadir_luz` | `luzId?` (id, nombre o `*` para todas), `efecto` (color, off, flash, blink, candle, restore), `inicio?`, `duracion?`, `color?`, `color2?`, `brillo?` (0..1), `ritmo?` (0,2-3 por segundo), `transicion?`, `escenaId?` | Efecto de luz sincronizado con la escena. |
+| `luces_automaticas` | `espectaculoId?` | Pista de luces de todo el espectáculo según sus escenas (sustituye la que hubiera). |
 | `importar_recurso` | `ruta`, `nombre?` | Copia un archivo al proyecto. |
 | `quitar_fondo` | `recursoId`, `modo` (color, dark, none), `color?`, `tolerancia?`, `suavidad?` | Croma o fondo negro. |
 | `pantallas` / `abrir_salida` / `cerrar_salida` | `pantallaId?` | Proyector. |

@@ -1,5 +1,7 @@
 # Guía de uso
 
+> **Para aprender en una tarde:** en **Inicio** está la guía **Primeros pasos** (proyecto → ventanas → asistente → probar en la casa) con lo que ya has hecho marcado. En cualquier pantalla, el botón **Ayuda** (o **F1**) explica en pocas líneas cómo se usa y sus teclas.
+
 ## 1. Preparación física (antes de abrir el programa)
 
 1. **Coloca el proyector** donde no le dé la lluvia y no lo tapen personas ni coches, centrado frente a la fachada si es posible. Cuanto más perpendicular, menos deformación y más nitidez.
@@ -192,6 +194,27 @@ Cada efecto tiene dos colores y, con «Continuo en toda la fachada», va sincron
 3. **Modo directo** (para recibir a las visitas o dejar algo tranquilo mientras llega «la parte buena»): con las teclas **1–9** sobre la proyección, o los botones del panel «Modo directo» en Reproducción, una escena se repite en bucle; al elegir otra, cambia con un fundido de 1 s sin cortar la música. **Intro** devuelve al espectáculo normal desde esa escena. Un mando inalámbrico de presentaciones (de los que pasan diapositivas) funciona como cambiador de escenas con sus botones de avanzar y retroceder.
 4. **Negro** apaga la imagen al instante sin cerrar nada. La salida es independiente: puedes minimizar el editor.
 5. El panel **Diagnóstico** muestra fps, vídeos activos y errores. Si indica «por software», actualiza los controladores de la GPU.
+
+### Vídeo de demostración (para enviarlo)
+
+**Reproducción → Grabar vídeo de demostración** graba el espectáculo con su sonido en un vídeo MP4 (o WebM si el equipo no admite MP4), a 720p para WhatsApp o a 1080p. Si la instalación tiene una **foto de la fachada** (Calibración → foto de fondo), se graba encima de la foto oscurecida, como si fuera de noche, para que se vea cómo queda en la casa. Se graba en tiempo real (tarda lo que dura) con un reproductor aparte: no se proyecta nada ni se tocan las luces.
+
+## 7b. Luces de casa (Home Assistant)
+
+Las luces de casa pueden acompañar al espectáculo: **relámpagos** con la tormenta, el **color** de cada escena, **parpadeo** en la fiesta, **vela** con el fuego… Se configura en la pantalla **Luces**.
+
+1. **Añadir luces al proyecto** («Tira del porche», «Enchufe calabaza»). Sin Home Assistant **se simulan en pantalla** (en la línea de tiempo y en Reproducción), así que se pueden preparar en cualquier sitio.
+2. **Conectar Home Assistant** (opcional): dirección (por ejemplo `http://homeassistant.local:8123` o `http://192.168.1.50:8123`) y una **clave de acceso de larga duración** (en Home Assistant: tu perfil → Seguridad → Tokens de acceso de larga duración → Crear). **Probar conexión**.
+3. **Buscar luces** y marcar las que el programa **puede usar**. Solo aparecen luces (`light.*`) y enchufes o interruptores (`switch.*`); cerraduras, alarmas, climatización y lo demás no se tocan nunca. Después, **Añadir las permitidas** o conecta cada luz del proyecto con la suya.
+4. **Crear luces automáticas** para un espectáculo, o añádelas a mano en **Espectáculos**: cada luz tiene su fila «Luces» bajo los sonidos (más una fila «Todas las luces»). Doble clic o clic derecho en la fila → encender en un color, relámpagos, parpadeo, vela, apagar o «como estaba». El asistente de espectáculos también las añade si el proyecto tiene luces.
+
+**Qué hace y qué no hace con tu casa:**
+- Solo envía órdenes de encender, apagar y cambiar color o brillo a las luces que hayas permitido. No crea escenas, automatizaciones ni ayudantes, ni cambia nada de la configuración de Home Assistant.
+- Antes de tocar una luz guarda **cómo estaba** (encendida o apagada, brillo y color) y, al **detener**, poner en **negro**, **cerrar la salida** o **salir del programa**, la deja igual. También hay un botón «Devolver las luces a como estaban».
+- La clave se guarda **cifrada en este PC** (nunca en los proyectos ni en los paquetes). Habla directamente con tu Home Assistant: no sale nada a Internet.
+- Limita el ritmo de órdenes (unas 4 por segundo por luz; los enchufes, como mucho una por segundo y sin relámpagos) para no saturar la red Zigbee o Wi-Fi ni estropear relés.
+- Si una automatización tuya también cambia esas luces durante el espectáculo, ganará la última orden: conviene pausarla esa noche.
+- Las luces reales responden con algo de retardo (de 0,1 a 0,5 s según la marca); para golpes muy precisos, mejor el proyector.
 
 ## 8. Otra casa, otro año, otra celebración
 

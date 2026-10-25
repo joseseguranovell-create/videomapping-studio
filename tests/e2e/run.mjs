@@ -41,7 +41,7 @@ async function step(name, fn) {
 }
 
 async function launch() {
-  const env = { ...process.env, VMSTUDIO_USER_DATA: userData, VMSTUDIO_DOCUMENTS: docs };
+  const env = { ...process.env, VMSTUDIO_USER_DATA: userData, VMSTUDIO_DOCUMENTS: docs, VMSTUDIO_TEST_BASIC_KEYS: '1' };
   delete env.NODE_OPTIONS;
   const app = await electron.launch({ executablePath: require('electron'), args: ['.', '--no-sandbox'], env });
   const win = await app.firstWindow();
@@ -901,6 +901,139 @@ try {
     assert(dark.length === 0, `efectos que no se ven: ${dark.join(', ')}`);
     console.log(`      ${kinds.length} efectos comprobados`);
     await win.evaluate(() => { window.__vmStore.getState().undo(); window.__vmStore.getState().undo(); });
+  });
+
+  await step('18i. Luces de casa con un Home Assistant de prueba: permisos, sincronía y volver a como estaban', async () => {
+    const http = await import('node:http');
+    const calls = [];
+    const states = {
+      'light.tira_porche': { entity_id: 'light.tira_porche', state: 'on', attributes: { friendly_name: 'Tira porche', brightness: 120, color_mode: 'hs', hs_color: [30, 100], supported_color_modes: ['hs'] } },
+      'switch.calabaza': { entity_id: 'switch.calabaza', state: 'off', attributes: { friendly_name: 'Enchufe calabaza' } },
+      'lock.puerta': { entity_id: 'lock.puerta', state: 'locked', attributes: { friendly_name: 'Cerradura' } },
+    };
+    const server = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => {
+        const send = (code, v) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(v)); };
+        if (req.headers.authorization !== 'Bearer token-de-prueba') return send(401, { message: 'no' });
+        calls.push({ m: req.method, u: req.url, b: body ? JSON.parse(body) : null, t: Date.now() });
+        if (req.url === '/api/') return send(200, { message: 'API running.' });
+        if (req.url === '/api/config') return send(200, { location_name: 'Casa de prueba', version: '2026.10.1' });
+        if (req.url === '/api/states') return send(200, Object.values(states));
+        const m = /^\/api\/states\/(.+)$/.exec(req.url);
+        if (m) return states[m[1]] ? send(200, states[m[1]]) : send(404, {});
+        const sv = /^\/api\/services\/(\w+)\/(\w+)$/.exec(req.url);
+        if (sv && req.method === 'POST') { const e = states[JSON.parse(body).entity_id]; if (e) e.state = sv[2] === 'turn_on' ? 'on' : 'off'; return send(200, []); }
+        send(404, {});
+      });
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const url = `http://127.0.0.1:${server.address().port}`;
+    try {
+      await win.click('[data-testid="nav-lights"]');
+      await win.waitForSelector('[data-testid="ha-url"]');
+      await win.fill('[data-testid="ha-url"]', url);
+      await win.click('[data-testid="ha-url-save"]');
+      await win.fill('[data-testid="ha-token"]', 'token-de-prueba');
+      await win.click('[data-testid="ha-token-save"]');
+      await win.click('label:has([data-testid="ha-enabled"])');
+      await win.click('[data-testid="ha-test"]');
+      await win.waitForSelector('text=Conectado a «Casa de prueba»', { timeout: 8000 });
+      // La clave no llega nunca al editor ni a los ajustes en claro.
+      const st = await win.evaluate(() => window.vm.lights.status());
+      assert(st.hasToken && !JSON.stringify(st).includes('token-de-prueba'), 'la clave no sale del proceso principal');
+      assert(!fs.readFileSync(path.join(userData, 'settings.json'), 'utf8').includes('token-de-prueba'), 'la clave no está en los ajustes');
+      await win.click('[data-testid="ha-search"]');
+      await win.waitForSelector('[data-testid="ha-allow"]');
+      const listed = await win.locator('[data-testid="ha-entities"] li').allTextContents();
+      assert(listed.length === 2 && !listed.join(' ').includes('lock.puerta'), `solo luces y enchufes (${listed.join(' | ')})`);
+      for (const cb of await win.locator('[data-testid="ha-allow"]').all()) { await cb.check(); await win.waitForTimeout(150); }
+      await win.waitForFunction(() => window.vm.lights.status().then((s) => s.allowed.length === 2));
+      await win.click('[data-testid="light-add-allowed"]');
+      await win.waitForFunction(() => window.__vmStore.getState().project.lights.length === 2);
+      const devs = (await S(win)).project.lights;
+      assert(devs.find((d) => d.entityId === 'light.tira_porche')?.kind === 'color' && devs.find((d) => d.entityId === 'switch.calabaza')?.kind === 'plug', 'tipos deducidos');
+      // Luces automáticas para el espectáculo de ejemplo.
+      await win.click('[data-testid="light-auto"]');
+      const nAuto = (await S(win)).project.shows[0].scenes.reduce((n, sc) => n + sc.lights.length, 0);
+      assert(nAuto > 5, `luces automáticas creadas (${nAuto})`);
+      // Una escena de prueba al principio con efectos de luz conocidos (por la API de agentes).
+      const info = JSON.parse(fs.readFileSync(path.join(userData, 'agent-api.json'), 'utf8'));
+      const api = async (accion, parametros = {}) => (await fetch(`${info.url}/api`, { method: 'POST', headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, parametros }) })).json();
+      const sh = (await S(win)).project.shows[0];
+      const sc = (await api('crear_escena', { espectaculoId: sh.id, nombre: 'Prueba de luces', duracion: 5, transicion: 'cut', posicion: 0 })).resultado.escenaId;
+      const tira = devs.find((d) => d.entityId === 'light.tira_porche').id;
+      for (const p of [{ luzId: 'Tira porche', efecto: 'color', color: '#ff0000', inicio: 0.3, transicion: 0 }, { luzId: tira, efecto: 'flash', inicio: 1.5, duracion: 1.5, ritmo: 1 }, { luzId: 'Enchufe calabaza', efecto: 'color', inicio: 0.6 }]) {
+        const r = await api('anadir_luz', { espectaculoId: sh.id, escenaId: sc, ...p });
+        assert(r.ok, `anadir_luz: ${JSON.stringify(r)}`);
+      }
+      // La pista se ve en la línea de tiempo.
+      await win.click('[data-testid="nav-shows"]');
+      await win.waitForSelector('[data-testid="tl-light"]');
+      assert((await win.locator('[data-testid="tl-light"]').count()) === 3, 'tres efectos de luz en la línea de tiempo');
+      calls.length = 0;
+      await api('modo_salida', { modo: 'espectaculo', espectaculoId: sh.id });
+      await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
+      await out.evaluate(() => { window.__vmPlayer.seek(0); void window.__vmPlayer.play(); });
+      await out.waitForTimeout(3600);
+      const posts = () => calls.filter((c) => c.m === 'POST').map((c) => `${c.u.replace('/api/services/', '')} ${c.b.entity_id} ${JSON.stringify(c.b.rgb_color ?? c.b.hs_color ?? '')}`);
+      const during = posts();
+      console.log(`      durante: ${during.join(' · ')}`);
+      const firstGet = calls.findIndex((c) => c.m === 'GET' && c.u === '/api/states/light.tira_porche');
+      const firstPost = calls.findIndex((c) => c.m === 'POST' && c.b.entity_id === 'light.tira_porche');
+      assert(firstGet >= 0 && firstGet < firstPost, 'antes de tocar la luz se guarda cómo estaba');
+      assert(during.includes('light/turn_on light.tira_porche [255,0,0]'), 'la tira se pone roja');
+      assert(during.includes('light/turn_on light.tira_porche [255,255,255]'), 'relámpago blanco');
+      assert(during.filter((x) => x.includes('[255,0,0]')).length >= 2, 'tras el relámpago vuelve al rojo');
+      assert(during.includes('switch/turn_on switch.calabaza ""'), 'el enchufe se enciende');
+      const sim = await win.evaluate(() => window.__vmStore.getState().outputStatus?.lights);
+      assert(sim && Object.keys(sim).length === 2, `estado simulado en el editor (${JSON.stringify(sim)})`);
+      // Detener: todo vuelve a como estaba (la tira encendida en su color, el enchufe apagado).
+      calls.length = 0;
+      await win.click('[data-testid="nav-play"]');
+      await win.click('[data-testid="play-stop"]');
+      await win.waitForFunction(() => window.vm.lights.status().then((s) => s.inUse === 0), null, { timeout: 8000 });
+      await out.waitForTimeout(300);
+      const after = posts();
+      console.log(`      al detener: ${after.join(' · ')}`);
+      assert(after.includes('light/turn_on light.tira_porche [30,100]') && calls.find((c) => c.b?.entity_id === 'light.tira_porche' && c.m === 'POST').b.brightness === 120, 'la tira vuelve a su color y brillo');
+      assert(after.includes('switch/turn_off switch.calabaza ""'), 'el enchufe vuelve a apagado');
+      assert(states['switch.calabaza'].state === 'off' && states['light.tira_porche'].state === 'on', 'la casa queda igual que antes');
+      assert(!calls.some((c) => c.u.includes('lock')), 'la cerradura no se toca nunca');
+      await win.evaluate(() => { const s = window.__vmStore.getState(); for (let i = 0; i < 6; i++) s.undo(); });
+    } finally {
+      await win.evaluate(() => window.vm.lights.configure({ enabled: false }));
+      server.close();
+    }
+  });
+
+  await step('18j. Ayuda y primeros pasos; vídeo de demostración de 10 s con sonido', async () => {
+    await win.click('[data-testid="nav-home"]');
+    await win.waitForSelector('[data-testid="first-steps"]');
+    const done = await win.locator('[data-testid="first-steps"] li.done').count();
+    assert(done >= 3, `primeros pasos marcados (${done})`);
+    await win.keyboard.press('F1');
+    await win.waitForSelector('text=Cómo se usa: Inicio');
+    await win.keyboard.press('Escape');
+    await win.click('[data-testid="nav-play"]');
+    await win.click('[data-testid="help"]');
+    await win.waitForSelector('text=Cómo se usa: Reproducción');
+    await win.keyboard.press('Escape');
+    const target = path.join(tmp, 'demo-prueba');
+    await app.evaluate(({ dialog }, t) => { dialog.showSaveDialog = async (_w, o) => ({ canceled: false, filePath: `${t}.${o.filters[0].extensions[0]}` }); }, target);
+    await win.click('[data-testid="demo-open"]');
+    await win.selectOption('[data-testid="demo-length"]', '10');
+    await win.click('[data-testid="demo-start"]');
+    await win.waitForSelector('[data-testid="demo-done"]', { timeout: 60000 });
+    const file = ['mp4', 'webm'].map((e) => `${target}.${e}`).find((f) => fs.existsSync(f));
+    assert(file, 'el vídeo se guarda');
+    const buf = fs.readFileSync(file);
+    const kind = buf.subarray(4, 8).toString('latin1') === 'ftyp' ? 'mp4' : buf.readUInt32BE(0) === 0x1a45dfa3 ? 'webm' : '?';
+    console.log(`      ${path.basename(file)}: ${(buf.length / 1024).toFixed(0)} KB (${kind})`);
+    assert(kind !== '?' && file.endsWith(kind), 'formato de vídeo válido');
+    assert(buf.length > 100 * 1024, 'el vídeo tiene contenido');
+    await win.keyboard.press('Escape');
   });
 
   if (LONG) {

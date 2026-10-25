@@ -21,6 +21,12 @@
 - Espectáculo de ejemplo ampliado a 10 escenas (~1 min 40 s): neón inicial, tormenta con truenos, sombras chinescas y gran final con luces de feria y rótulo.
 - Esquema v3. Rendimiento: los contornos y el fuego o la niebla son los efectos más costosos. Con renderizado por software bajan a ~10 fps; en una GPU integrada deberían ir fluidos (pendiente de confirmar en el portátil).
 
+**2026-10-25: luces de casa, ayuda y vídeo de demostración**
+- **Luces de casa** (esquema v7): luces del proyecto (`project.lights`) y pista de luces por escena (`scene.lights`) con encender en un color, apagar, relámpagos, parpadeo, vela y «como estaba». Lógica pura y probada en `src/shared/lights.ts`: órdenes con hora, `LightDriver` (resincroniza al saltar o cambiar de escena, también en modo directo), luces automáticas por escena y traducción a Home Assistant.
+- **Home Assistant** (`src/main/homeAssistant.ts`, opcional y desactivado por defecto): solo `light.turn_on/turn_off` y `switch.turn_on/turn_off` de las entidades que el usuario permite; foto del estado antes de tocar cada luz y restauración al detener, negro, cerrar la salida o salir; ritmo limitado por luz; la clave va cifrada con safeStorage. Sin Home Assistant, las luces se simulan en pantalla. Prueba E2E con un Home Assistant falso (paso 18i).
+- **Facilidad de uso**: guía «Primeros pasos» en Inicio, botón **Ayuda** y **F1** con la ayuda de cada pantalla, como mucho 3 avisos a la vez.
+- **Vídeo de demostración** (Reproducción): graba el espectáculo con sonido en MP4 o WebM, sobre la foto de la fachada oscurecida, con un reproductor oculto aparte (paso 18j).
+
 ## Limitaciones conocidas (reales)
 
 1. **Sin detección automática** de puertas y ventanas: la calibración es manual (no requiere cámara).
@@ -31,11 +37,13 @@
 6. **Sincronización**: imagen y sonido comparten el reloj de AudioContext. Los vídeos se corrigen si se desvían más de 0,3 s, así que no está pensado para sincronizar labios al fotograma.
 7. **Un proyector por instalación**: una única salida activa a la vez.
 8. **Rendimiento**: no medido aún en una GPU real; con renderizado por software (sin GPU) a 1080p ronda 20 fps.
-9. **Salida de audio**: el dispositivo predeterminado de Windows; no se puede elegir otro desde el programa.
-10. **Edición en la previsualización**: se puede mover y escalar el clip seleccionado; la rotación es con Mayús+rueda o en el panel.
-11. **Instalador sin firma digital**: Windows SmartScreen avisa en la primera ejecución. No hay actualización automática.
-12. **Generación de contenido con IA**: no integrada. Se importan archivos creados con cualquier herramienta externa.
-13. **Paquete de ejemplo**: el «vídeo» del fantasma y la secuencia del murciélago son animaciones sencillas; los personajes cobran vida con los movimientos del programa, no con animación fotograma a fotograma.
+9. **Luces de casa**: solo Home Assistant (API REST local). Las luces reales responden con 0,1-0,5 s de retardo y se limitan a ~4 órdenes por segundo por luz (enchufes, 1 por segundo). Sin probar aún con luces reales.
+10. **Vídeo de demostración**: se graba en tiempo real; la ventana debe estar a la vista mientras graba.
+11. **Salida de audio**: el dispositivo predeterminado de Windows; no se puede elegir otro desde el programa.
+12. **Edición en la previsualización**: se puede mover y escalar el clip seleccionado; la rotación es con Mayús+rueda o en el panel.
+13. **Instalador sin firma digital**: Windows SmartScreen avisa en la primera ejecución. No hay actualización automática.
+14. **Generación de contenido con IA**: no integrada. Se importan archivos creados con cualquier herramienta externa.
+15. **Paquete de ejemplo**: el «vídeo» del fantasma y la secuencia del murciélago son animaciones sencillas; los personajes cobran vida con los movimientos del programa, no con animación fotograma a fotograma.
 
 ## Mejoras futuras (por prioridad)
 
