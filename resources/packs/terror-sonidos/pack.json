@@ -1,0 +1,273 @@
+{
+  "format": "vmstudio-pack",
+  "formatVersion": 1,
+  "id": "terror-sonidos",
+  "name": "Sonidos de terror",
+  "description": "Zumbido de fondo, latidos, golpe de susto, susurros, cajita de música, viento, crujido y subida de tensión.",
+  "author": "Videomapping Studio",
+  "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+  "version": "1.0.0",
+  "tags": [
+    "terror",
+    "Halloween"
+  ],
+  "assets": [
+    {
+      "id": "tr-ast-zumbido",
+      "name": "Zumbido oscuro (fondo en bucle)",
+      "kind": "audio",
+      "file": "files/zumbido-oscuro.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 31.5,
+      "hasAlpha": null,
+      "size": 307415,
+      "tags": [
+        "música",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-latidos",
+      "name": "Latidos (bucle)",
+      "kind": "audio",
+      "file": "files/latidos.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 2,
+      "hasAlpha": null,
+      "size": 6857,
+      "tags": [
+        "efecto",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-golpe",
+      "name": "Golpe de susto",
+      "kind": "audio",
+      "file": "files/golpe-susto.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 3.5,
+      "hasAlpha": null,
+      "size": 28181,
+      "tags": [
+        "efecto",
+        "susto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-susurros",
+      "name": "Susurros",
+      "kind": "audio",
+      "file": "files/susurros.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 3,
+      "hasAlpha": null,
+      "size": 24424,
+      "tags": [
+        "efecto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-cajita",
+      "name": "Cajita de música desafinada",
+      "kind": "audio",
+      "file": "files/cajita-musica.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 11,
+      "hasAlpha": null,
+      "size": 51934,
+      "tags": [
+        "efecto",
+        "música"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-viento",
+      "name": "Viento (bucle)",
+      "kind": "audio",
+      "file": "files/viento.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 9.5,
+      "hasAlpha": null,
+      "size": 100719,
+      "tags": [
+        "efecto",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-crujido",
+      "name": "Crujido de puerta",
+      "kind": "audio",
+      "file": "files/crujido.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 2.2,
+      "hasAlpha": null,
+      "size": 29063,
+      "tags": [
+        "efecto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-tension",
+      "name": "Subida de tensión",
+      "kind": "audio",
+      "file": "files/tension.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 4,
+      "hasAlpha": null,
+      "size": 45157,
+      "tags": [
+        "efecto",
+        "susto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    }
+  ],
+  "characters": [],
+  "installations": [],
+  "shows": []
+}

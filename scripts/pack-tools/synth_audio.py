@@ -233,7 +233,136 @@ def thunder():
     return normalize(x * env_adsr(len(t), 0.002, 0.05, 1.0, 0.8), 0.9)
 
 
+# ───────── Terror (paquete «Sonidos de terror») ─────────
+
+def lowpass(x, a):
+    y = np.zeros_like(x)
+    for i in range(1, len(x)):
+        y[i] = y[i - 1] + a * (x[i] - y[i - 1])
+    return y
+
+
+def loopify(x, sec=0.5):
+    """Bucle sin chasquido: el final se funde con el principio."""
+    n = int(SR * sec)
+    head = x[:n].copy()
+    ramp = np.linspace(0, 1, n)
+    x = x[n:].copy()
+    x[-n:] = x[-n:] * (1 - ramp) + head * ramp
+    return x
+
+
+def drone():
+    """Zumbido grave y disonante en bucle perfecto (32 s): fondo de un espectáculo de miedo."""
+    d = 32.0
+    t = t_axis(d)
+    out = np.zeros_like(t)
+    # frecuencias con periodos enteros en 32 s para que el bucle no tenga salto
+    for f, a in ((41.0, 0.5), (55.0 + 1 / 32, 0.35), (58.25, 0.25), (82.0, 0.18), (110.5, 0.08)):
+        lfo = 0.7 + 0.3 * np.sin(2 * np.pi * t / d * 3 + f)
+        out += a * lfo * (np.sin(2 * np.pi * f * t) + 0.3 * np.sin(2 * np.pi * 2 * f * t))
+    noise = lowpass(rng.standard_normal(len(t)), 0.01) * 6
+    swell = 0.6 + 0.4 * np.sin(2 * np.pi * t / d * 2) ** 2
+    x = (out + noise * 0.3) * swell
+    return normalize(loopify(x), 0.75)
+
+
+def heartbeat():
+    """Latidos (bucle de 2 s: «pum-pum»)."""
+    d = 2.0
+    buf = np.zeros(int(SR * d))
+    for at, v in ((0.0, 1.0), (0.28, 0.7)):
+        tt = t_axis(0.25)
+        f = 55 * np.exp(-tt * 6) + 38
+        ph = 2 * np.pi * np.cumsum(f) / SR
+        mix_into(buf, np.sin(ph) * np.exp(-tt * 18) * v, at)
+    return normalize(lowpass(buf, 0.2), 0.9)
+
+
+def stinger():
+    """Golpe de susto: impacto grave + cluster disonante que se apaga."""
+    d = 3.5
+    t = t_axis(d)
+    hit = rng.standard_normal(len(t)) * np.exp(-t * 25) + np.sin(2 * np.pi * (60 * np.exp(-t * 3) + 30) * t) * np.exp(-t * 2.5) * 1.5
+    cl = sum(np.sin(2 * np.pi * f * t + i) for i, f in enumerate((311.1, 329.6, 349.2, 466.2, 493.9))) * np.exp(-t * 1.3) * 0.25
+    return normalize((hit + cl) * env_adsr(len(t), 0.002, 0.05, 1, 0.5), 0.95)
+
+
+def whisper():
+    """Susurros: ruido con formantes que van y vienen."""
+    d = 3.0
+    t = t_axis(d)
+    n = rng.standard_normal(len(t))
+    hp = n - lowpass(n, 0.3)
+    syll = np.clip(np.sin(2 * np.pi * 3.2 * t + np.sin(2 * np.pi * 0.7 * t) * 2), 0, 1) ** 2
+    x = hp * syll * np.sin(np.pi * t / d)
+    return normalize(x, 0.6)
+
+
+def music_box():
+    """Cajita de música desafinada (melodía en menor que se ralentiza)."""
+    notes = [12, 15, 19, 17, 15, 14, 15, 12, 10, 12, 7, None, 12, 15, 19, 22, 20, 19]
+    buf = np.zeros(int(SR * 11))
+    at = 0.0
+    step = 0.42
+    for k, n in enumerate(notes):
+        if n is not None:
+            f = note_freq(n + 3) * (1 + 0.004 * np.sin(k * 1.7))  # ligeramente desafinada
+            mix_into(buf, celesta(f, 1.6, 0.5), at)
+            mix_into(buf, 0.3 * celesta(f * 2.01, 1.0, 0.3), at)
+        at += step
+        step *= 1.025  # se va quedando sin cuerda
+    return normalize(buf, 0.75)
+
+
+def wind():
+    """Viento que sopla y silba (bucle de 10 s)."""
+    d = 10.0
+    t = t_axis(d)
+    n = rng.standard_normal(len(t))
+    x = np.zeros_like(n)
+    y = 0.0
+    for i in range(len(n)):
+        a = 0.01 + 0.05 * (0.5 + 0.5 * np.sin(2 * np.pi * t[i] / d * 2 + 1.3 * np.sin(2 * np.pi * t[i] / d)))
+        y += a * (n[i] - y)
+        x[i] = y
+    gust = 0.5 + 0.5 * np.sin(2 * np.pi * t / d * 2) ** 2
+    return normalize(loopify(x * gust), 0.6)
+
+
+def creak():
+    """Crujido de puerta vieja."""
+    d = 2.2
+    t = t_axis(d)
+    f = 180 + 120 * np.sin(np.pi * t / d) + 30 * np.sin(2 * np.pi * 3 * t)
+    pulses = (np.sin(2 * np.pi * np.cumsum(f) / SR) > 0.97).astype(float)
+    x = lowpass(pulses * (1 + rng.standard_normal(len(t)) * 0.3), 0.35) * np.sin(np.pi * t / d)
+    return normalize(x, 0.8)
+
+
+def riser():
+    """Subida de tensión: ruido y tono que suben hasta cortarse en seco."""
+    d = 4.0
+    t = t_axis(d)
+    f = 80 * (2 ** (t * 1.2))
+    tone = np.sin(2 * np.pi * np.cumsum(f) / SR) * 0.4
+    n = rng.standard_normal(len(t))
+    hiss = (n - lowpass(n, 0.1)) * (t / d) ** 2
+    return normalize((tone + hiss) * (t / d) ** 1.5, 0.85)
+
+
+def main_terror(out):
+    os.makedirs(out, exist_ok=True)
+    items = {'zumbido-oscuro': drone(), 'latidos': heartbeat(), 'golpe-susto': stinger(), 'susurros': whisper(),
+             'cajita-musica': music_box(), 'viento': wind(), 'crujido': creak(), 'tension': riser()}
+    for name, x in items.items():
+        write_wav(os.path.join(out, f'{name}.wav'), x)
+        print(f'{name}.wav {len(x) / SR:.2f}s')
+
+
 def main():
+    if len(sys.argv) > 2 and sys.argv[2] == 'terror':
+        return main_terror(sys.argv[1])
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
     items = {
