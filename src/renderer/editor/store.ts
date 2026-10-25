@@ -11,7 +11,7 @@ import { newId } from '../../shared/ids';
 
 setAutoFreeze(false);
 
-export type View = 'home' | 'calibrate' | 'library' | 'characters' | 'shows' | 'play' | 'settings';
+export type View = 'home' | 'calibrate' | 'library' | 'characters' | 'shows' | 'lights' | 'play' | 'settings';
 export type OutputModeChoice = 'black' | 'calibration' | 'show';
 export type CalibTool = 'select' | 'rect' | 'polygon' | 'mask';
 export type Pattern = 'test' | 'color' | 'white' | 'none';
@@ -47,6 +47,12 @@ interface State {
   sceneId: string | null;
   clipId: string | null;
   soundId: string | null;
+  /** Efecto de luz seleccionado en la pista de luces. */
+  lightId: string | null;
+  /** Abrir el asistente de espectáculos al entrar en Espectáculos. */
+  pendingWizard: boolean;
+  /** El espectáculo se ha reproducido en el proyector en esta sesión (guía de primeros pasos). */
+  playedOnce: boolean;
   musicId: string | null;
 
   calib: { tool: CalibTool; showGrid: boolean; showLabels: boolean; pattern: Pattern; soloSelected: boolean; maskTarget: 'installation' | 'surface' };
@@ -108,6 +114,9 @@ export const useStore = create<State & Actions>((set, get) => ({
   sceneId: null,
   clipId: null,
   soundId: null,
+  lightId: null,
+  pendingWizard: false,
+  playedOnce: false,
   musicId: null,
 
   calib: { tool: 'select', showGrid: true, showLabels: true, pattern: 'test', soloSelected: false, maskTarget: 'installation' },
@@ -222,7 +231,12 @@ export const useStore = create<State & Actions>((set, get) => ({
   },
   toast(kind, text, ms = 4000) {
     const id = newId('t');
-    set((s) => ({ toasts: [...s.toasts.slice(-4), { id, kind, text }] }));
+    // Como mucho 3 avisos a la vez; varios «Deshecho…» seguidos se sustituyen en lugar de apilarse.
+    const undoLike = /^(Deshecho|Rehecho): /;
+    set((s) => {
+      const keep = undoLike.test(text) ? s.toasts.filter((t) => !undoLike.test(t.text)) : s.toasts;
+      return { toasts: [...keep.slice(-2), { id, kind, text }] };
+    });
     if (ms > 0) setTimeout(() => get().dismissToast(id), ms);
   },
   dismissToast(id) {

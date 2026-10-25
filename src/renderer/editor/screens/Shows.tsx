@@ -1,7 +1,7 @@
 /** Editor de espectáculos: escenas, línea de tiempo por superficie, clips, sonidos y música. */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type, Wand2,
+  Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type, Wand2, Lightbulb,
 } from 'lucide-react';
 import { useStore, selShow, selScene } from '../store';
 import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, Modal, confirmDialog, promptDialog, openMenu, type MenuItem } from '../components/ui';
@@ -9,11 +9,11 @@ import { AssetPicker } from '../components/pickers';
 import { ShowPreview, previewControl, usePreview } from '../components/ShowPreview';
 import { AssetThumb } from './Library';
 import {
-  createShow, createScene, createClip, createSoundCue, duplicateScene, duplicateShow, suggestSurfaceMap, remapShowSurfaces, effectSource,
+  createShow, createScene, createClip, createSoundCue, createLightCue, duplicateScene, duplicateShow, suggestSurfaceMap, remapShowSurfaces, effectSource,
 } from '../../../shared/factory';
 import { newId } from '../../../shared/ids';
 import {
-  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, CONTOUR_EFFECTS, FACADE_EFFECTS, type EffectKind, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project,
+  MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, CONTOUR_EFFECTS, FACADE_EFFECTS, type EffectKind, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project, type LightCue, type LightAction, LIGHT_ACTIONS, LIGHT_ACTION_LABELS,
 } from '../../../shared/model';
 import { layoutShow, formatTime } from '../../../shared/timeline';
 import { applyTemplate, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
@@ -21,6 +21,8 @@ import { transport } from '../services';
 import { ShowWizard } from '../components/ShowWizard';
 import { ChoreoModal, type ChoreoPreset } from '../components/ChoreoModal';
 import { cloneDeep } from '../../../shared/factory';
+import { lightEvents, lightStateAt } from '../../../shared/lights';
+import { LightDots } from './Lights';
 
 function useShowMut() {
   const update = useStore((s) => s.update);
@@ -48,6 +50,8 @@ export function ShowsScreen() {
   const set = useStore((s) => s.set);
   const update = useStore((s) => s.update);
   const [wizard, setWizard] = useState(false);
+  const pendingWizard = useStore((s) => s.pendingWizard);
+  useEffect(() => { if (pendingWizard) { setWizard(true); set({ pendingWizard: false }); } }, [pendingWizard, set]);
 
   // atajo: espacio = reproducir/pausar previsualización
   useEffect(() => {
@@ -436,9 +440,10 @@ function SceneTimeline({ show }: { show: Show }) {
       if (!sc) return;
       const mod = e.ctrlKey || e.metaKey;
       const clip = sc.clips.find((c) => c.id === s0.clipId);
-      if ((e.key === 'Delete' || e.key === 'Backspace') && (clip || s0.soundId)) {
+      const light = sc.lights.find((x) => x.id === s0.lightId);
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (clip || s0.soundId || light)) {
         e.preventDefault();
-        if (clip) clipActions(clip).remove(); else soundRemove(s0.soundId!);
+        if (clip) clipActions(clip).remove(); else if (s0.soundId) soundRemove(s0.soundId); else if (light) lightRemove(light.id);
       } else if (mod && e.key.toLowerCase() === 'd' && clip) { e.preventDefault(); clipActions(clip).duplicate(); }
       else if (mod && e.key.toLowerCase() === 'c' && clip) { clipboard = cloneDeep(clip); s0.toast('info', 'Clip copiado. Ctrl+V lo pega en la fila elegida, en el cabezal.', 2500); }
       else if (mod && e.key.toLowerCase() === 'v' && clipboard) { e.preventDefault(); pasteClip(); }
@@ -451,7 +456,9 @@ function SceneTimeline({ show }: { show: Show }) {
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
   });
-  const drag = useRef<null | { kind: 'move' | 'resize'; id: string; isSound: boolean; x0: number; start0: number; dur0: number; pxPerSec: number; rowY0: number }>(null);
+  const drag = useRef<null | { kind: 'move' | 'resize'; id: string; isSound: boolean; isLight?: boolean; x0: number; start0: number; dur0: number; pxPerSec: number; rowY0: number }>(null);
+  const lightId = useStore((s) => s.lightId);
+  const lightNow = useMemo(() => lightStateAt(lightEvents(show, project.lights, L), time), [show, project.lights, L, time]);
 
   if (!scene) return <div className="timeline empty-tl muted">Añade o selecciona una escena.</div>;
   const D = scene.duration;
@@ -491,6 +498,41 @@ function SceneTimeline({ show }: { show: Show }) {
       moveTo: (surfaceId: string) => mutScene(false, (sc) => { const x = sc.clips.find((y) => y.id === c.id); if (x) x.surfaceId = surfaceId; }, 'Mover clip a otra superficie'),
     };
   }
+  function lightRemove(id: string) {
+    mutScene(false, (sc) => { sc.lights = sc.lights.filter((x) => x.id !== id); }, 'Eliminar efecto de luz');
+    set({ lightId: null });
+  }
+  function addLight(deviceId: string, at: number, p: Partial<LightCue>) {
+    const c = createLightCue(deviceId, { start: at, ...p, duration: Math.max(0.5, Math.min(p.duration ?? 2, D - at)) });
+    mutScene(false, (sc) => { sc.lights.push(c); }, `Luz: ${LIGHT_ACTION_LABELS[c.action]}`);
+    set({ lightId: c.id, clipId: null, soundId: null, musicId: null });
+  }
+  /** Colores de los efectos de la escena (para teñir las luces igual). */
+  const sceneColor = scene?.clips.find((c) => c.source.type === 'effect')?.source as { color?: string } | undefined;
+  const lightMenu = (e: React.MouseEvent, deviceId: string) => {
+    if ((e.target as HTMLElement).closest('.tl-bar')) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const t = snap(Math.max(0, Math.min(D - 0.1, ((e.clientX - r.left) / r.width) * D)));
+    if (slot) previewControl.seek(slot.start + t);
+    lightMenuAt(e, deviceId, t);
+  };
+  const lightMenuAt = (e: { clientX: number; clientY: number; preventDefault?: () => void }, deviceId: string, t: number) => {
+    const who = deviceId === '*' ? 'todas las luces' : `«${project.lights.find((d) => d.id === deviceId)?.name ?? ''}»`;
+    openMenu(e, [
+      { label: `Luz en ${who} a los ${t.toFixed(1)} s`, disabled: true },
+      { label: 'Encender en naranja', onClick: () => addLight(deviceId, t, { action: 'color', color: '#ff6a00' }) },
+      { label: 'Encender en morado', onClick: () => addLight(deviceId, t, { action: 'color', color: '#7a2cff' }) },
+      { label: 'Encender en verde', onClick: () => addLight(deviceId, t, { action: 'color', color: '#22ff55' }) },
+      ...(sceneColor?.color ? [{ label: 'Color de los efectos de la escena', onClick: () => addLight(deviceId, t, { action: 'color', color: sceneColor.color }) }] : []),
+      { separator: true, label: '' },
+      { label: 'Relámpagos (3 s)', onClick: () => addLight(deviceId, t, { action: 'flash', duration: 3, rate: 1 }) },
+      { label: 'Parpadeo naranja y morado (4 s)', onClick: () => addLight(deviceId, t, { action: 'blink', duration: 4, rate: 1 }) },
+      { label: 'Vela (5 s)', onClick: () => addLight(deviceId, t, { action: 'candle', duration: 5, rate: 1.5, color: '#ff8a2a', brightness: 0.7 }) },
+      { separator: true, label: '' },
+      { label: 'Apagar', onClick: () => addLight(deviceId, t, { action: 'off' }) },
+      { label: 'Como estaba en casa', onClick: () => addLight(deviceId, t, { action: 'restore' }) },
+    ]);
+  };
   function soundRemove(id: string) {
     mutScene(false, (sc) => { sc.sounds = sc.sounds.filter((x) => x.id !== id); }, 'Eliminar sonido');
     set({ soundId: null });
@@ -554,16 +596,16 @@ function SceneTimeline({ show }: { show: Show }) {
     pendingStart.current = null;
   };
 
-  const onBarDown = (e: React.PointerEvent, id: string, isSound: boolean, kind: 'move' | 'resize') => {
+  const onBarDown = (e: React.PointerEvent, id: string, isSound: boolean, kind: 'move' | 'resize', isLight = false) => {
     e.stopPropagation();
     if (e.button !== 0) return;
     (e.target as Element).setPointerCapture(e.pointerId);
-    const item = isSound ? scene.sounds.find((s) => s.id === id)! : scene.clips.find((c) => c.id === id)!;
+    const item = isLight ? scene.lights.find((s) => s.id === id)! : isSound ? scene.sounds.find((s) => s.id === id)! : scene.clips.find((c) => c.id === id)!;
     const width = trackRef.current!.getBoundingClientRect().width;
-    const dur = isSound ? (item as SoundCue).duration ?? soundLength(item as SoundCue) : (item as Clip).duration;
+    const dur = isLight ? (item as LightCue).duration : isSound ? (item as SoundCue).duration ?? soundLength(item as SoundCue) : (item as Clip).duration;
     st().beginDrag();
-    drag.current = { kind, id, isSound, x0: e.clientX, start0: item.start, dur0: dur, pxPerSec: width / D, rowY0: e.clientY };
-    set(isSound ? { soundId: id, clipId: null, musicId: null } : { clipId: id, soundId: null, musicId: null });
+    drag.current = { kind, id, isSound, isLight, x0: e.clientX, start0: item.start, dur0: dur, pxPerSec: width / D, rowY0: e.clientY };
+    set(isLight ? { lightId: id, clipId: null, soundId: null, musicId: null } : isSound ? { soundId: id, clipId: null, musicId: null, lightId: null } : { clipId: id, soundId: null, musicId: null, lightId: null });
   };
 
   const soundLength = (s: SoundCue) => project.assets.find((a) => a.id === s.assetId)?.duration ?? 3;
@@ -574,12 +616,16 @@ function SceneTimeline({ show }: { show: Show }) {
     const dt = (e.clientX - d.x0) / d.pxPerSec;
     // cambio de fila (superficie) al arrastrar verticalmente un clip
     let targetSurface: string | null = null;
-    if (!d.isSound && d.kind === 'move') {
+    if (!d.isSound && !d.isLight && d.kind === 'move') {
       const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-surface-row]') as HTMLElement | null;
       targetSurface = el?.dataset.surfaceRow ?? null;
     }
     mutScene(true, (sc) => {
-      if (d.isSound) {
+      if (d.isLight) {
+        const l = sc.lights.find((x) => x.id === d.id)!;
+        if (d.kind === 'move') l.start = Math.max(0, Math.min(D - 0.1, snap(d.start0 + dt)));
+        else l.duration = Math.max(0.2, snap(d.dur0 + dt));
+      } else if (d.isSound) {
         const s = sc.sounds.find((x) => x.id === d.id)!;
         if (d.kind === 'move') s.start = Math.max(0, Math.min(D - 0.1, snap(d.start0 + dt)));
         else s.duration = Math.max(0.1, snap(d.dur0 + dt));
@@ -660,6 +706,7 @@ function SceneTimeline({ show }: { show: Show }) {
         </Button>
         <Button small icon={<Shuffle size={14} />} disabled={surfaces.filter((s) => s.kind !== 'wall').length < 2} onClick={() => { setChoreoPreset(rowSurface ? { from: rowSurface } : undefined); setPicker('choreo'); }} data-testid="add-choreo" title="Un personaje que se asoma y pasa a otra ventana, escondite, lanzar en arco…">Coreografía</Button>
         <Button small icon={<Volume2 size={14} />} onClick={() => setPicker('sound')} data-testid="add-sound">Sonido</Button>
+        <Button small icon={<Lightbulb size={14} />} onClick={(e) => (project.lights.length ? lightMenuAt(e, '*', startAt) : set({ view: 'lights' }))} data-testid="add-light" title="Luces de casa sincronizadas con la escena">Luz</Button>
         <span className="muted small">Se añade en {surfaces.find((s) => s.id === defaultSurface)?.name ?? '—'} a los {startAt.toFixed(1)}s. Doble clic en un hueco para añadir ahí · clic derecho en un clip para más opciones · Supr borra · Ctrl+D duplica.</span>
       </div>
       <div className="tl-grid">
@@ -695,6 +742,42 @@ function SceneTimeline({ show }: { show: Show }) {
             })}
           </div>
         </div>
+        {project.lights.length === 0 ? (
+          <div className="tl-row lights">
+            <div className="tl-label"><Lightbulb size={13} /> Luces</div>
+            <div className="tl-track hint" onClick={() => set({ view: 'lights' })} data-testid="tl-lights-hint">Luces de casa (Home Assistant o simuladas): añádelas en la pantalla <b>Luces</b> y aparecerán aquí.</div>
+          </div>
+        ) : (
+          [{ id: '*', name: 'Todas las luces' }, ...project.lights].map((dv) => (
+            <div className="tl-row lights" key={dv.id} data-light-row={dv.id}>
+              <div className="tl-label" title={dv.id === '*' ? 'Lo que pongas aquí afecta a todas las luces' : 'Doble clic o clic derecho en la fila para añadir un efecto de luz'}>
+                <Lightbulb size={13} />
+                {dv.id === '*' ? dv.name : <LightDots devices={[project.lights.find((x) => x.id === dv.id)!]} states={lightNow} />}
+              </div>
+              <div className="tl-track" onPointerDown={onRulerDown} onDoubleClick={(e) => lightMenu(e, dv.id)} onContextMenu={(e) => lightMenu(e, dv.id)} data-testid={dv.id === '*' ? 'tl-lights-all' : 'tl-lights-row'}>
+                {scene.lights.filter((l) => l.deviceId === dv.id).map((l) => {
+                  const instant = l.action === 'color' || l.action === 'off' || l.action === 'restore';
+                  return (
+                    <div
+                      key={l.id}
+                      className={`tl-bar lgt${l.id === lightId ? ' sel' : ''}${instant ? ' instant' : ''}`}
+                      style={{ left: pct(l.start), width: instant ? undefined : pct(Math.min(l.duration, D - l.start)), ['--lc' as string]: l.action === 'off' ? '#333' : l.action === 'flash' ? '#e8f0ff' : l.action === 'restore' ? '#888' : l.color }}
+                      onPointerDown={(e) => onBarDown(e, l.id, false, 'move', true)}
+                      onPointerMove={onMove}
+                      onPointerUp={onUp}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); set({ lightId: l.id, clipId: null, soundId: null, musicId: null }); openMenu(e, [{ label: 'Eliminar', icon: <Trash2 size={14} />, hint: 'Supr', danger: true, onClick: () => lightRemove(l.id) }]); }}
+                      title={`${LIGHT_ACTION_LABELS[l.action]} · ${l.start.toFixed(1)}s`}
+                      data-testid="tl-light"
+                    >
+                      <span>{l.action === 'color' && project.lights.find((x) => x.id === l.deviceId)?.kind === 'plug' ? 'Encender' : LIGHT_ACTION_LABELS[l.action]}</span>
+                      {!instant && <i className="tl-resize" onPointerDown={(e) => onBarDown(e, l.id, false, 'resize', true)} onPointerMove={onMove} onPointerUp={onUp} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
         {local !== null && (
           <div className="tl-playhead-layer"><div className="tl-playhead" style={{ left: pct(local) }} /></div>
         )}
@@ -844,9 +927,12 @@ function ShowInspector({ show }: { show: Show }) {
   const clip = scene?.clips.find((c) => c.id === clipId);
   const sound = scene?.sounds.find((s) => s.id === soundId);
   const music = show.music.find((m) => m.id === musicId);
+  const lightId = useStore((s) => s.lightId);
+  const light = scene?.lights.find((l) => l.id === lightId);
   if (clip && scene) return <ClipInspector clip={clip} />;
   if (sound && scene) return <SoundInspector s={sound} />;
   if (music) return <MusicInspector m={music} />;
+  if (light && scene) return <LightInspector l={light} />;
   return (
     <div className="inspector">
       {scene && <SceneInspector scene={scene} />}
@@ -1139,6 +1225,42 @@ function SoundInspector({ s }: { s: SoundCue }) {
         <Toggle checked={s.continueAfterScene} onChange={(v) => mut('Continuar', (x) => { x.continueAfterScene = v; })} label="Seguir sonando al terminar la escena" />
       </Panel>
       <Button variant="danger" icon={<Trash2 size={15} />} onClick={() => { sceneMut('Eliminar sonido', (sc) => { sc.sounds = sc.sounds.filter((x) => x.id !== s.id); }); set({ soundId: null }); }}>Eliminar sonido</Button>
+    </div>
+  );
+}
+
+function LightInspector({ l }: { l: LightCue }) {
+  const project = useStore((st) => st.project)!;
+  const set = useStore((st) => st.set);
+  const sceneMut = useSceneMut();
+  const mut = (label: string, fn: (x: LightCue) => void) => sceneMut(label, (sc) => { const x = sc.lights.find((y) => y.id === l.id); if (x) fn(x); });
+  const timed = l.action === 'flash' || l.action === 'blink' || l.action === 'candle';
+  const colored = l.action === 'color' || l.action === 'blink' || l.action === 'candle';
+  return (
+    <div className="inspector" data-testid="light-inspector">
+      <Panel title="Efecto de luz" actions={<Button small variant="ghost" onClick={() => set({ lightId: null })}>Cerrar</Button>}>
+        <Field label="Luz">
+          <Select value={l.deviceId} onChange={(v) => mut('Luz', (x) => { x.deviceId = v; })} options={[{ value: '*', label: 'Todas las luces' }, ...project.lights.map((d) => ({ value: d.id, label: d.name }))]} />
+        </Field>
+        <Field label="Efecto">
+          <Select value={l.action} onChange={(v: LightAction) => mut('Efecto de luz', (x) => { x.action = v; })} options={LIGHT_ACTIONS.map((a) => ({ value: a, label: LIGHT_ACTION_LABELS[a] }))} data-testid="light-action" />
+        </Field>
+        <div className="row2">
+          <Field label="Inicio"><NumberInput value={l.start} min={0} step={0.1} suffix="s" onCommit={(v) => mut('Inicio', (x) => { x.start = v; })} /></Field>
+          {timed && <Field label="Duración"><NumberInput value={l.duration} min={0.2} step={0.5} suffix="s" onCommit={(v) => mut('Duración', (x) => { x.duration = v; })} /></Field>}
+        </div>
+        {colored && (
+          <div className="row2">
+            <Field label={l.action === 'blink' ? 'Color 1' : 'Color'}><input type="color" value={l.color} onChange={(e) => mut('Color', (x) => { x.color = e.target.value; })} /></Field>
+            {l.action === 'blink' && <Field label="Color 2" hint="Negro = apagada"><input type="color" value={l.color2} onChange={(e) => mut('Color', (x) => { x.color2 = e.target.value; })} /></Field>}
+          </div>
+        )}
+        {colored && <Field label="Brillo"><NumberInput value={Math.round(l.brightness * 100)} min={1} max={100} step={5} precision={0} suffix="%" onCommit={(v) => mut('Brillo', (x) => { x.brightness = v / 100; })} /></Field>}
+        {timed && <Field label="Ritmo" hint="Destellos o cambios por segundo (las luces reales admiten 2-3 como mucho)"><NumberInput value={l.rate} min={0.2} max={3} step={0.1} precision={1} suffix="/s" onCommit={(v) => mut('Ritmo', (x) => { x.rate = v; })} /></Field>}
+        {(l.action === 'color' || l.action === 'off') && <Field label="Transición"><NumberInput value={l.transition} min={0} max={10} step={0.1} suffix="s" onCommit={(v) => mut('Transición', (x) => { x.transition = v; })} /></Field>}
+        <p className="muted small">Los enchufes solo se encienden y apagan (sin relámpagos y como mucho un cambio por segundo). Al detener el espectáculo, todas las luces vuelven a como estaban.</p>
+      </Panel>
+      <Button variant="danger" icon={<Trash2 size={15} />} onClick={() => { sceneMut('Eliminar efecto de luz', (sc) => { sc.lights = sc.lights.filter((x) => x.id !== l.id); }); set({ lightId: null }); }}>Eliminar efecto de luz</Button>
     </div>
   );
 }

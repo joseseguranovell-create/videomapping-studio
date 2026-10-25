@@ -11,13 +11,14 @@ import { protagonistOptions } from './components/ShowWizard';
 import { choreography, CHOREO_KINDS, type ChoreoKind } from '../../shared/choreo';
 import { orderedSurfaces } from '../../shared/templates';
 import { parseProject } from '../../shared/schema';
-import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource } from '../../shared/factory';
+import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource, createLightCue, createLightDevice } from '../../shared/factory';
+import { autoLights } from '../../shared/lights';
 import { layoutShow } from '../../shared/timeline';
 import { applyTemplate, TEMPLATE_KINDS, type TemplateKind } from '../../shared/templates';
 import { newId } from '../../shared/ids';
 import { orderQuad } from '../../shared/geometry';
 import {
-  Clip as ClipSchema, MOTION_PRESETS, EFFECT_KINDS, TEXT_FONTS, SURFACE_KINDS,
+  Clip as ClipSchema, MOTION_PRESETS, EFFECT_KINDS, TEXT_FONTS, SURFACE_KINDS, LIGHT_ACTIONS, LIGHT_KINDS, type LightKind, type LightCue,
   type Clip, type ClipSource, type Project, type Scene, type Show, type MotionPreset, type EffectKind,
 } from '../../shared/model';
 import type { ImportedFile, LiveTarget, OpenedProject } from '../../shared/api';
@@ -83,12 +84,13 @@ function summary() {
     espectaculos: pr.shows.map((sh) => ({
       id: sh.id, nombre: sh.name, instalacionId: sh.installationId, duracion: layoutShow(sh).duration, bucle: sh.loop,
       musica: sh.music.map((m) => m.assetId),
-      escenas: sh.scenes.map((sc) => ({ id: sc.id, nombre: sc.name, duracion: sc.duration, clips: sc.clips.length, sonidos: sc.sounds.length })),
+      escenas: sh.scenes.map((sc) => ({ id: sc.id, nombre: sc.name, duracion: sc.duration, clips: sc.clips.length, sonidos: sc.sounds.length, luces: sc.lights.length })),
     })),
     recursos: pr.assets.map((a) => ({ id: a.id, nombre: a.name, tipo: a.kind, duracion: a.duration, transparencia: a.hasAlpha })),
+    luces: pr.lights.map((d) => ({ id: d.id, nombre: d.name, tipo: d.kind, conectada: !!d.entityId })),
     personajes: pr.characters.map((c) => ({ id: c.id, nombre: c.name, animaciones: c.animations.map((a) => ({ id: a.id, nombre: a.name, movimiento: a.motion.preset })) })),
     salida: { abierta: s.output.open, modo: s.outputMode, espectaculoId: s.outputShowId, reproduciendo: s.outputStatus?.playing ?? false, tiempo: s.outputStatus?.cycleTime ?? 0, escena: s.outputStatus?.sceneName ?? null },
-    opciones: { movimientos: MOTION_PRESETS, efectos: EFFECT_KINDS, letras: TEXT_FONTS, tiposSuperficie: SURFACE_KINDS, plantillas: TEMPLATE_KINDS },
+    opciones: { movimientos: MOTION_PRESETS, efectos: EFFECT_KINDS, letras: TEXT_FONTS, tiposSuperficie: SURFACE_KINDS, plantillas: TEMPLATE_KINDS, efectosLuz: LIGHT_ACTIONS },
   };
 }
 const round = (n: number) => Math.round(n * 10000) / 10000;
@@ -346,6 +348,39 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
       const r = applyTemplate(kind, inst, sc, { start: num(p, 'inicio', 0), thunderAssetId: thunder?.id ?? null });
       edit(`plantilla ${kind}`, (d) => { const x = d.shows.find((s) => s.id === sh.id)!.scenes.find((s) => s.id === sc.id)!; x.clips.push(...r.clips); x.sounds.push(...r.sounds); });
       return { clips: r.clips.length, sonidos: r.sounds.length };
+    }
+    case 'crear_luz': {
+      // Solo la luz del proyecto: conectarla a una luz real lo hace la persona en la pantalla Luces.
+      const kind = (p.tipo as string) ?? 'color';
+      if (!(LIGHT_KINDS as readonly string[]).includes(kind)) fail(`Tipo no válido: ${LIGHT_KINDS.join(', ')}`);
+      const d = createLightDevice(str(p, 'nombre'), kind as LightKind);
+      edit('añadir luz', (x) => { x.lights.push(d); });
+      return { luzId: d.id };
+    }
+    case 'anadir_luz': {
+      const sh = findShow(p);
+      const sc = findScene(sh, p);
+      const target = (p.luzId as string) ?? '*';
+      const dev = target === '*' ? null : project().lights.find((d) => d.id === target || d.name === target) ?? fail(`No existe la luz «${target}». Usa «crear_luz» o «*» para todas.`);
+      const action = (p.efecto as string) ?? 'color';
+      if (!(LIGHT_ACTIONS as readonly string[]).includes(action)) fail(`Efecto de luz no válido: ${LIGHT_ACTIONS.join(', ')}`);
+      const over: Record<string, unknown> = { action, start: num(p, 'inicio', 0) };
+      if (p.duracion !== undefined) over.duration = num(p, 'duracion');
+      if (p.color !== undefined) over.color = String(p.color);
+      if (p.color2 !== undefined) over.color2 = String(p.color2);
+      if (p.brillo !== undefined) over.brightness = Math.max(0, Math.min(1, num(p, 'brillo')));
+      if (p.ritmo !== undefined) over.rate = Math.max(0.2, Math.min(3, num(p, 'ritmo')));
+      if (p.transicion !== undefined) over.transition = num(p, 'transicion');
+      const cue = createLightCue(dev?.id ?? '*', over as Partial<LightCue>);
+      edit('añadir luz', (d) => { d.shows.find((x) => x.id === sh.id)!.scenes.find((x) => x.id === sc.id)!.lights.push(cue); });
+      return { efectoLuzId: cue.id };
+    }
+    case 'luces_automaticas': {
+      const sh = findShow(p);
+      if (!project().lights.length) fail('El proyecto no tiene luces: usa «crear_luz» primero.');
+      const auto = autoLights(sh, project().lights);
+      edit('luces automáticas', (d) => { const x = d.shows.find((y) => y.id === sh.id)!; for (const sc of x.scenes) sc.lights = auto.scenes.find((y) => y.id === sc.id)?.lights ?? sc.lights; });
+      return { escenasConLuces: auto.scenes.filter((x) => x.lights.length).length, efectos: auto.scenes.reduce((n, x) => n + x.lights.length, 0) };
     }
     case 'anadir_sonido': {
       const sh = findShow(p);

@@ -5,6 +5,7 @@ import { vm, afterOpen, openProjectFile, errMsg, saveProjectAs } from '../servic
 import { Button, Badge, Empty, confirmDialog, promptDialog, formatDate } from '../components/ui';
 import type { RecentEntry } from '../../../shared/api';
 import type { PackInfo } from '../../../shared/pack';
+import { FirstSteps } from '../components/Help';
 
 export function HomeScreen() {
   const project = useStore((s) => s.project);
@@ -109,6 +110,8 @@ export function HomeScreen() {
           <Button icon={<FolderOpen size={18} />} onClick={open} disabled={busy} data-testid="open-project">Abrir proyecto…</Button>
         </div>
       </div>
+
+      <FirstSteps onNew={newProject} />
 
       {project && recover && (
         <div className="banner warn" data-testid="recover-banner">

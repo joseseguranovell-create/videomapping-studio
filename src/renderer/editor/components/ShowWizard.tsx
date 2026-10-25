@@ -2,11 +2,12 @@
 import { useMemo, useState } from 'react';
 import { Wand2 } from 'lucide-react';
 import { useStore } from '../store';
-import { Button, Field, Modal, Select, TextInput, NumberInput } from './ui';
+import { Button, Field, Modal, Select, TextInput, NumberInput, Toggle } from './ui';
 import { AssetThumb } from '../screens/Library';
 import { addPackToProject } from '../services';
 import { generateShow, soundKitFrom, defaultMusic, SHOW_STYLES, SHOW_STYLE_LABELS, type ShowStyle, type Protagonist } from '../../../shared/generator';
 import type { Asset, Project } from '../../../shared/model';
+import { autoLights } from '../../../shared/lights';
 
 const STYLE_HELP: Record<ShowStyle, string> = {
   infantil: 'Oscuro pero amable: velas, ojos que parpadean, contornos naranjas y morados, tormenta suave y luces de feria al final.',
@@ -48,6 +49,7 @@ export function ShowWizard({ onClose }: { onClose: () => void }) {
   const [finale, setFinale] = useState(STYLE_TEXT.infantil);
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [withLights, setWithLights] = useState(project.lights.length > 0);
   const options = useMemo(() => protagonistOptions(project), [project]);
   const toggle = (k: string) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
@@ -64,7 +66,8 @@ export function ShowWizard({ onClose }: { onClose: () => void }) {
       const p = useStore.getState().project!;
       const sounds = { ...soundKitFrom(p.assets), music: defaultMusic(style, p.assets) };
       const protagonists = picked.map((k) => options.find((o) => o.key === k)?.pro).filter((x): x is Protagonist => !!x);
-      const sh = generateShow({ style, name: name.trim() || 'Espectáculo', installation: inst, protagonists, duration, finaleText: finale.trim() || undefined, sounds });
+      let sh = generateShow({ style, name: name.trim() || 'Espectáculo', installation: inst, protagonists, duration, finaleText: finale.trim() || undefined, sounds });
+      if (withLights && p.lights.length) sh = autoLights(sh, p.lights);
       update(`Asistente: ${sh.name}`, (d) => { d.shows.push(sh); });
       set({ showId: sh.id, sceneId: sh.scenes[0]?.id ?? null, clipId: null, soundId: null, musicId: null });
       toast('success', `«${sh.name}» creado con ${sh.scenes.length} escenas. Revísalo y retócalo a tu gusto.`, 6000);
@@ -109,6 +112,7 @@ export function ShowWizard({ onClose }: { onClose: () => void }) {
             })}
           </div>
         )}
+        {project.lights.length > 0 && <Toggle checked={withLights} onChange={setWithLights} label={`Con luces de casa (${project.lights.length}): relámpagos, colores y parpadeos sincronizados`} data-testid="wizard-lights" />}
         <div className="btn-row">
           <Button variant="primary" icon={<Wand2 size={15} />} onClick={() => void run()} disabled={busy} data-testid="wizard-run">{busy ? 'Creando…' : 'Crear espectáculo'}</Button>
           <Button onClick={onClose}>Cancelar</Button>

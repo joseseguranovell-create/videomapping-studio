@@ -443,3 +443,49 @@ pre.log { margin: 0; max-height: 320px; overflow: auto; font: 11.5px/1.5 ui-mono
 .scene-block.add:hover { border-color: var(--accent); background: var(--accent-bg); }
 
 .travel-box { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line2); }
+
+/* ── Luces de casa ── */
+.tl-row.lights { height: 28px; }
+.tl-bar.lgt { top: 3px; bottom: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--lc) 55%, #111), color-mix(in srgb, var(--lc) 25%, #111)); border-color: color-mix(in srgb, var(--lc) 80%, #fff); color: #fff; text-shadow: 0 1px 2px #000; }
+.tl-bar.lgt.instant { width: auto; max-width: 160px; border-radius: 12px; padding: 0 10px 0 8px; }
+.tl-bar.lgt.instant::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--lc); box-shadow: 0 0 6px var(--lc); flex: none; }
+.tl-track.hint { display: flex; align-items: center; font-size: 11.5px; color: var(--muted); padding-left: 10px; cursor: pointer; }
+.tl-track.hint:hover { color: var(--accent2); }
+.light-dots { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12px; min-width: 0; }
+.tl-label .light-dots { flex-wrap: nowrap; overflow: hidden; }
+.light-dot { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.light-dot i { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #555; flex: none; transition: background 0.2s, box-shadow 0.2s; }
+.light-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0 10px; }
+.light-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.light-table td { padding: 4px 6px; border-bottom: 1px solid #1b1d25; vertical-align: middle; }
+.light-table td input, .light-table td select { width: 100%; }
+.btn-row.tight { gap: 4px; flex-wrap: nowrap; }
+.entity-list { list-style: none; margin: 10px 0 0; padding: 0; max-height: 340px; overflow: auto; }
+.entity-list li label { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 8px; padding: 5px 4px; border-bottom: 1px solid #1b1d25; font-size: 12.5px; cursor: pointer; }
+.entity-list li span { display: inline-flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entity-list code { font-size: 11px; color: var(--muted); }
+.entity-list em { font-style: normal; font-size: 11px; color: var(--muted); }
+
+/* ── Primeros pasos y ayuda ── */
+.first-steps { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 9%, var(--panel)), var(--panel)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 12px; padding: 14px 18px; margin: 0 0 18px; }
+.first-steps header { display: flex; align-items: center; justify-content: space-between; }
+.first-steps h2 { margin: 0 0 8px; font-size: 16px; }
+.first-steps ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.first-steps li { display: grid; grid-template-columns: 28px 22px 1fr; grid-template-rows: auto auto; align-items: start; gap: 4px 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.first-steps li > .btn { grid-column: 3; justify-self: start; margin-top: 4px; }
+.first-steps li p { margin: 3px 0 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
+.first-steps li.done { opacity: 0.6; }
+.first-steps li.next { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.fs-num { width: 24px; height: 24px; border-radius: 50%; background: var(--line2); display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.first-steps li.done .fs-num { background: #2a7a4a; color: #fff; }
+.first-steps li.next .fs-num { background: var(--accent); color: #1a0a00; }
+.fs-icon { color: var(--accent2); padding-top: 3px; }
+.fs-extras { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.first-steps-mini { margin: 0 0 12px; }
+.help-steps { padding-left: 20px; line-height: 1.5; }
+.help-steps li { margin-bottom: 6px; }
+.help-keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; margin: 0; }
+.help-keys div { display: flex; gap: 10px; align-items: center; }
+.help-keys dt { margin: 0; min-width: 96px; }
+.help-keys dd { margin: 0; color: var(--muted); font-size: 12.5px; }
+kbd { font-family: inherit; font-size: 11px; padding: 1px 5px; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; background: var(--panel2); white-space: nowrap; }

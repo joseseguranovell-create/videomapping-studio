@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { Home as HomeIcon, Crosshair, Images, Ghost, Clapperboard, MonitorPlay, Settings as SettingsIcon, Save, Undo2, Redo2 } from 'lucide-react';
+import { Home as HomeIcon, Crosshair, Images, Ghost, Clapperboard, MonitorPlay, Settings as SettingsIcon, Lightbulb, Save, Undo2, Redo2 } from 'lucide-react';
 import { useStore, type View } from './store';
 import { vm, saveProject, startAutosave, startScheduler, handleOutputRequest, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
 import { Button, DialogHost, ContextMenuHost } from './components/ui';
 import { OutputControl } from './components/OutputControl';
+import { HelpButton } from './components/Help';
 import { Toasts } from './components/Toasts';
 import { HomeScreen } from './screens/Home';
 import { handleAgentRequest } from './agent';
@@ -13,6 +14,7 @@ import { CharactersScreen } from './screens/Characters';
 import { ShowsScreen } from './screens/Shows';
 import { PlaybackScreen } from './screens/Playback';
 import { SettingsScreen } from './screens/Settings';
+import { LightsScreen } from './screens/Lights';
 
 const NAV: { view: View; label: string; icon: React.ReactNode; needsProject: boolean; key: string }[] = [
   { view: 'home', label: 'Inicio', icon: <HomeIcon size={20} />, needsProject: false, key: '1' },
@@ -20,6 +22,7 @@ const NAV: { view: View; label: string; icon: React.ReactNode; needsProject: boo
   { view: 'library', label: 'Biblioteca', icon: <Images size={20} />, needsProject: true, key: '3' },
   { view: 'characters', label: 'Personajes', icon: <Ghost size={20} />, needsProject: true, key: '4' },
   { view: 'shows', label: 'Espectáculos', icon: <Clapperboard size={20} />, needsProject: true, key: '5' },
+  { view: 'lights', label: 'Luces', icon: <Lightbulb size={20} />, needsProject: true, key: '8' },
   { view: 'play', label: 'Reproducción', icon: <MonitorPlay size={20} />, needsProject: true, key: '6' },
   { view: 'settings', label: 'Ajustes', icon: <SettingsIcon size={20} />, needsProject: false, key: '7' },
 ];
@@ -50,7 +53,7 @@ export function App() {
       startScheduler();
     })();
     const offD = vm.displays.onChanged((d) => set({ displays: d }));
-    const offS = vm.output.onStatus((s) => set({ outputStatus: s }));
+    const offS = vm.output.onStatus((s) => set(s.playing && s.mode === 'show' && !useStore.getState().playedOnce ? { outputStatus: s, playedOnce: true } : { outputStatus: s }));
     const offR = vm.output.onRequest((r) => handleOutputRequest(r));
     const offO = vm.output.onState((o) => {
       set({ output: o });
@@ -95,7 +98,7 @@ export function App() {
       if (isTyping(e)) return;
       if (mod && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); useStore.getState().undo(); }
       else if (mod && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { e.preventDefault(); useStore.getState().redo(); }
-      else if (mod && /^[1-7]$/.test(e.key)) {
+      else if (mod && /^[1-8]$/.test(e.key)) {
         const n = NAV.find((x) => x.key === e.key);
         if (n && (!n.needsProject || useStore.getState().project)) set({ view: n.view });
       }
@@ -148,6 +151,7 @@ export function App() {
               </Button>
             </div>
           )}
+          <HelpButton />
           <OutputControl />
         </header>
         <main className="content" data-view={view}>
@@ -156,6 +160,7 @@ export function App() {
           {project && view === 'library' && <LibraryScreen />}
           {project && view === 'characters' && <CharactersScreen />}
           {project && view === 'shows' && <ShowsScreen />}
+          {project && view === 'lights' && <LightsScreen />}
           {project && view === 'play' && <PlaybackScreen />}
           {view === 'settings' && <SettingsScreen />}
         </main>

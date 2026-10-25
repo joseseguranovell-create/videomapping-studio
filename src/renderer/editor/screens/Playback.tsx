@@ -1,12 +1,15 @@
 /** Reproducción en directo: control del espectáculo en el proyector y comprobaciones previas. */
-import { useMemo, useState } from 'react';
-import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock, Repeat } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Play, Pause, Square, MonitorOff, Projector, CheckCircle2, AlertTriangle, XCircle, Activity, Clock, Repeat, Lightbulb, Undo2, Video } from 'lucide-react';
 import { useStore } from '../store';
 import { openOutput, closeOutput, transport, vm, startScheduler, preferredOutputDisplayId, outputCoversEditor } from '../services';
 import { Button, Panel, Toggle } from '../components/ui';
 import { inSchedule, nextStart, parseHHMM } from '../../../shared/schedule';
 import { formatTime, layoutShow } from '../../../shared/timeline';
 import { validateInstallation } from '../../../shared/geometry';
+import { LightDots } from './Lights';
+import { DemoRecorder } from '../components/DemoRecorder';
+import type { HaStatus } from '../../../shared/api';
 
 export function PlaybackScreen() {
   const project = useStore((s) => s.project)!;
@@ -19,6 +22,7 @@ export function PlaybackScreen() {
   const settings = useStore((s) => s.settings);
   const set = useStore((s) => s.set);
   const [displayChoice, setDisplayChoice] = useState<number>(preferredOutputDisplayId() ?? -1);
+  const [demo, setDemo] = useState(false);
 
   const show = project.shows.find((s) => s.id === outputShowId) ?? project.shows[0] ?? null;
   const inst = show ? project.installations.find((i) => i.id === show.installationId) : null;
@@ -103,6 +107,7 @@ export function PlaybackScreen() {
             {output.open ? (
               <Button icon={<Projector size={18} />} onClick={() => void closeOutput()}>Cerrar salida</Button>
             ) : null}
+            <Button icon={<Video size={18} />} onClick={() => setDemo(true)} disabled={!show} data-testid="demo-open" title="Graba un vídeo del espectáculo para enviarlo o enseñarlo">Grabar vídeo de demostración</Button>
           </div>
           <div className="play-progress">
             <div className="bar"><div className="fill" style={{ width: `${progress * 100}%` }} /></div>
@@ -156,6 +161,7 @@ export function PlaybackScreen() {
           )}
         </Panel>
         <SchedulePanel showId={show?.id ?? null} />
+        {demo && <DemoRecorder showId={show?.id ?? null} onClose={() => setDemo(false)} />}
       </div>
       <aside className="side right">
         <Panel title="Comprobaciones previas">
@@ -167,6 +173,7 @@ export function PlaybackScreen() {
             ))}
           </ul>
         </Panel>
+        <LightsPanel />
         <Panel title={<><Activity size={14} /> Diagnóstico de la salida</>}>
           {status ? (
             <dl className="info" data-testid="output-diag">
@@ -238,6 +245,35 @@ function SchedulePanel({ showId }: { showId: string | null }) {
         </p>
       )}
       {!valid && <p className="warn-text small">Indica una hora de inicio y otra de fin distintas.</p>}
+    </Panel>
+  );
+}
+
+function LightsPanel() {
+  const project = useStore((s) => s.project)!;
+  const status = useStore((s) => s.outputStatus);
+  const set = useStore((s) => s.set);
+  const [ha, setHa] = useState<HaStatus | null>(null);
+  const live = !!status && status.mode === 'show';
+  useEffect(() => {
+    const load = () => void vm.lights.status().then(setHa);
+    load();
+    const t = setInterval(load, 3000);
+    return () => clearInterval(t);
+  }, []);
+  if (!project.lights.length) return null;
+  const linked = project.lights.filter((d) => d.entityId).length;
+  const real = ha?.enabled && ha.hasToken && linked > 0;
+  return (
+    <Panel title={<><Lightbulb size={14} /> Luces de casa</>}>
+      <LightDots devices={project.lights} states={live ? status?.lights : undefined} testid="play-lights" />
+      <p className="muted small">
+        {real ? `${linked} luz(ces) reales con Home Assistant${ha?.connected === false ? ' (sin conexión: revisa la pantalla Luces)' : ''}. Al detener, poner en negro o cerrar, vuelven a como estaban.` : 'Simuladas en pantalla. Para usar las luces reales, conéctalas en la pantalla Luces.'}
+      </p>
+      <div className="btn-row">
+        {!!ha?.inUse && <Button small icon={<Undo2 size={14} />} onClick={() => void vm.lights.release().then(() => vm.lights.status()).then(setHa)} data-testid="play-lights-release">Devolver a como estaban ({ha.inUse})</Button>}
+        <Button small variant="ghost" onClick={() => set({ view: 'lights' })}>Configurar luces</Button>
+      </div>
     </Panel>
   );
 }
