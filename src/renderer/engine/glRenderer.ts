@@ -43,9 +43,20 @@ export const EFFECT_MODE = {
   frost: 26,
   aurora: 27,
   shootingStars: 28,
+  portal: 29,
+  burst: 30,
+  vortex: 31,
+  runes: 32,
+  bigEye: 33,
+  mouth: 34,
+  bubbles: 35,
+  confetti: 36,
+  fairyDust: 37,
+  hearts: 38,
+  lanterns: 39,
 } as const;
 
-export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2 } as const;
+export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2, comet: 3 } as const;
 
 /** Capa de contorno: se dibuja sobre el borde de la superficie y brilla hacia fuera. */
 export interface ContourLayer {
@@ -613,6 +624,259 @@ void main() {
     acc = clamp(acc, 0.0, 1.0);
     float a = clamp(max(acc.r, max(acc.g, acc.b)), 0.0, 1.0);
     col = vec4(acc, a);
+  } else if (u_mode == 29) {
+    // Portal mágico: un punto de luz crece, gira un remolino de estrellas y anillos recorren el marco.
+    float op = openAmount(u_local, u_dur, 2.5);
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float r = length(d);
+    float ang = atan(d.y, d.x);
+    float R = op * 0.6 * max(u_aspect, 1.0);
+    float inside = smoothstep(R, R * 0.85, r);
+    float sw = ang + 3.0 / (r + 0.15) - t * 1.4;
+    float arms = pow(0.5 + 0.5 * sin(sw * 3.0), 3.0) * smoothstep(0.0, 0.5, r / max(R, 0.01));
+    vec2 sp = vec2(sw * 1.6, log(r + 0.02) * 4.0 + t * 0.8);
+    float st = step(0.92, hash(floor(sp * 6.0))) * smoothstep(0.3, 0.0, length(fract(sp * 6.0) - 0.5));
+    float core = exp(-r * 6.0 / max(op, 0.05)) * 1.2;
+    float edge = min(min(c.x, 1.0 - c.x) * u_aspect, min(c.y, 1.0 - c.y));
+    float rings = 0.0;
+    for (int k = 0; k < 3; k++) {
+      float ph = fract(t * 0.45 + float(k) / 3.0);
+      rings += smoothstep(0.025, 0.0, abs(edge - ph * 0.25)) * (1.0 - ph) * op;
+    }
+    float flash = exp(-max(u_dur - u_local, 0.0) * 6.0) * step(2.0, u_dur);
+    vec3 cc = (mix(u_color2, u_color, arms) * (0.35 + arms) + vec3(st)) * inside + mix(u_color, vec3(1.0), 0.6) * core * op + u_color * rings * 1.2;
+    cc += vec3(1.0) * flash * 0.8;
+    float a = clamp(max(max(cc.r, cc.g), cc.b), 0.0, 1.0);
+    col = vec4(clamp(cc, 0.0, 1.0), a);
+  } else if (u_mode == 30) {
+    // Explosión de luz: anillos que se expanden, rayos y chispas que salen disparadas.
+    float per = max(3.0, min(u_dur, 6.0));
+    float lt = mod(u_local, per);
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float r = length(d), ang = atan(d.y, d.x);
+    float pre = smoothstep(0.0, 0.5, lt) * step(lt, 0.5);
+    float e = max(lt - 0.5, 0.0);
+    float R1 = e * 1.3, R2 = e * 0.8;
+    float ring = exp(-pow((r - R1) / 0.03, 2.0)) * exp(-e * 1.8) + 0.6 * exp(-pow((r - R2) / 0.05, 2.0)) * exp(-e * 2.5);
+    float rays = pow(0.5 + 0.5 * sin(ang * 14.0 + hash1(floor(u_local / per)) * 6.0), 8.0) * exp(-r * 2.5) * exp(-e * 2.0) * step(0.0, e);
+    float N = 30.0;
+    float sec = floor(ang / 6.2831 * N + 0.5);
+    float sa = sec / N * 6.2831;
+    float pr = e * (0.9 + 0.6 * hash1(sec + floor(u_local / per) * 7.0));
+    float spark = exp(-length(d - vec2(cos(sa), sin(sa)) * pr) * 90.0) * exp(-e * 1.5) * step(0.0, e);
+    float glow = exp(-r * 8.0) * (pre * 1.2 + exp(-e * 5.0));
+    vec3 cc = u_color * (ring * 1.5 + rays) + mix(u_color2, vec3(1.0), 0.4) * spark * 1.5 + vec3(1.0) * glow;
+    float a = clamp(max(max(cc.r, cc.g), cc.b), 0.0, 1.0);
+    col = vec4(clamp(cc, 0.0, 1.0), a);
+  } else if (u_mode == 31) {
+    // Remolino: brazos en espiral que giran y chispas que caen hacia el centro.
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float r = length(d), ang = atan(d.y, d.x);
+    float sw = ang - log(r + 0.03) * 2.2 + t * 2.2;
+    float arms = pow(0.5 + 0.5 * sin(sw * 4.0), 4.0) * smoothstep(0.65, 0.05, r) * smoothstep(0.0, 0.06, r);
+    vec2 sp = vec2(sw * 2.0, log(r + 0.03) * 3.0 - t * 1.5);
+    float dots = step(0.9, hash(floor(sp * 5.0))) * smoothstep(0.35, 0.0, length(fract(sp * 5.0) - 0.5)) * smoothstep(0.7, 0.1, r);
+    vec3 cc = mix(u_color2, u_color, arms) * arms * 1.4 + vec3(1.0) * dots + u_color * exp(-r * 10.0) * 0.8;
+    float a = clamp(max(max(cc.r, cc.g), cc.b), 0.0, 1.0);
+    col = vec4(clamp(cc, 0.0, 1.0), a);
+  } else if (u_mode == 32) {
+    // Sello mágico: círculos de runas que se van activando uno tras otro hasta llenarse de luz.
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float r = length(d) / (0.48 * min(u_aspect, 1.0) + 0.02);
+    float ang = atan(d.y, d.x);
+    float lit = u_local / 1.1;                     // un círculo cada 1,1 s
+    vec3 cc = vec3(0.0);
+    for (int k = 0; k < 4; k++) {
+      float fk = float(k);
+      float rr = 0.25 + fk * 0.22;
+      float on = smoothstep(fk, fk + 0.35, lit);
+      float flashK = exp(-max(lit - fk, 0.0) * 4.0) * step(fk, lit);
+      float rot = ang + t * (mod(fk, 2.0) < 1.0 ? 0.4 : -0.3);
+      float line = smoothstep(0.012, 0.0, abs(r - rr)) + smoothstep(0.01, 0.0, abs(r - rr - 0.07)) * 0.7;
+      float n = 10.0 + fk * 4.0;
+      float cell = fract(rot / 6.2831 * n);
+      float gid = floor(rot / 6.2831 * n) + fk * 13.0;
+      // runa: trazos sencillos dentro de la banda entre las dos circunferencias
+      float yb = (r - rr) / 0.07;
+      float g = 0.0;
+      if (yb > 0.15 && yb < 0.85) {
+        float h1 = hash1(gid), h2 = hash1(gid + 3.3);
+        g = smoothstep(0.08, 0.0, abs(cell - 0.5)) * step(h1, 0.7);
+        g = max(g, smoothstep(0.08, 0.0, abs(yb - 0.5 - (cell - 0.5) * (h2 - 0.5) * 2.0)) * step(abs(cell - 0.5), 0.3));
+        g = max(g, smoothstep(0.07, 0.0, abs(length(vec2((cell - 0.5) * 2.0, yb * 2.0 - 1.0)) - 0.55)) * step(0.75, h2));
+      }
+      cc += mix(u_color2, u_color, on) * (line + g * 0.9) * (0.15 + 0.85 * on) + vec3(1.0) * flashK * line;
+    }
+    float full = smoothstep(4.0, 4.6, lit);
+    cc += mix(u_color, vec3(1.0), 0.5) * full * exp(-r * 2.0) * (0.8 + 0.2 * sin(t * 6.0));
+    float a = clamp(max(max(cc.r, cc.g), cc.b), 0.0, 1.0);
+    col = vec4(clamp(cc, 0.0, 1.0), a);
+  } else if (u_mode == 33) {
+    // Ojo gigante (la casa despierta): se abre, mira alrededor, parpadea y a veces bosteza de sueño.
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float ex = 0.46 * u_aspect, ey = 0.46;
+    vec2 q2 = d / vec2(ex, ey);
+    float eye = length(q2);
+    float open = smoothstep(0.0, 1.4, u_local);
+    float bl = mod(t + 1.3, 4.2);
+    float blink = 1.0 - (smoothstep(0.0, 0.08, bl) - smoothstep(0.12, 0.22, bl));
+    float lid = open * blink;                               // 1 abierto, 0 cerrado
+    vec2 look = vec2(0.35 * sin(t * 0.7) + 0.15 * sin(t * 1.9), 0.18 * sin(t * 0.9 + 1.0));
+    vec2 ip = q2 - look;
+    float iris = smoothstep(0.42, 0.39, length(ip));
+    float pupil = smoothstep(0.2, 0.17, length(ip * vec2(1.0, 1.0)));
+    float shine = smoothstep(0.08, 0.05, length(ip - vec2(-0.12, -0.14)));
+    float sclera = smoothstep(1.0, 0.96, eye);
+    vec3 cc = mix(vec3(0.95, 0.93, 0.88) * mix(vec3(1.0), u_color2, 0.25), u_color * (0.6 + 0.4 * (1.0 - length(ip) / 0.42)), iris);
+    cc = mix(cc, vec3(0.02), pupil);
+    cc += vec3(1.0) * shine;
+    cc *= 0.85 + 0.15 * (1.0 - eye);
+    // párpado: la línea de cierre baja desde arriba
+    float lidY = mix(1.05, -1.05, lid);          // línea del párpado: arriba del todo = abierto
+    float covered = step(q2.y, lidY);
+    float lash = smoothstep(0.06, 0.0, abs(q2.y - lidY)) * sclera * step(0.02, 1.0 - lid);
+    vec3 outc = mix(cc, u_color2 * 0.25, covered) * sclera;
+    outc = mix(outc, vec3(0.02), lash);
+    float rim = smoothstep(0.05, 0.0, abs(eye - 0.98));
+    outc += u_color * rim * 0.5;
+    col = vec4(outc, sclera);
+  } else if (u_mode == 34) {
+    // Boca (la casa despierta): sonríe, se ríe, hace «¡oh!» y bosteza, en un ciclo de 8 s.
+    vec2 d = (c - vec2(0.5, 0.45)) * vec2(u_aspect, 1.0);
+    float ph = mod(t, 8.0);
+    float laugh = smoothstep(1.5, 2.0, ph) * (1.0 - smoothstep(3.5, 4.0, ph));
+    float oh = smoothstep(4.0, 4.4, ph) * (1.0 - smoothstep(5.2, 5.6, ph));
+    float yawn = smoothstep(6.0, 6.8, ph) * (1.0 - smoothstep(7.4, 8.0, ph));
+    float W = min(0.44 * u_aspect, 1.1) * mix(1.0, 0.5, oh) * mix(1.0, 0.75, yawn);
+    float Hm = 0.07 + 0.22 * laugh * (0.85 + 0.15 * sin(t * 16.0)) + 0.32 * oh + 0.5 * yawn;
+    float curve = 0.16 * (1.0 - oh) * (1.0 - yawn);       // sonrisa: el centro baja, las comisuras suben
+    float x = d.x / W;
+    float r1 = sqrt(max(1.0 - x * x, 0.0));
+    float top = -Hm * 0.5 * r1 + curve * (1.0 - x * x) - curve * 0.5;
+    float bot = Hm * 0.5 * r1 + curve * 1.6 * (1.0 - x * x) - curve * 0.5;
+    float inMouth = step(abs(x), 1.0) * smoothstep(top - 0.004, top + 0.006, d.y) * smoothstep(bot + 0.004, bot - 0.006, d.y);
+    float hgt = max(bot - top, 0.001);
+    float teeth = step(d.y, top + hgt * 0.22) * step(0.1, Hm) * step(0.12, fract(x * 3.5 + 0.5));
+    float tongue = smoothstep(0.5, 0.42, length(vec2(x * 1.3, (d.y - bot + hgt * 0.3) / hgt))) * step(0.12, Hm);
+    vec3 cc = mix(vec3(0.16, 0.0, 0.04), vec3(0.9, 0.25, 0.35), tongue);
+    cc = mix(cc, vec3(0.96, 0.95, 0.9), teeth);
+    float edgeD = min(abs(d.y - top), abs(d.y - bot));
+    float lip = smoothstep(0.03, 0.0, edgeD) * step(abs(x), 1.0) + smoothstep(0.06, 0.0, abs(abs(d.x) - W)) * smoothstep(0.03, 0.0, abs(d.y - (top + bot) * 0.5) - hgt * 0.5);
+    lip = clamp(lip, 0.0, 1.0);
+    vec3 outc = cc * inMouth * (1.0 - lip) + u_color * lip * 1.2;
+    col = vec4(outc, clamp(max(inMouth, lip), 0.0, 1.0));
+  } else if (u_mode == 35) {
+    // Burbujas que suben tambaleándose, con su brillo.
+    vec3 acc = vec3(0.0);
+    float a = 0.0;
+    for (int l = 0; l < 3; l++) {
+      float s = 2.6 + float(l) * 1.8;
+      vec2 p = q * s;
+      p.y += t * (0.5 + 0.25 * float(l)) * s * 0.18;
+      p.x += sin(p.y * 0.8 + float(l) * 2.0 + t) * 0.25;
+      vec2 id = floor(p);
+      vec2 f = fract(p) - 0.5;
+      float h = hash(id + float(l) * 19.0);
+      if (h < 0.62) continue;
+      float rad = 0.18 + 0.2 * hash(id + 2.0);
+      float dd = length(f);
+      float rim = smoothstep(rad, rad - 0.04, dd) - smoothstep(rad - 0.05, rad - 0.11, dd);
+      float body = smoothstep(rad, rad - 0.02, dd) * 0.12;
+      float hl = smoothstep(rad * 0.3, 0.0, length(f - vec2(-rad * 0.35, -rad * 0.35)));
+      vec3 bc = mix(u_color, u_color2, hash(id + 5.0));
+      acc += bc * (rim * 0.9 + body) + vec3(1.0) * hl * 0.8;
+      a += rim * 0.9 + body + hl * 0.8;
+    }
+    col = vec4(clamp(acc, 0.0, 1.0), clamp(a, 0.0, 1.0));
+  } else if (u_mode == 36) {
+    // Confeti: papelitos de colores que caen girando.
+    vec3 acc = vec3(0.0);
+    float a = 0.0;
+    for (int l = 0; l < 3; l++) {
+      float s = 9.0 + float(l) * 5.0;
+      vec2 p = q * s;
+      p.y -= t * (0.9 + 0.3 * float(l)) * s * 0.12;
+      p.x += sin(p.y * 0.6 + t * 1.5 + float(l)) * 0.35;
+      vec2 id = floor(p);
+      vec2 f = fract(p) - 0.5;
+      float h = hash(id + float(l) * 7.0);
+      if (h < 0.55) continue;
+      float rot = t * (2.0 + 4.0 * hash(id + 1.0)) + h * 10.0;
+      vec2 rf = vec2(cos(rot) * f.x - sin(rot) * f.y, sin(rot) * f.x + cos(rot) * f.y);
+      float flip = abs(cos(t * 3.0 + h * 20.0));
+      float piece = step(abs(rf.x), 0.16) * step(abs(rf.y), 0.07 * flip + 0.01);
+      float hue = hash(id + 9.0);
+      vec3 pc = hue < 0.2 ? u_color : hue < 0.4 ? u_color2 : hue < 0.6 ? vec3(0.2, 0.8, 1.0) : hue < 0.8 ? vec3(1.0, 0.3, 0.6) : vec3(0.5, 1.0, 0.3);
+      acc += pc * piece * (0.6 + 0.4 * flip);
+      a += piece;
+    }
+    col = vec4(clamp(acc, 0.0, 1.0), clamp(a, 0.0, 1.0));
+  } else if (u_mode == 37) {
+    // Polvo de hada: una estela de chispas que dibuja lazos por la superficie.
+    vec3 acc = vec3(0.0);
+    float A = u_global == 1 ? u_outAspect : u_aspect;
+    vec2 pp = vec2(qn.x * A, qn.y);
+    for (int k = 0; k < 18; k++) {
+      float fk = float(k);
+      float tk = t - fk * 0.07;
+      vec2 hp = vec2((0.5 + 0.38 * sin(tk * 0.9) * cos(tk * 0.37)) * A, 0.5 + 0.32 * sin(tk * 1.3 + 0.7));
+      vec2 jit = (vec2(hash1(fk * 3.1 + floor(t * 8.0)), hash1(fk * 7.7 + floor(t * 8.0))) - 0.5) * 0.04 * fk / 18.0;
+      float dd = length(pp - hp - jit);
+      float fade = 1.0 - fk / 18.0;
+      acc += mix(u_color, u_color2, fk / 18.0) * (exp(-dd * 70.0) * 2.2 + exp(-dd * 16.0) * 0.3) * fade;
+    }
+    float tw = step(0.985, hash(floor(pp * 60.0) + floor(t * 6.0)));
+    acc += vec3(tw) * 0.8 * smoothstep(0.4, 0.0, length(pp - vec2((0.5 + 0.38 * sin(t * 0.9) * cos(t * 0.37)) * A, 0.5 + 0.32 * sin(t * 1.3 + 0.7))));
+    acc = clamp(acc, 0.0, 1.0);
+    col = vec4(acc, clamp(max(acc.r, max(acc.g, acc.b)), 0.0, 1.0));
+  } else if (u_mode == 38) {
+    // Corazones que suben flotando (cumpleaños, San Valentín).
+    vec3 acc = vec3(0.0);
+    float a = 0.0;
+    for (int l = 0; l < 2; l++) {
+      float s = 4.0 + float(l) * 3.0;
+      vec2 p = q * s;
+      p.y += t * (0.4 + 0.2 * float(l)) * s * 0.2;
+      p.x += sin(p.y * 0.9 + t + float(l)) * 0.2;
+      vec2 id = floor(p);
+      vec2 f = fract(p) - 0.5;
+      float h = hash(id + float(l) * 11.0);
+      if (h < 0.55) continue;
+      float beat = 1.0 + 0.08 * sin(t * 6.0 + h * 9.0);
+      // corazón (distancia con signo): punta abajo, lóbulos arriba
+      vec2 hp = vec2(abs(f.x), -f.y + 0.32) / (0.62 * beat);
+      float dh;
+      if (hp.y + hp.x > 1.0) dh = length(hp - vec2(0.25, 0.75)) - 0.35355;
+      else dh = sqrt(min(dot(hp - vec2(0.0, 1.0), hp - vec2(0.0, 1.0)), dot(hp - 0.5 * max(hp.x + hp.y, 0.0), hp - 0.5 * max(hp.x + hp.y, 0.0)))) * sign(hp.x - hp.y);
+      float heart = smoothstep(0.03, -0.01, dh);
+      vec3 hc = mix(u_color, u_color2, hash(id + 4.0));
+      acc += hc * heart * (0.8 + 0.2 * (1.0 - length(f)));
+      a += heart;
+    }
+    col = vec4(clamp(acc, 0.0, 1.0), clamp(a, 0.0, 1.0));
+  } else if (u_mode == 39) {
+    // Farolillos de papel que suben despacio con su llama dentro.
+    vec3 acc = vec3(0.0);
+    float a = 0.0;
+    for (int l = 0; l < 2; l++) {
+      float s = 3.0 + float(l) * 2.5;
+      vec2 p = q * s;
+      p.y += t * (0.18 + 0.08 * float(l)) * s * 0.3;
+      p.x += sin(p.y * 0.5 + t * 0.4 + float(l)) * 0.15;
+      vec2 id = floor(p);
+      vec2 f = fract(p) - 0.5;
+      float h = hash(id + float(l) * 23.0);
+      if (h < 0.6) continue;
+      vec2 g = f / vec2(0.16, 0.22);
+      float body = smoothstep(1.0, 0.9, length(vec2(g.x, g.y * (g.y > 0.0 ? 0.85 : 1.15))));
+      float flick = 0.85 + 0.15 * sin(t * 9.0 + h * 30.0);
+      float inner = exp(-length(g - vec2(0.0, 0.45)) * 2.2) * flick;
+      float halo = exp(-length(f) * 6.0) * 0.4 * flick;
+      vec3 lc = mix(u_color, u_color2, hash(id + 2.0));
+      acc += lc * (body * (0.45 + inner)) + lc * halo;
+      a += body + halo;
+    }
+    col = vec4(clamp(acc, 0.0, 1.0), clamp(a, 0.0, 1.0));
   } else {
     // Recurso ausente: rayas magenta (solo en previsualización).
     float st = step(0.5, fract((c.x + c.y) * 10.0));
@@ -670,6 +934,14 @@ void main() {
     // Trazado: el contorno se dibuja a lo largo del perímetro con una chispa en la punta.
     float head = exp(-abs(sAt - prog) / (w * 2.5)) * step(prog, u_total - 1.0) * exp(-d / (w * 1.5));
     c = u_color2 * core + u_color * halo + vec3(1.0, 0.95, 0.8) * head * 1.6;
+  } else if (u_mode == 3) {
+    // Cometa: una bola de luz recorre el contorno a toda velocidad dejando una estela.
+    float speed = u_total / 1.6;
+    float head = mod(u_time * speed, u_total);
+    float behind = mod(head - sAt + u_total, u_total);
+    float trail = exp(-behind / (u_total * 0.12)) * step(behind, u_total * 0.6);
+    float ball = exp(-length(vec2(min(behind, u_total - behind), d)) / (w * 1.3)) * 1.8;
+    c = (u_color * trail * (core * 1.2 + halo) + mix(u_color2, vec3(1.0), 0.5) * ball) * fade;
   } else {
     // Luces de feria: bombillas que corren por el contorno alternando colores.
     float spacing = w * 4.5;

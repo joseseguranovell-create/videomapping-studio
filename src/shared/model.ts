@@ -173,11 +173,15 @@ export const EFFECT_KINDS = [
   'cracks', 'glitch', 'pulse', 'searchlight', 'fireworks',
   // Navidad e invierno
   'frost', 'aurora', 'shootingStars',
+  // magia y fiesta
+  'portal', 'burst', 'vortex', 'runes', 'bigEye', 'mouth', 'bubbles', 'confetti', 'fairyDust', 'hearts', 'lanterns',
+  // contorno: bola de luz que recorre el borde
+  'comet',
 ] as const;
 /** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
-export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase'] as const;
+export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase', 'comet'] as const;
 /** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
-export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass'] as const;
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass', 'fairyDust', 'lanterns', 'confetti'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
@@ -438,4 +442,16 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   frost: 'Escarcha',
   aurora: 'Aurora boreal',
   shootingStars: 'Estrellas fugaces',
+  portal: 'Portal mágico',
+  burst: 'Explosión de luz',
+  vortex: 'Remolino',
+  runes: 'Sello mágico (runas)',
+  bigEye: 'Ojo gigante (casa que despierta)',
+  mouth: 'Boca (casa que despierta)',
+  bubbles: 'Burbujas',
+  confetti: 'Confeti',
+  fairyDust: 'Polvo de hada',
+  hearts: 'Corazones',
+  lanterns: 'Farolillos',
+  comet: 'Cometa por el contorno',
 };

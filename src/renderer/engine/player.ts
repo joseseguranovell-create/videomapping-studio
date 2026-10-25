@@ -31,9 +31,9 @@ export interface OverlayOptions {
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
   solid: 'solid', glow: 'glow', stars: 'stars', flicker: 'flicker', rainbow: 'rainbow', testPattern: 'testPattern',
-  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits', shadowPass: 'shadowPass', curtains: 'curtains', shutters: 'shutters', stainedGlass: 'stainedGlass', cracks: 'cracks', glitch: 'glitch', pulse: 'pulse', searchlight: 'searchlight', fireworks: 'fireworks', frost: 'frost', aurora: 'aurora', shootingStars: 'shootingStars',
+  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits', shadowPass: 'shadowPass', curtains: 'curtains', shutters: 'shutters', stainedGlass: 'stainedGlass', cracks: 'cracks', glitch: 'glitch', pulse: 'pulse', searchlight: 'searchlight', fireworks: 'fireworks', frost: 'frost', aurora: 'aurora', shootingStars: 'shootingStars', portal: 'portal', burst: 'burst', vortex: 'vortex', runes: 'runes', bigEye: 'bigEye', mouth: 'mouth', bubbles: 'bubbles', confetti: 'confetti', fairyDust: 'fairyDust', hearts: 'hearts', lanterns: 'lanterns',
 };
-const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase']);
+const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase', 'comet']);
 /** Fundido entre escenas en el modo directo (segundos). */
 const LIVE_FADE = 1;
 const MUSIC = 'M:';
