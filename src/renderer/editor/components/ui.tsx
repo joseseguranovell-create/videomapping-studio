@@ -205,6 +205,60 @@ export function Modal({ title, onClose, children, footer, wide }: { title: strin
   );
 }
 
+// ───────── menú contextual (clic derecho) ─────────
+
+export interface MenuItem {
+  label: string;
+  icon?: ReactNode;
+  onClick?: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+  /** Atajo de teclado mostrado a la derecha. */
+  hint?: string;
+  separator?: boolean;
+}
+
+const useMenu = create<{ menu: { x: number; y: number; items: MenuItem[] } | null }>(() => ({ menu: null }));
+
+/** Abre un menú en la posición del ratón. */
+export function openMenu(e: { clientX: number; clientY: number; preventDefault?: () => void; stopPropagation?: () => void }, items: MenuItem[]) {
+  e.preventDefault?.();
+  e.stopPropagation?.();
+  useMenu.setState({ menu: { x: e.clientX, y: e.clientY, items } });
+}
+
+export function ContextMenuHost() {
+  const menu = useMenu((s) => s.menu);
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => useMenu.setState({ menu: null });
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+    const down = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) close(); };
+    window.addEventListener('keydown', k, true);
+    window.addEventListener('mousedown', down, true);
+    window.addEventListener('blur', close);
+    return () => { window.removeEventListener('keydown', k, true); window.removeEventListener('mousedown', down, true); window.removeEventListener('blur', close); };
+  }, [menu]);
+  // Se recoloca para no salirse de la ventana.
+  useEffect(() => {
+    if (!menu || !ref.current) { setPos(null); return; }
+    const r = ref.current.getBoundingClientRect();
+    setPos({ x: Math.min(menu.x, window.innerWidth - r.width - 8), y: Math.min(menu.y, window.innerHeight - r.height - 8) });
+  }, [menu]);
+  if (!menu) return null;
+  return (
+    <div ref={ref} className="ctx-menu" style={{ left: pos?.x ?? menu.x, top: pos?.y ?? menu.y, visibility: pos ? 'visible' : 'hidden' }} role="menu" data-testid="ctx-menu">
+      {menu.items.map((it, i) => it.separator ? <div key={i} className="ctx-sep" /> : (
+        <button key={i} role="menuitem" className={`ctx-item${it.danger ? ' danger' : ''}`} disabled={it.disabled} onClick={() => { useMenu.setState({ menu: null }); it.onClick?.(); }}>
+          <span className="ctx-ico">{it.icon}</span><span className="ctx-label">{it.label}</span>{it.hint && <kbd>{it.hint}</kbd>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ───────── diálogos con promesa ─────────
 
 type DialogReq =

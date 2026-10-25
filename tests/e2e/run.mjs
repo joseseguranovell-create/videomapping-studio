@@ -400,7 +400,7 @@ try {
         const sh = d.shows.find((x) => x.name === 'Halloween 2026');
         const door = d.installations[0].surfaces[2];
         sh.scenes[0].clips = sh.scenes[0].clips.filter((c) => c.surfaceId !== door.id);
-        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0, silhouette: false, silhouetteColor: '#000000' });
+        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0, silhouette: false, silhouetteColor: '#000000', travel: null });
       });
     });
     await out.evaluate(() => { window.__vmPlayer.seek(2); void window.__vmPlayer.play(); });
@@ -819,6 +819,49 @@ try {
     const s2 = await S(win);
     assert(s2.project.assets.some((a) => a.id === 'tr-ast-golpe'), 'el estilo terror añade los sonidos de terror al proyecto');
     for (let i = 0; i < 3; i++) await win.evaluate(() => window.__vmStore.getState().undo());
+  });
+
+  await step('18g. Editor cómodo: menús de clic derecho, Supr, añadir y reordenar escenas, coreografía entre ventanas', async () => {
+    await win.click('[data-testid="nav-shows"]');
+    await win.locator('[data-testid="show-select"]').selectOption({ index: 0 });
+    await win.click('[data-testid="scene-block-1"]');
+    const count = () => win.evaluate(() => { const s = window.__vmStore.getState(); return s.project.shows.find((x) => x.id === s.showId).scenes.find((x) => x.id === s.sceneId).clips.length; });
+    const n0 = await count();
+    await win.locator('[data-testid="tl-clip"]').first().click({ button: 'right' });
+    await win.waitForSelector('[data-testid="ctx-menu"]');
+    await win.locator('[data-testid="ctx-menu"] .ctx-item', { hasText: 'Duplicar' }).click();
+    assert((await count()) === n0 + 1, 'Duplicar desde el menú del clic derecho');
+    await win.keyboard.press('Delete');
+    assert((await count()) === n0, 'Supr borra el clip seleccionado');
+    // escenas: añadir al final desde el «+» y llevarla al principio arrastrando
+    const scenes = () => win.evaluate(() => { const s = window.__vmStore.getState(); return s.project.shows.find((x) => x.id === s.showId).scenes.map((x) => x.name); });
+    const before = await scenes();
+    await win.click('[data-testid="add-scene-end"]');
+    await win.locator('[data-testid="ctx-menu"] .ctx-item', { hasText: 'Escena vacía' }).click();
+    let now = await scenes();
+    assert(now.length === before.length + 1, 'escena añadida con el «+»');
+    await win.evaluate(() => window.__vmStore.getState().undo());
+    // arrastrar la tercera escena delante de la primera
+    now = await scenes();
+    const moved = now[2];
+    await win.locator('[data-testid="scene-block-2"]').dragTo(win.locator('[data-testid="scene-block-0"]'), { targetPosition: { x: 5, y: 10 } });
+    now = await scenes();
+    assert(now[0] === moved, `arrastrar reordena: «${moved}» pasa a ser la primera (${now.slice(0, 3).join(', ')})`);
+    await win.evaluate(() => window.__vmStore.getState().undo());
+    // coreografía «pasar» desde la ventana
+    await win.click('[data-testid="scene-block-1"]');
+    await win.click('[data-testid="add-choreo"]');
+    await win.click('[data-testid="choreo-pasar"]');
+    await win.locator('[data-testid="choreo-actor"]').first().click();
+    await win.click('[data-testid="choreo-run"]');
+    const tr = await win.evaluate(() => { const s = window.__vmStore.getState(); return s.project.shows.find((x) => x.id === s.showId).scenes.find((x) => x.id === s.sceneId).clips.filter((c) => c.travel).length; });
+    assert(tr === 1, 'la coreografía añade un clip que viaja por la fachada');
+    await win.evaluate(() => window.__vmStore.getState().undo());
+    // y por la API
+    const info = JSON.parse(fs.readFileSync(path.join(userData, 'agent-api.json'), 'utf8'));
+    const r = await (await fetch(`${info.url}/api`, { method: 'POST', headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'coreografia', parametros: { tipo: 'escondite', protagonista: 'Boo, el fantasma' } }) })).json();
+    assert(r.ok && r.resultado.clips.length >= 2, `coreografía por la API: ${JSON.stringify(r).slice(0, 160)}`);
+    await win.evaluate(() => window.__vmStore.getState().undo());
   });
 
   if (LONG) {

@@ -4,7 +4,7 @@ import {
   Plus, Copy, Trash2, ChevronLeft, ChevronRight, Clapperboard, Film, Ghost, Sparkles, Music, Volume2, Shuffle, MonitorPlay, Type, Wand2,
 } from 'lucide-react';
 import { useStore, selShow, selScene } from '../store';
-import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, Modal, confirmDialog, promptDialog } from '../components/ui';
+import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, Modal, confirmDialog, promptDialog, openMenu, type MenuItem } from '../components/ui';
 import { AssetPicker } from '../components/pickers';
 import { ShowPreview, previewControl, usePreview } from '../components/ShowPreview';
 import { AssetThumb } from './Library';
@@ -19,6 +19,8 @@ import { layoutShow, formatTime } from '../../../shared/timeline';
 import { applyTemplate, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
 import { transport } from '../services';
 import { ShowWizard } from '../components/ShowWizard';
+import { ChoreoModal, type ChoreoPreset } from '../components/ChoreoModal';
+import { cloneDeep } from '../../../shared/factory';
 
 function useShowMut() {
   const update = useStore((s) => s.update);
@@ -250,6 +252,80 @@ function SceneStrip({ show }: { show: Show }) {
   const total = Math.max(1, show.scenes.reduce((n, s) => n + s.duration, 0));
   const idx = show.scenes.findIndex((s) => s.id === sceneId);
   const time = usePreview((s) => s.time);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const press = useRef<{ id: string; x: number; moved: boolean } | null>(null);
+  // Arrastre con el puntero (más fiable que el arrastre HTML en Electron): al pasar de 6 px empieza a mover.
+  const dropIndexAt = (x: number, y: number): number | null => {
+    const el = document.elementFromPoint(x, y)?.closest('[data-scene-index]') as HTMLElement | null;
+    if (!el) return null;
+    const i = parseInt(el.dataset.sceneIndex!, 10);
+    const r = el.getBoundingClientRect();
+    return x < r.left + r.width / 2 ? i : i + 1;
+  };
+  const onBlockDown = (e: React.PointerEvent, id: string) => {
+    if (e.button !== 0) return;
+    press.current = { id, x: e.clientX, moved: false };
+    const move = (ev: PointerEvent) => {
+      const p = press.current;
+      if (!p) return;
+      if (!p.moved && Math.abs(ev.clientX - p.x) > 6) { p.moved = true; setDragId(p.id); }
+      if (p.moved) setDropAt(dropIndexAt(ev.clientX, ev.clientY));
+    };
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      const p = press.current;
+      if (p?.moved) drop(dropIndexAt(ev.clientX, ev.clientY), p.id);
+      setDragId(null); setDropAt(null);
+      setTimeout(() => { press.current = null; }, 0);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const addScene = (at: number, fromTemplate = false) => {
+    const sc = createScene(`Escena ${show.scenes.length + 1}`, 10);
+    mutShow('Añadir escena', (sh) => { sh.scenes.splice(at, 0, sc); });
+    set({ sceneId: sc.id, clipId: null, soundId: null, musicId: null });
+    if (fromTemplate) setTimeout(() => window.dispatchEvent(new CustomEvent('vm-picker', { detail: 'template' })), 50);
+  };
+  const removeScene = async (i: number) => {
+    const sc = show.scenes[i];
+    if (sc.clips.length + sc.sounds.length > 0 && !(await confirmDialog(`Eliminar «${sc.name}»`, `Contiene ${sc.clips.length} clips y ${sc.sounds.length} sonidos. Puedes deshacerlo con Ctrl+Z.`, 'Eliminar', true))) return;
+    mutShow('Eliminar escena', (sh) => { sh.scenes.splice(i, 1); });
+    set({ sceneId: show.scenes[i + 1]?.id ?? show.scenes[i - 1]?.id ?? null, clipId: null });
+  };
+  const duplicateAt = (i: number) => {
+    const d = duplicateScene(show.scenes[i]);
+    mutShow('Duplicar escena', (sh) => { sh.scenes.splice(i + 1, 0, d); });
+    set({ sceneId: d.id, clipId: null });
+  };
+  const rename = async (i: number) => {
+    const n = await promptDialog('Nombre de la escena', show.scenes[i].name);
+    if (n) mutShow('Renombrar escena', (sh) => { sh.scenes[i].name = n; });
+  };
+  const sceneMenu = (e: React.MouseEvent, i: number) => {
+    const sc = show.scenes[i];
+    set({ sceneId: sc.id, clipId: null, soundId: null, musicId: null });
+    openMenu(e, [
+      { label: 'Renombrar…', onClick: () => void rename(i) },
+      { label: 'Duplicar', icon: <Copy size={14} />, onClick: () => duplicateAt(i) },
+      { label: sc.enabled ? 'Desactivar (no se reproduce)' : 'Activar', onClick: () => mutShow(sc.enabled ? 'Desactivar escena' : 'Activar escena', (sh) => { sh.scenes[i].enabled = !sh.scenes[i].enabled; }) },
+      { separator: true, label: '' },
+      { label: 'Escena vacía después', icon: <Plus size={14} />, onClick: () => addScene(i + 1) },
+      { label: 'Escena con plantilla después…', icon: <Wand2 size={14} />, onClick: () => addScene(i + 1, true) },
+      { separator: true, label: '' },
+      { label: 'Mover antes', icon: <ChevronLeft size={14} />, disabled: i === 0, onClick: () => mutShow('Reordenar escenas', (sh) => { const [x] = sh.scenes.splice(i, 1); sh.scenes.splice(i - 1, 0, x); }) },
+      { label: 'Mover después', icon: <ChevronRight size={14} />, disabled: i >= show.scenes.length - 1, onClick: () => mutShow('Reordenar escenas', (sh) => { const [x] = sh.scenes.splice(i, 1); sh.scenes.splice(i + 1, 0, x); }) },
+      { separator: true, label: '' },
+      { label: 'Eliminar', icon: <Trash2 size={14} />, danger: true, onClick: () => void removeScene(i) },
+    ]);
+  };
+  const drop = (target: number | null, id: string) => {
+    const from = show.scenes.findIndex((x) => x.id === id);
+    if (target === null || from < 0 || target === from || target === from + 1) return;
+    mutShow('Reordenar escenas', (sh) => { const [x] = sh.scenes.splice(from, 1); sh.scenes.splice(target > from ? target - 1 : target, 0, x); });
+  };
   return (
     <div className="scene-strip">
       <div className="scene-strip-actions">
@@ -286,10 +362,14 @@ function SceneStrip({ show }: { show: Show }) {
           return (
             <button
               key={sc.id}
-              className={`scene-block${sc.id === sceneId ? ' sel' : ''}${sc.enabled ? '' : ' off'}${activeNow ? ' now' : ''}`}
+              className={`scene-block${sc.id === sceneId ? ' sel' : ''}${sc.enabled ? '' : ' off'}${activeNow ? ' now' : ''}${dragId === sc.id ? ' dragging' : ''}${dropAt === i ? ' drop-before' : ''}${dropAt === i + 1 && i === show.scenes.length - 1 ? ' drop-after' : ''}`}
               style={{ flexGrow: sc.duration / total }}
-              onClick={() => { set({ sceneId: sc.id, clipId: null, soundId: null, musicId: null }); if (slot) previewControl.seek(slot.start); }}
-              title={`${sc.name} · ${sc.duration}s · transición: ${sc.transition.type}`}
+              onClick={() => { if (press.current?.moved) return; set({ sceneId: sc.id, clipId: null, soundId: null, musicId: null }); if (slot) previewControl.seek(slot.start); }}
+              onDoubleClick={() => void rename(i)}
+              onContextMenu={(e) => sceneMenu(e, i)}
+              onPointerDown={(e) => onBlockDown(e, sc.id)}
+              data-scene-index={i}
+              title={`${sc.name} · ${sc.duration}s · transición: ${sc.transition.type}\nArrastra para reordenar · doble clic: renombrar · clic derecho: más opciones`}
               data-testid={`scene-block-${i}`}
             >
               <span className="sb-name">{i + 1}. {sc.name}</span>
@@ -297,10 +377,25 @@ function SceneStrip({ show }: { show: Show }) {
             </button>
           );
         })}
+        <button
+          className="scene-block add"
+          onClick={(e) => openMenu(e, [
+            { label: 'Escena vacía', icon: <Plus size={14} />, onClick: () => addScene(show.scenes.length) },
+            { label: 'Escena con plantilla…', icon: <Wand2 size={14} />, onClick: () => addScene(show.scenes.length, true) },
+            { label: 'Duplicar la seleccionada', icon: <Copy size={14} />, disabled: idx < 0, onClick: () => duplicateAt(idx) },
+          ])}
+          title="Añadir escena"
+          data-testid="add-scene-end"
+        >
+          <Plus size={18} />
+        </button>
       </div>
     </div>
   );
 }
+
+/** Portapapeles de clips (Ctrl+C / Ctrl+V entre escenas). */
+let clipboard: Clip | null = null;
 
 const SNAP = 0.1;
 const snap = (t: number) => Math.round(t / SNAP) * SNAP;
@@ -317,8 +412,45 @@ function SceneTimeline({ show }: { show: Show }) {
   const L = useMemo(() => layoutShow(show), [show]);
   const slot = scene ? L.slots.find((s) => s.scene.id === scene.id) : null;
   const trackRef = useRef<HTMLDivElement>(null);
-  const [picker, setPicker] = useState<null | 'asset' | 'sound' | 'character' | 'effect' | 'template'>(null);
+  const [picker, setPickerRaw] = useState<null | 'asset' | 'sound' | 'character' | 'effect' | 'template' | 'choreo'>(null);
+  const [choreoPreset, setChoreoPreset] = useState<ChoreoPreset | undefined>(undefined);
   const [rowSurface, setRowSurface] = useState<string | null>(null);
+  /** Instante elegido con doble clic en la línea de tiempo (si no, el cabezal). */
+  const pendingStart = useRef<number | null>(null);
+  const setPicker = (p: typeof picker) => { if (!p) pendingStart.current = null; setPickerRaw(p); };
+  // La tira de escenas puede pedir abrir un selector (p. ej. «nueva escena desde plantilla»).
+  useEffect(() => {
+    const h = (e: Event) => setPickerRaw((e as CustomEvent).detail);
+    window.addEventListener('vm-picker', h);
+    return () => window.removeEventListener('vm-picker', h);
+  }, []);
+  // Atajos: Supr borra, Ctrl+D duplica, Ctrl+C / Ctrl+V copia y pega clips; Alt+flechas mueve 0,1 s.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (document.querySelector('.modal-back')) return;
+      const s0 = useStore.getState();
+      const sh = s0.project?.shows.find((x) => x.id === show.id);
+      const sc = sh?.scenes.find((x) => x.id === s0.sceneId);
+      if (!sc) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const clip = sc.clips.find((c) => c.id === s0.clipId);
+      if ((e.key === 'Delete' || e.key === 'Backspace') && (clip || s0.soundId)) {
+        e.preventDefault();
+        if (clip) clipActions(clip).remove(); else soundRemove(s0.soundId!);
+      } else if (mod && e.key.toLowerCase() === 'd' && clip) { e.preventDefault(); clipActions(clip).duplicate(); }
+      else if (mod && e.key.toLowerCase() === 'c' && clip) { clipboard = cloneDeep(clip); s0.toast('info', 'Clip copiado. Ctrl+V lo pega en la fila elegida, en el cabezal.', 2500); }
+      else if (mod && e.key.toLowerCase() === 'v' && clipboard) { e.preventDefault(); pasteClip(); }
+      else if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && clip) {
+        e.preventDefault();
+        const dt = e.key === 'ArrowLeft' ? -0.1 : 0.1;
+        mutSceneById(sc.id, (x) => { const c = x.clips.find((y) => y.id === clip.id); if (c) c.start = Math.max(0, Math.round((c.start + dt) * 10) / 10); }, 'Mover clip');
+      }
+    };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  });
   const drag = useRef<null | { kind: 'move' | 'resize'; id: string; isSound: boolean; x0: number; start0: number; dur0: number; pxPerSec: number; rowY0: number }>(null);
 
   if (!scene) return <div className="timeline empty-tl muted">Añade o selecciona una escena.</div>;
@@ -340,11 +472,86 @@ function SceneTimeline({ show }: { show: Show }) {
   };
 
   const defaultSurface = rowSurface ?? surfaces[0]?.id ?? null;
-  const startAt = local !== null ? snap(local) : 0;
+  const startAt = pendingStart.current ?? (local !== null ? snap(local) : 0);
+
+  function mutSceneById(id: string, fn: (sc: Scene) => void, label: string) {
+    st().update(label, (d) => { const sc = d.shows.find((x) => x.id === show.id)?.scenes.find((x) => x.id === id); if (sc) fn(sc); });
+  }
+  function clipActions(c: Clip) {
+    return {
+      duplicate: () => {
+        const d2 = { ...cloneDeep(c), id: newId('clp'), start: Math.min(c.start + c.duration, Math.max(0, D - 0.5)) };
+        mutScene(false, (sc) => { sc.clips.push(d2); }, 'Duplicar clip');
+        set({ clipId: d2.id, soundId: null, musicId: null });
+      },
+      remove: () => {
+        mutScene(false, (sc) => { sc.clips = sc.clips.filter((x) => x.id !== c.id); }, 'Eliminar clip');
+        set({ clipId: null });
+      },
+      moveTo: (surfaceId: string) => mutScene(false, (sc) => { const x = sc.clips.find((y) => y.id === c.id); if (x) x.surfaceId = surfaceId; }, 'Mover clip a otra superficie'),
+    };
+  }
+  function soundRemove(id: string) {
+    mutScene(false, (sc) => { sc.sounds = sc.sounds.filter((x) => x.id !== id); }, 'Eliminar sonido');
+    set({ soundId: null });
+  }
+  function pasteClip() {
+    if (!clipboard) return;
+    const c = { ...cloneDeep(clipboard), id: newId('clp'), start: startAt, surfaceId: rowSurface ?? clipboard.surfaceId };
+    if (!surfaces.some((s) => s.id === c.surfaceId)) c.surfaceId = defaultSurface ?? c.surfaceId;
+    c.duration = Math.max(0.2, Math.min(c.duration, D - c.start));
+    mutScene(false, (sc) => { sc.clips.push(c); }, 'Pegar clip');
+    set({ clipId: c.id, soundId: null, musicId: null });
+  }
+  /** Menú del clic derecho sobre un clip. */
+  const clipMenu = (e: React.MouseEvent, c: Clip) => {
+    set({ clipId: c.id, soundId: null, musicId: null });
+    const a = clipActions(c);
+    const items: MenuItem[] = [
+      { label: 'Duplicar', icon: <Copy size={14} />, hint: 'Ctrl+D', onClick: a.duplicate },
+      { label: 'Copiar', hint: 'Ctrl+C', onClick: () => { clipboard = cloneDeep(c); } },
+    ];
+    if (c.source.type === 'asset') {
+      items.push({ separator: true, label: '' });
+      items.push({ label: 'Pasar a otra ventana…', icon: <Shuffle size={14} />, onClick: () => { pendingStart.current = c.start + c.duration; setChoreoPreset({ kind: 'pasar', actor: c.characterId ? `c:${c.characterId}` : `a:${c.source.type === 'asset' ? c.source.assetId : ''}`, from: c.surfaceId }); setPicker('choreo'); } });
+      items.push({ label: c.silhouette ? 'Quitar silueta' : 'Convertir en silueta', onClick: () => mutScene(false, (sc) => { const x = sc.clips.find((y) => y.id === c.id); if (x) x.silhouette = !x.silhouette; }, 'Silueta') });
+    }
+    items.push({ separator: true, label: '' });
+    for (const s of surfaces) if (s.id !== c.surfaceId) items.push({ label: `Mover a «${s.name}»`, onClick: () => a.moveTo(s.id) });
+    items.push({ separator: true, label: '' });
+    items.push({ label: 'Eliminar', icon: <Trash2 size={14} />, hint: 'Supr', danger: true, onClick: a.remove });
+    openMenu(e, items);
+  };
+  /** Doble clic (o clic derecho) en un hueco de una fila: añadir algo justo ahí. */
+  const gapMenu = (e: React.MouseEvent, surfaceId: string) => {
+    if ((e.target as HTMLElement).closest('.tl-bar')) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const t = snap(Math.max(0, Math.min(D - 0.1, ((e.clientX - r.left) / r.width) * D)));
+    pendingStart.current = t;
+    setRowSurface(surfaceId);
+    if (slot) previewControl.seek(slot.start + t);
+    const name = surfaces.find((s) => s.id === surfaceId)?.name ?? '';
+    openMenu(e, [
+      { label: `Añadir en «${name}» a los ${t.toFixed(1)} s`, disabled: true },
+      { label: 'Personaje…', icon: <Ghost size={14} />, disabled: !project.characters.length, onClick: () => setPicker('character') },
+      { label: 'Imagen o vídeo…', icon: <Film size={14} />, onClick: () => setPicker('asset') },
+      { label: 'Efecto…', icon: <Sparkles size={14} />, onClick: () => setPicker('effect') },
+      { label: 'Rótulo', icon: <Type size={14} />, onClick: () => addText(surfaceId, t) },
+      { label: 'Coreografía entre ventanas…', icon: <Shuffle size={14} />, onClick: () => { setChoreoPreset({ from: surfaceId }); setPicker('choreo'); } },
+      { label: 'Plantilla en toda la casa…', icon: <Wand2 size={14} />, onClick: () => setPicker('template') },
+      ...(clipboard ? [{ separator: true, label: '' }, { label: 'Pegar clip aquí', hint: 'Ctrl+V', onClick: pasteClip }] : []),
+    ]);
+  };
+  function addText(surfaceId: string, at: number) {
+    addClip(createClip(surfaceId, { type: 'text', text: '¡Feliz Halloween!', font: 'terror', color: '#ff8a1c', outline: '#1a0526', glow: true, bold: true }, {
+      name: '', start: at, duration: Math.max(0.5, Math.min(5, D - at)), scale: 0.9, motion: { preset: 'popIn', intensity: 1, speed: 1 },
+    }));
+  }
 
   const addClip = (c: Clip) => {
     mutScene(false, (sc) => { sc.clips.push(c); }, 'Añadir clip');
     set({ clipId: c.id, soundId: null, musicId: null });
+    pendingStart.current = null;
   };
 
   const onBarDown = (e: React.PointerEvent, id: string, isSound: boolean, kind: 'move' | 'resize') => {
@@ -412,7 +619,7 @@ function SceneTimeline({ show }: { show: Show }) {
       <div className="tl-label" onClick={() => setRowSurface(surfaceId)} title="Los clips nuevos se añadirán a esta superficie">
         <span className="dot" style={{ background: color }} />{label}
       </div>
-      <div className="tl-track" onPointerDown={(e) => { setRowSurface(surfaceId); onRulerDown(e); }}>
+      <div className="tl-track" onPointerDown={(e) => { setRowSurface(surfaceId); onRulerDown(e); }} onDoubleClick={(e) => gapMenu(e, surfaceId)} onContextMenu={(e) => gapMenu(e, surfaceId)}>
         {clips.map((c) => (
           <div
             key={c.id}
@@ -421,10 +628,11 @@ function SceneTimeline({ show }: { show: Show }) {
             onPointerDown={(e) => onBarDown(e, c.id, false, 'move')}
             onPointerMove={onMove}
             onPointerUp={onUp}
-            title={`${clipLabel(c)} · ${c.start.toFixed(1)}s → ${(c.start + c.duration).toFixed(1)}s`}
+            onContextMenu={(e) => clipMenu(e, c)}
+            title={`${clipLabel(c)} · ${c.start.toFixed(1)}s → ${(c.start + c.duration).toFixed(1)}s${c.travel ? ' · viaja por la fachada' : ''} · clic derecho: más opciones`}
             data-testid="tl-clip"
           >
-            <span>{clipLabel(c)}</span>
+            <span>{c.travel ? '↔ ' : ''}{clipLabel(c)}</span>
             {c.motion.preset !== 'none' && <em>{MOTION_LABELS[c.motion.preset]}</em>}
             <i className="tl-resize" onPointerDown={(e) => onBarDown(e, c.id, false, 'resize')} onPointerMove={onMove} onPointerUp={onUp} />
           </div>
@@ -446,14 +654,13 @@ function SceneTimeline({ show }: { show: Show }) {
           icon={<Type size={14} />}
           disabled={!surfaces.length}
           data-testid="add-text"
-          onClick={() => addClip(createClip(defaultSurface!, { type: 'text', text: '¡Feliz Halloween!', font: 'terror', color: '#ff8a1c', outline: '#1a0526', glow: true, bold: true }, {
-            name: '', start: startAt, duration: Math.max(0.5, Math.min(5, D - startAt)), scale: 0.9, motion: { preset: 'popIn', intensity: 1, speed: 1 },
-          }))}
+          onClick={() => addText(defaultSurface!, startAt)}
         >
           Rótulo
         </Button>
+        <Button small icon={<Shuffle size={14} />} disabled={surfaces.filter((s) => s.kind !== 'wall').length < 2} onClick={() => { setChoreoPreset(rowSurface ? { from: rowSurface } : undefined); setPicker('choreo'); }} data-testid="add-choreo" title="Un personaje que se asoma y pasa a otra ventana, escondite, lanzar en arco…">Coreografía</Button>
         <Button small icon={<Volume2 size={14} />} onClick={() => setPicker('sound')} data-testid="add-sound">Sonido</Button>
-        <span className="muted small">Se añade en {surfaces.find((s) => s.id === defaultSurface)?.name ?? '—'} a los {startAt.toFixed(1)}s. Arrastra los clips para moverlos (también a otra fila) y su borde derecho para cambiar la duración.</span>
+        <span className="muted small">Se añade en {surfaces.find((s) => s.id === defaultSurface)?.name ?? '—'} a los {startAt.toFixed(1)}s. Doble clic en un hueco para añadir ahí · clic derecho en un clip para más opciones · Supr borra · Ctrl+D duplica.</span>
       </div>
       <div className="tl-grid">
         <div className="tl-row ruler">
@@ -539,6 +746,9 @@ function SceneTimeline({ show }: { show: Show }) {
             setPicker(null);
           }}
         />
+      )}
+      {picker === 'choreo' && (
+        <ChoreoModal show={show} sceneId={scene.id} start={startAt} preset={choreoPreset} onClose={() => setPicker(null)} />
       )}
       {picker === 'template' && inst && (
         <Modal title="Plantillas de escena" onClose={() => setPicker(null)} wide>
@@ -811,6 +1021,7 @@ function ClipInspector({ clip }: { clip: Clip }) {
             {clip.silhouette && <input type="color" value={clip.silhouetteColor} onChange={(e) => mut('Color de silueta', (c) => { c.silhouetteColor = e.target.value; })} />}
           </div>
         )}
+        {clip.source.type !== 'effect' && <TravelEditor clip={clip} mut={mut} />}
       </Panel>
       <div className="btn-row">
         <Button icon={<Copy size={15} />} onClick={() => {
@@ -825,6 +1036,53 @@ function ClipInspector({ clip }: { clip: Clip }) {
       </div>
       {pick && (
         <AssetPicker kinds={['image', 'video', 'sequence']} title="Cambiar recurso" onClose={() => setPick(false)} onPick={(id) => { mut('Cambiar recurso', (c) => { c.source = { type: 'asset', assetId: id }; }); setPick(false); }} />
+      )}
+    </div>
+  );
+}
+
+/** Viaje por la fachada: el clip va de una superficie a otra y se ve a través de las que elijas. */
+function TravelEditor({ clip, mut }: { clip: Clip; mut: (label: string, fn: (c: Clip) => void) => void }) {
+  const project = useStore((s) => s.project)!;
+  const show = useStore(selShow);
+  const inst = show ? project.installations.find((i) => i.id === show.installationId) : null;
+  if (!inst) return null;
+  const center = (id: string) => {
+    const s = inst.surfaces.find((x) => x.id === id);
+    if (!s) return { x: 0.5, y: 0.5 };
+    const xs = s.quad.map((p) => p.x), ys = s.quad.map((p) => p.y);
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  };
+  const nearest = (p: { x: number; y: number }) => inst.surfaces.slice().sort((a, b) => Math.hypot(center(a.id).x - p.x, center(a.id).y - p.y) - Math.hypot(center(b.id).x - p.x, center(b.id).y - p.y))[0]?.id ?? '';
+  const tr = clip.travel;
+  const opts = inst.surfaces.map((s) => ({ value: s.id, label: s.name }));
+  return (
+    <div className="travel-box">
+      <Toggle
+        checked={!!tr}
+        onChange={(v) => mut(v ? 'Viajar por la fachada' : 'Quitar viaje', (c) => {
+          if (!v) { c.travel = null; return; }
+          const other = inst.surfaces.find((s) => s.id !== c.surfaceId && s.kind !== 'wall') ?? inst.surfaces[0];
+          c.travel = { from: center(c.surfaceId), to: center(other.id), arc: 0, surfaces: [] };
+        })}
+        label="Viajar por la fachada (de una superficie a otra)"
+        data-testid="clip-travel"
+      />
+      {tr && (
+        <>
+          <div className="row2">
+            <Field label="Desde"><Select value={nearest(tr.from)} onChange={(id) => mut('Viaje: desde', (c) => { if (c.travel) c.travel.from = center(id); })} options={opts} /></Field>
+            <Field label="Hasta"><Select value={nearest(tr.to)} onChange={(id) => mut('Viaje: hasta', (c) => { if (c.travel) c.travel.to = center(id); })} options={opts} /></Field>
+          </div>
+          <div className="row2">
+            <Field label="Arco"><NumberInput value={tr.arc * 100} min={0} max={100} step={5} suffix="%" precision={0} onCommit={(v) => mut('Viaje: arco', (c) => { if (c.travel) c.travel.arc = v / 100; })} /></Field>
+            <Field label="Se ve">
+              <Select value={tr.surfaces.length === inst.surfaces.length ? 'all' : tr.surfaces.length ? 'custom' : 'noWalls'} onChange={(v) => mut('Viaje: dónde se ve', (c) => { if (!c.travel) return; c.travel.surfaces = v === 'all' ? inst.surfaces.map((s) => s.id) : []; })}
+                options={[{ value: 'noWalls', label: 'Solo en ventanas y puertas (pasa por detrás)' }, { value: 'all', label: 'En toda la fachada (vuela por delante)' }, ...(tr.surfaces.length && tr.surfaces.length !== inst.surfaces.length ? [{ value: 'custom', label: 'Selección propia' }] : [])]} />
+            </Field>
+          </div>
+          <p className="muted small">El tamaño es relativo al alto de su superficie; la duración del clip marca la velocidad.</p>
+        </>
       )}
     </div>
   );

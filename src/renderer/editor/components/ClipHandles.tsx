@@ -22,7 +22,8 @@ export function ClipHandles({ width, height }: { width: number; height: number }
   const clip = scene?.clips.find((c) => c.id === clipId) ?? null;
   const inst = show ? project.installations.find((i) => i.id === show.installationId) : null;
   const surface = clip && inst ? inst.surfaces.find((s) => s.id === clip.surfaceId) : null;
-  if (!clip || !inst || !surface) return null;
+  // Los clips que viajan por la fachada se colocan con «Desde/Hasta» en el inspector.
+  if (!clip || !inst || !surface || clip.travel) return null;
 
   const A = surfaceAspect(surface, inst.output);
   let C = A;

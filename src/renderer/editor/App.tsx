@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Home as HomeIcon, Crosshair, Images, Ghost, Clapperboard, MonitorPlay, Settings as SettingsIcon, Save, Undo2, Redo2 } from 'lucide-react';
 import { useStore, type View } from './store';
 import { vm, saveProject, startAutosave, startScheduler, handleOutputRequest, scheduleOutputSync, sendAudioSettings, openProjectFile, afterOpen } from './services';
-import { Button, DialogHost } from './components/ui';
+import { Button, DialogHost, ContextMenuHost } from './components/ui';
 import { OutputControl } from './components/OutputControl';
 import { Toasts } from './components/Toasts';
 import { HomeScreen } from './screens/Home';
@@ -162,6 +162,7 @@ export function App() {
       </div>
       <Toasts />
       <DialogHost />
+      <ContextMenuHost />
     </div>
   );
 }
