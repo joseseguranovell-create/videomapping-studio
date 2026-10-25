@@ -31,6 +31,18 @@ export const EFFECT_MODE = {
   fireflies: 14,
   eyes: 15,
   spirits: 16,
+  shadowPass: 17,
+  curtains: 18,
+  shutters: 19,
+  stainedGlass: 20,
+  cracks: 21,
+  glitch: 22,
+  pulse: 23,
+  searchlight: 24,
+  fireworks: 25,
+  frost: 26,
+  aurora: 27,
+  shootingStars: 28,
 } as const;
 
 export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2 } as const;
@@ -58,6 +70,13 @@ export interface Layer {
   color?: [number, number, number];
   color2?: [number, number, number];
   time?: number;
+  /** Tiempo desde que empezó el clip y su duración (efectos que se abren, se rompen o crecen). */
+  local?: number;
+  duration?: number;
+  /** Parámetro numérico del efecto (el «grosor»). */
+  param?: number;
+  /** Alto de la superficie en la salida (0..1): para efectos de fachada con tamaño de ventana. */
+  surfH?: number;
   aspect?: number;
   /** El efecto usa coordenadas de toda la fachada (continuo entre superficies). */
   global?: boolean;
@@ -84,6 +103,10 @@ uniform int u_mode;
 uniform sampler2D u_tex;
 uniform float u_opacity;
 uniform float u_time;
+uniform float u_local;
+uniform float u_dur;
+uniform float u_param;
+uniform float u_surfH;
 uniform float u_aspect;
 uniform vec3 u_color;
 uniform vec3 u_color2;
@@ -109,6 +132,37 @@ float fbm(vec2 p) {
   float v = 0.0, a = 0.5;
   for (int i = 0; i < 5; i++) { v += a * vnoise(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; }
   return v;
+}
+float sdCapsule(vec2 p, vec2 a, vec2 b, float r) {
+  vec2 pa = p - a, ba = b - a;
+  float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+/** Voronoi: x = distancia al borde entre celdas, yz = id de la celda. */
+vec3 voronoi(vec2 p) {
+  vec2 n = floor(p), f = fract(p);
+  vec2 mg = vec2(0.0), mr = vec2(0.0);
+  float md = 8.0;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 g = vec2(float(i), float(j));
+    vec2 o = vec2(hash(n + g), hash(n + g + 17.3));
+    vec2 r = g + o - f;
+    float d = dot(r, r);
+    if (d < md) { md = d; mr = r; mg = g; }
+  }
+  md = 8.0;
+  for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) {
+    vec2 g = mg + vec2(float(i), float(j));
+    vec2 o = vec2(hash(n + g), hash(n + g + 17.3));
+    vec2 r = g + o - f;
+    if (dot(mr - r, mr - r) > 0.00001) md = min(md, dot(0.5 * (mr + r), normalize(r - mr)));
+  }
+  return vec3(md, n + mg);
+}
+/** Entra al principio del clip y sale al final (0 = cerrado, 1 = abierto). */
+float openAmount(float lt, float dur, float tin) {
+  float k = min(tin, dur * 0.3);
+  return smoothstep(0.0, k, lt) * (1.0 - smoothstep(dur - k, dur, lt));
 }
 vec3 hsv2rgb(vec3 c) {
   vec3 p = abs(fract(c.xxx + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0);
@@ -333,6 +387,229 @@ void main() {
     float fade = smoothstep(0.02, 0.5, qn.y) * (0.55 + 0.45 * smoothstep(1.0, 0.55, qn.y));
     float a = streak * fade * 0.6 * smoothstep(0.0, 0.08, c.x) * smoothstep(1.0, 0.92, c.x);
     col = vec4(mix(u_color2, u_color, smoothstep(0.55, 0.9, n)) * a, a);
+  } else if (u_mode == 17) {
+    // Sombra que pasa: ventana iluminada por dentro y la sombra de alguien que la cruza andando.
+    float flick = 0.94 + 0.04 * sin(t * 6.1) + 0.02 * sin(t * 13.7);
+    vec2 dd = (c - vec2(0.5, 0.75)) * vec2(u_aspect * 0.6, 1.0);
+    vec3 light = u_color * (0.55 + 0.45 * exp(-dot(dd, dd) * 1.6)) * flick;
+    float Hf = 0.9;                       // altura de la figura (en alturas de ventana)
+    // En modo fachada la misma persona cruza toda la casa: entra por una ventana y sale por la otra.
+    float per = u_global == 1 ? 9.0 : 5.5;
+    float tt = u_global == 1 ? u_time : u_local;
+    float n = floor(tt / per);
+    float lp = fract(tt / per);
+    float dir = mod(n, 2.0) < 1.0 ? 1.0 : -1.0;
+    vec2 p;
+    if (u_global == 1) {
+      float X = (-0.08 + lp * 1.16) * u_outAspect;
+      if (dir < 0.0) X = u_outAspect - X;
+      p = vec2((v_pos.x * u_outAspect - X) / (Hf * u_surfH), (c.y - 1.02) / Hf);
+    } else {
+      float X = (-0.25 + lp * 1.5) * u_aspect;
+      if (dir < 0.0) X = u_aspect - X;
+      p = (vec2(c.x * u_aspect, c.y) - vec2(X, 1.02)) / Hf; // pies en (0,0); arriba es -y
+    }
+    p.x *= dir;
+    float w = tt * 7.0;
+    float bob = abs(sin(w)) * 0.015;
+    p.y += bob;
+    float d = length(p - vec2(0.0, -0.86)) - 0.085;                       // cabeza
+    d = min(d, sdCapsule(p, vec2(0.0, -0.74), vec2(0.0, -0.42), 0.1));    // tronco
+    d = min(d, sdCapsule(p, vec2(0.0, -0.44), vec2(0.13 * sin(w), -0.02), 0.045));
+    d = min(d, sdCapsule(p, vec2(0.0, -0.44), vec2(-0.13 * sin(w), -0.02), 0.045));
+    d = min(d, sdCapsule(p, vec2(0.0, -0.7), vec2(-0.12 * sin(w), -0.44), 0.035));
+    d = min(d, sdCapsule(p, vec2(0.0, -0.7), vec2(0.12 * sin(w), -0.44), 0.035));
+    float sh = smoothstep(0.03, -0.01, d) * 0.92;                          // sombra suave, como sobre una cortina
+    col = vec4(mix(light, u_color2, sh), 1.0);
+  } else if (u_mode == 18) {
+    // Cortinas de teatro que se abren al empezar el clip y se cierran al acabar.
+    float op = openAmount(u_local, u_dur, 2.2);
+    float w = mix(0.5, 0.13, op);         // ancho de cada mitad
+    float side = c.x < 0.5 ? c.x : 1.0 - c.x;
+    // borde inferior recogido hacia el lateral cuando están abiertas
+    float lift = op * 0.25 * smoothstep(0.0, w, side) * smoothstep(0.35, 1.0, c.y);
+    float inside = step(side, w - lift * 0.4);
+    float u = side / max(w, 0.001) * 0.5;
+    float folds = 0.5 + 0.5 * cos(u * 6.2831 * 7.0 + 0.6 * sin(c.y * 3.0));
+    vec3 velvet = u_color * (0.25 + 0.85 * pow(folds, 1.4)) * (0.75 + 0.25 * (1.0 - c.y));
+    float val = step(c.y, 0.11 + 0.02 * cos(c.x * 6.2831 * 6.0));        // cenefa superior
+    vec3 trim = u_color2 * (0.7 + 0.3 * sin(c.x * 120.0));
+    float a = max(inside, val);
+    vec3 cc = val > 0.5 ? mix(velvet * 0.8, trim, step(0.085, c.y)) : velvet;
+    col = vec4(cc * a, a);
+  } else if (u_mode == 19) {
+    // Contraventanas de lamas que se abren (girando hacia fuera) y se cierran.
+    float op = openAmount(u_local, u_dur, 1.6);
+    float pw = 0.5 * cos(op * 1.45);      // ancho aparente de cada hoja
+    float side = c.x < 0.5 ? c.x : 1.0 - c.x;
+    float a = step(side, pw);
+    float lx = side / max(pw, 0.001);
+    float sl = fract(c.y * 11.0);
+    float slat = 0.55 + 0.45 * smoothstep(0.0, 0.8, sl) * smoothstep(1.0, 0.85, sl);
+    float frame = step(lx, 0.1) + step(0.9, lx) + step(c.y, 0.05) + step(0.95, c.y);
+    vec3 wood = u_color * (0.6 + 0.4 * fbm(vec2(c.x * 40.0, c.y * 3.0)));
+    vec3 cc = mix(wood * slat, wood * 0.9, clamp(frame, 0.0, 1.0)) * (1.0 - 0.45 * op);
+    cc = mix(cc, u_color2, smoothstep(0.08, 0.0, sl) * (1.0 - clamp(frame, 0.0, 1.0)) * 0.8);
+    col = vec4(cc * a, a);
+  } else if (u_mode == 20) {
+    // Vidriera: teselas grandes de colores joya, plomo grueso, textura de vidrio y luz más fuerte en el centro.
+    vec3 v = voronoi(q * 3.0);
+    float h = hash(v.yz);
+    vec3 pal = h < 0.22 ? vec3(0.55, 0.03, 0.06) : h < 0.44 ? vec3(0.05, 0.14, 0.55) : h < 0.62 ? vec3(0.75, 0.48, 0.05) : h < 0.78 ? vec3(0.05, 0.4, 0.18) : h < 0.9 ? vec3(0.32, 0.07, 0.48) : vec3(0.8, 0.75, 0.6);
+    float lead = smoothstep(0.03, 0.08, v.x);
+    vec2 dd = (c - vec2(0.5, 0.45)) * vec2(u_aspect * 0.7, 1.0);
+    float center = 0.45 + 0.75 * exp(-dot(dd, dd) * 2.5);
+    float glass = 0.8 + 0.2 * fbm(q * 14.0 + h * 10.0) + 0.1 * sin(t * 0.7 + h * 9.0);
+    float bright = (0.65 + 0.35 * hash(v.yz + 3.0)) * center * glass;
+    vec3 cc = mix(u_color2, pal * u_color * bright * 1.25, lead);
+    col = vec4(cc, 1.0);
+  } else if (u_mode == 21) {
+    // Cristal que se rompe: grietas que se extienden desde el impacto, con destello.
+    vec2 p0 = vec2((0.35 + 0.3 * hash1(floor(u_param) + 3.0)) * u_aspect, 0.4 + 0.2 * hash1(floor(u_param) + 9.0));
+    vec2 d = q - p0;
+    float r = length(d);
+    float ang = atan(d.y, d.x) / 6.2831 + 0.5;
+    float R = 1.6 * smoothstep(0.0, 0.35, u_local);
+    float N = 13.0;
+    float jag = (vnoise(vec2(r * 18.0, floor(ang * N))) - 0.5) * 0.35 / N;
+    float sa = fract(ang * N + jag * N);
+    float radial = smoothstep(0.012, 0.0, min(sa, 1.0 - sa) / N * 6.2831 * max(r, 0.02)) * step(r, R);
+    float ring = smoothstep(0.012, 0.0, abs(fract(r * 4.0 + vnoise(vec2(ang * 40.0, 2.0)) * 0.3) - 0.5) * 0.25) * step(r, min(R, 0.9)) * step(0.06, r);
+    float lines = clamp(radial + ring * 0.7, 0.0, 1.0) * (1.0 - smoothstep(0.6, 1.4, r));
+    float flash = exp(-u_local * 7.0) * step(0.0, u_local);
+    float a = clamp(lines + flash * 0.9, 0.0, 1.0);
+    col = vec4(mix(u_color2, u_color, lines) * a + vec3(flash), a);
+  } else if (u_mode == 22) {
+    // Interferencia: estática de televisión, líneas, barra que sube y saltos.
+    float fr = floor(t * 24.0);
+    float burst = step(0.75, vnoise(vec2(t * 1.3, 7.0)));
+    float tear = burst * (hash1(floor(c.y * 30.0) + fr) - 0.5) * 0.08;
+    vec2 cc = vec2(c.x + tear, c.y);
+    float n = hash(floor(cc * vec2(260.0, 150.0)) + fr * 1.37);
+    float scan = 0.7 + 0.3 * sin(c.y * 900.0);
+    float bar = smoothstep(0.1, 0.0, abs(fract(c.y + t * 0.25) - 0.5));
+    vec3 ccol = mix(vec3(n), mix(u_color, u_color2, step(0.5, hash1(fr))), 0.25 * burst) * scan + bar * 0.25;
+    col = vec4(ccol * (0.75 + 0.25 * burst), 1.0);
+  } else if (u_mode == 23) {
+    // Latido: la luz golpea dos veces por segundo, como un corazón.
+    float bpm = max(u_param, 1.0) * 10.0;   // grosor 6 → 60 latidos por minuto
+    float ph = mod(t * bpm / 60.0, 1.0);
+    float env = exp(-ph * 9.0) + 0.65 * exp(-max(ph - 0.22, 0.0) * 9.0) * step(0.22, ph);
+    vec2 dd = (c - 0.5) * vec2(u_aspect, 1.0);
+    float v = exp(-dot(dd, dd) * 1.8);
+    vec3 cc = mix(u_color2, u_color, env) * (0.15 + 0.85 * v) * (0.25 + 0.75 * env);
+    col = vec4(cc, 1.0);
+  } else if (u_mode == 24) {
+    // Foco buscador: un círculo de luz recorre la fachada sin rumbo fijo.
+    vec2 cen = vec2(0.5 + 0.38 * sin(t * 0.47) + 0.08 * sin(t * 1.3), 0.5 + 0.3 * sin(t * 0.79 + 1.0));
+    vec2 pp = u_global == 1 ? vec2(qn.x * u_outAspect, qn.y) : vec2(qn.x * u_aspect, qn.y);
+    vec2 cc2 = u_global == 1 ? vec2(cen.x * u_outAspect, cen.y) : vec2(cen.x * u_aspect, cen.y);
+    float d = length(pp - cc2);
+    float rad = 0.16;
+    float spot = smoothstep(rad, rad * 0.75, d) + 0.35 * exp(-d * 6.0);
+    float a = clamp(spot, 0.0, 1.0);
+    col = vec4(mix(u_color2, u_color, smoothstep(rad, 0.0, d)) * a, a);
+  } else if (u_mode == 25) {
+    // Fuegos artificiales: cohetes que estallan en coronas de chispas con estela que caen.
+    vec3 acc = vec3(0.0);
+    float A = u_global == 1 ? u_outAspect : u_aspect;
+    vec2 pp = vec2(qn.x * A, qn.y);
+    for (int k = 0; k < 4; k++) {
+      float per = 2.2 + 0.45 * float(k);
+      float tk = t + float(k) * 1.13;
+      float cyc = floor(tk / per);
+      float lt = tk - cyc * per;
+      vec2 cen = vec2((0.12 + 0.76 * hash1(cyc * 7.1 + float(k) * 3.3)) * A, 0.15 + 0.3 * hash1(cyc * 3.7 + float(k)));
+      vec3 bc = mix(u_color, u_color2, hash1(cyc + float(k) * 11.0));
+      if (lt < 0.5) {
+        vec2 rp = vec2(cen.x, mix(1.05, cen.y, lt / 0.5));
+        float dr = length((pp - rp) * vec2(1.0, 0.35));
+        acc += mix(bc, vec3(1.0), 0.5) * exp(-dr * 120.0) * 1.4;
+        continue;
+      }
+      float e = lt - 0.5;
+      if (e > 1.9) continue;
+      vec2 dv = pp - cen;
+      dv.y -= 0.1 * e * e;
+      float a = atan(dv.y, dv.x);
+      float r = length(dv);
+      float N = 42.0;
+      float sec = floor(a / 6.2831 * N + 0.5);
+      float sa = sec / N * 6.2831;
+      float R = 0.34 * (1.0 - exp(-e * 3.2)) * (0.85 + 0.3 * hash1(sec + cyc * 3.0));
+      vec2 dirv = vec2(cos(sa), sin(sa));
+      // chispa y estela a lo largo del radio
+      float along = dot(dv, dirv);
+      float perp = abs(dot(dv, vec2(-dirv.y, dirv.x)));
+      float trail = smoothstep(R * 0.55, R, along) * step(along, R + 0.01) * exp(-perp * 220.0);
+      float spark = exp(-length(dv - dirv * R) * 140.0);
+      float tw = 0.65 + 0.35 * sin(e * 35.0 + sec * 2.0);
+      float fade = exp(-e * 1.4);
+      acc += bc * (spark * 2.0 + trail * 0.9) * fade * tw;
+      acc += mix(bc, vec3(1.0), 0.6) * exp(-r * 18.0) * exp(-e * 6.0) * 1.2;
+    }
+    acc = clamp(acc, 0.0, 1.0);
+    col = vec4(acc, clamp(max(acc.r, max(acc.g, acc.b)), 0.0, 1.0));
+  } else if (u_mode == 26) {
+    // Escarcha: red de cristales de hielo que crece desde los bordes hacia el centro, con destellos.
+    float grow = 0.3 * smoothstep(0.0, max(min(4.0, u_dur * 0.5), 0.1), u_local);   // deja el centro despejado
+    float e = min(min(c.x * u_aspect, (1.0 - c.x) * u_aspect), min(c.y, 1.0 - c.y));
+    float edgeN = e + (fbm(q * 5.0) - 0.5) * 0.22;
+    float f = smoothstep(grow + 0.05, grow - 0.05, edgeN);
+    float dens = smoothstep(grow, 0.0, edgeN);                  // más tupida junto al borde
+    float net = 0.0;
+    net += 1.0 - smoothstep(0.0, 0.035, voronoi(q * 9.0).x);
+    net += (1.0 - smoothstep(0.0, 0.03, voronoi(q * 22.0 + 3.0).x)) * 0.6;
+    net += (1.0 - smoothstep(0.0, 0.025, voronoi(q * 48.0 + 7.0).x)) * 0.35 * dens;
+    float haze = 0.18 + 0.25 * dens;
+    float gh = hash(floor(q * 70.0));
+    float glint = step(0.992, gh) * (0.5 + 0.5 * sin(t * 4.0 + gh * 40.0));
+    float a = clamp(f * (haze + net * 0.55) + f * glint, 0.0, 1.0);
+    col = vec4(mix(u_color2, u_color, clamp(net, 0.0, 1.0)) * a + vec3(glint * f), a);
+  } else if (u_mode == 27) {
+    // Aurora boreal: velos de luz que ondulan despacio, con rayos suaves que cuelgan.
+    vec3 acc = vec3(0.0);
+    for (int l = 0; l < 3; l++) {
+      float fl = float(l);
+      float x = q.x * (0.7 + 0.25 * fl);
+      float yc = 0.18 + 0.14 * fl + 0.09 * sin(x * 1.7 + t * 0.22 + fl * 2.0) + 0.07 * (fbm(vec2(x * 1.2, t * 0.08 + fl * 3.0)) - 0.5);
+      float dy = qn.y - yc;
+      float band = exp(-max(dy, 0.0) * 5.5) * smoothstep(-0.03, 0.01, dy);
+      float rays = 0.7 + 0.3 * sin(x * 16.0 + fbm(vec2(x * 2.5, t * 0.15 + fl)) * 6.0);
+      float shimmer = 0.75 + 0.25 * fbm(vec2(x * 3.0 - t * 0.3, dy * 4.0));
+      acc += mix(u_color, u_color2, clamp(dy * 3.5 + fl * 0.25, 0.0, 1.0)) * band * rays * shimmer * (0.55 - 0.12 * fl);
+    }
+    acc = clamp(acc, 0.0, 1.0);
+    float edge = smoothstep(0.0, 0.15, c.x) * smoothstep(1.0, 0.85, c.x) * smoothstep(1.0, 0.7, c.y);
+    acc *= edge;
+    col = vec4(acc, clamp(max(acc.r, max(acc.g, acc.b)) * 0.9, 0.0, 1.0));
+  } else if (u_mode == 28) {
+    // Estrellas fugaces sobre un cielo con estrellas tenues.
+    float A = u_global == 1 ? u_outAspect : u_aspect;
+    vec2 pp = vec2(qn.x * A, qn.y);
+    vec2 g = pp * 40.0;
+    float hs = hash(floor(g));
+    float bg = step(0.93, hs) * smoothstep(0.25, 0.0, length(fract(g) - 0.5)) * (0.4 + 0.6 * sin(t * (1.0 + hs * 3.0) + hs * 50.0) * 0.5 + 0.3);
+    vec3 acc = u_color2 * bg * 0.6;
+    for (int k = 0; k < 3; k++) {
+      float per = 3.2 + 1.1 * float(k);
+      float tk = t + float(k) * 1.9;
+      float cyc = floor(tk / per);
+      float lt = (tk - cyc * per) / 0.9;
+      if (lt > 1.0) continue;
+      vec2 s0 = vec2((0.1 + 0.6 * hash1(cyc * 5.3 + float(k))) * A, 0.05 + 0.35 * hash1(cyc * 2.1 + float(k) * 4.0));
+      vec2 dir = normalize(vec2(1.0, 0.45));
+      vec2 head = s0 + dir * lt * 0.6 * A;
+      vec2 tail = head - dir * 0.22;
+      vec2 pa = pp - tail, ba = head - tail;
+      float hh = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+      float dd = length(pa - ba * hh);
+      float fade = sin(lt * 3.1416);
+      acc += u_color * (exp(-dd * 260.0) * hh * hh * 1.6 + exp(-length(pp - head) * 60.0) * 0.6) * fade;
+    }
+    acc = clamp(acc, 0.0, 1.0);
+    float a = clamp(max(acc.r, max(acc.g, acc.b)), 0.0, 1.0);
+    col = vec4(acc, a);
   } else {
     // Recurso ausente: rayas magenta (solo en previsualización).
     float st = step(0.5, fract((c.x + c.y) * 10.0));
@@ -471,7 +748,7 @@ export class GLRenderer {
     for (const n of ['u_pts', 'u_cum', 'u_n', 'u_total', 'u_width', 'u_mode', 'u_time', 'u_dur', 'u_color', 'u_color2', 'u_opacity', 'u_res', 'u_margin']) {
       this.cu[n] = gl.getUniformLocation(this.contourProg, n);
     }
-    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
+    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
       this.u[n] = gl.getUniformLocation(this.prog, n);
     }
     this.vbo = gl.createBuffer()!;
@@ -590,6 +867,10 @@ export class GLRenderer {
       gl.uniform1i(this.u.u_mode, EFFECT_MODE[l.mode]);
       gl.uniform1f(this.u.u_opacity, Math.min(1, l.opacity));
       gl.uniform1f(this.u.u_time, l.time ?? 0);
+      gl.uniform1f(this.u.u_local, l.local ?? l.time ?? 0);
+      gl.uniform1f(this.u.u_dur, l.duration ?? 1e6);
+      gl.uniform1f(this.u.u_param, l.param ?? 6);
+      gl.uniform1f(this.u.u_surfH, l.surfH ?? 1);
       gl.uniform1f(this.u.u_aspect, l.aspect ?? 1);
       gl.uniform3fv(this.u.u_color, l.color ?? [1, 1, 1]);
       gl.uniform3fv(this.u.u_color2, l.color2 ?? [0, 0, 0]);

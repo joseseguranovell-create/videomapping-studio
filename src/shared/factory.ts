@@ -253,6 +253,18 @@ export const EFFECT_DEFAULTS: Record<EffectKind, { color: string; color2: string
   fireflies: { color: '#d8ff6a', color2: '#ffb347' },
   eyes: { color: '#ffd23a', color2: '#7dff3a' },
   spirits: { color: '#cfe0ff', color2: '#7b5cff', space: 'facade' },
+  shadowPass: { color: '#ffb062', color2: '#120703', space: 'facade' },
+  curtains: { color: '#9e0f1e', color2: '#ffcf5a' },
+  shutters: { color: '#7a4a22', color2: '#1e0e05' },
+  stainedGlass: { color: '#ffffff', color2: '#0d0d0d' },
+  cracks: { color: '#e8f4ff', color2: '#7fb8ff' },
+  glitch: { color: '#bfe6ff', color2: '#ff2a6a' },
+  pulse: { color: '#ff1a1a', color2: '#2a0000' },
+  searchlight: { color: '#f4f7ff', color2: '#6a8cff', space: 'facade' },
+  fireworks: { color: '#ffd23a', color2: '#ff3d9a', space: 'facade' },
+  frost: { color: '#eef8ff', color2: '#7fc4ff' },
+  aurora: { color: '#3dff9a', color2: '#9b4dff', space: 'facade' },
+  shootingStars: { color: '#ffffff', color2: '#9fd0ff', space: 'facade' },
 };
 
 export function effectSource(effect: EffectKind, over: Partial<{ color: string; color2: string; width: number; space: 'surface' | 'facade' }> = {}): ClipSource {

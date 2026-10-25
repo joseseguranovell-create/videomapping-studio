@@ -18,6 +18,7 @@ import {
 import { layoutShow, formatTime } from '../../../shared/timeline';
 import { applyTemplate, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
 import { transport } from '../services';
+import { ShowWizard } from '../components/ShowWizard';
 
 function useShowMut() {
   const update = useStore((s) => s.update);
@@ -44,6 +45,7 @@ export function ShowsScreen() {
   const show = useStore(selShow);
   const set = useStore((s) => s.set);
   const update = useStore((s) => s.update);
+  const [wizard, setWizard] = useState(false);
 
   // atajo: espacio = reproducir/pausar previsualización
   useEffect(() => {
@@ -73,16 +75,19 @@ export function ShowsScreen() {
         <Empty icon={<Clapperboard size={40} />} title="No hay espectáculos">
           Un espectáculo es una secuencia de escenas que usa una instalación y sus superficies.
           <div style={{ marginTop: 16 }}>
-            <Button variant="primary" icon={<Plus size={16} />} onClick={newShow} data-testid="new-show">Nuevo espectáculo</Button>
+            <Button variant="primary" icon={<Wand2 size={16} />} onClick={() => setWizard(true)} data-testid="open-wizard">Asistente de espectáculos</Button>{' '}
+            <Button icon={<Plus size={16} />} onClick={newShow} data-testid="new-show">Nuevo espectáculo vacío</Button>
           </div>
         </Empty>
+        {wizard && <ShowWizard onClose={() => setWizard(false)} />}
       </div>
     );
   }
 
   return (
     <div className="screen shows">
-      <ShowBar show={show} onNew={newShow} />
+      <ShowBar show={show} onNew={newShow} onWizard={() => setWizard(true)} />
+      {wizard && <ShowWizard onClose={() => setWizard(false)} />}
       <div className="shows-body">
         <div className="shows-preview"><ShowPreview /></div>
         <aside className="side right"><ShowInspector show={show} /></aside>
@@ -93,7 +98,7 @@ export function ShowsScreen() {
   );
 }
 
-function ShowBar({ show, onNew }: { show: Show; onNew: () => void }) {
+function ShowBar({ show, onNew, onWizard }: { show: Show; onNew: () => void; onWizard: () => void }) {
   const project = useStore((s) => s.project)!;
   const set = useStore((s) => s.set);
   const update = useStore((s) => s.update);
@@ -107,6 +112,7 @@ function ShowBar({ show, onNew }: { show: Show; onNew: () => void }) {
           {project.shows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <Button small variant="ghost" icon={<Plus size={15} />} onClick={onNew} title="Nuevo espectáculo" data-testid="new-show" />
+        <Button small variant="ghost" icon={<Wand2 size={15} />} onClick={onWizard} title="Asistente de espectáculos: compone uno entero con estilo y protagonistas" data-testid="open-wizard" />
         <Button
           small
           variant="ghost"
@@ -582,8 +588,11 @@ function SceneTimeline({ show }: { show: Show }) {
 const EFFECT_GROUPS: { title: string; kinds: EffectKind[] }[] = [
   { title: 'Bordes y contornos (brillan fuera de la superficie)', kinds: ['neon', 'drawOn', 'chase'] },
   { title: 'Luz y color', kinds: ['flicker', 'glow', 'sweep', 'rainbow', 'solid'] },
-  { title: 'Halloween', kinds: ['eyes', 'spirits', 'lightning', 'fog'] },
-  { title: 'Ambiente', kinds: ['fire', 'rain', 'snow', 'stars', 'fireflies'] },
+  { title: 'Ventanas falsas (sobre las reales)', kinds: ['shadowPass', 'curtains', 'shutters', 'stainedGlass'] },
+  { title: 'Impacto', kinds: ['lightning', 'cracks', 'glitch', 'pulse', 'searchlight', 'fireworks'] },
+  { title: 'Halloween', kinds: ['eyes', 'spirits', 'fog', 'fire'] },
+  { title: 'Navidad e invierno', kinds: ['snow', 'frost', 'aurora', 'shootingStars', 'stars'] },
+  { title: 'Ambiente', kinds: ['rain', 'fireflies'] },
 ];
 
 function CharacterPicker({ onPick, onClose }: { onPick: (chId: string, animId: string) => void; onClose: () => void }) {

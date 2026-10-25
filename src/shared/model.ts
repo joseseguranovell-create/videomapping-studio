@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -167,11 +167,17 @@ export const EFFECT_KINDS = [
   'sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies',
   // Halloween
   'eyes', 'spirits',
+  // ventanas falsas sobre las reales
+  'shadowPass', 'curtains', 'shutters', 'stainedGlass',
+  // impacto
+  'cracks', 'glitch', 'pulse', 'searchlight', 'fireworks',
+  // Navidad e invierno
+  'frost', 'aurora', 'shootingStars',
 ] as const;
 /** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
 export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase'] as const;
 /** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
-export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits'] as const;
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
@@ -408,4 +414,16 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   fireflies: 'Luciérnagas',
   eyes: 'Ojos en la oscuridad',
   spirits: 'Espíritus (humo que sube)',
+  shadowPass: 'Sombra que pasa',
+  curtains: 'Cortinas que se abren',
+  shutters: 'Contraventanas',
+  stainedGlass: 'Vidriera',
+  cracks: 'Cristal que se rompe',
+  glitch: 'Interferencia de TV',
+  pulse: 'Latido de luz',
+  searchlight: 'Foco buscador',
+  fireworks: 'Fuegos artificiales',
+  frost: 'Escarcha',
+  aurora: 'Aurora boreal',
+  shootingStars: 'Estrellas fugaces',
 };

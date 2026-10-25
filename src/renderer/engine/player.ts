@@ -31,7 +31,7 @@ export interface OverlayOptions {
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
   solid: 'solid', glow: 'glow', stars: 'stars', flicker: 'flicker', rainbow: 'rainbow', testPattern: 'testPattern',
-  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits',
+  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits', shadowPass: 'shadowPass', curtains: 'curtains', shutters: 'shutters', stainedGlass: 'stainedGlass', cracks: 'cracks', glitch: 'glitch', pulse: 'pulse', searchlight: 'searchlight', fireworks: 'fireworks', frost: 'frost', aurora: 'aurora', shootingStars: 'shootingStars',
 };
 const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase']);
 /** Fundido entre escenas en el modo directo (segundos). */
@@ -498,6 +498,8 @@ export class Player {
       const H = outputToSurfaceUV(s);
       if (!H) continue;
       const A = surfaceAspect(s, inst.output);
+      const ys = surfaceOutline(s).map((p) => p.y);
+      const surfH = Math.max(0.01, Math.max(...ys) - Math.min(...ys));
       list.sort((a, b) => a.order - b.order);
       const layers: Layer[] = [];
       const contours: ContourLayer[] = [];
@@ -517,7 +519,7 @@ export class Player {
           continue;
         }
         const layer = this.layerFor(e, A, keepVideos);
-        if (layer) layers.push(layer);
+        if (layer) { layer.surfH = surfH; layers.push(layer); }
       }
       this.r.drawSurface(surfaceOutline(s), H, this.exclusions(inst, s), layers);
       if (contours.length) contoursToDraw.push({ outline: surfaceOutline(s), layers: contours });
@@ -542,6 +544,9 @@ export class Player {
         color2: hexToRgb(e.source.color2, [0, 0, 0]),
         // En modo fachada se usa el reloj de la escena: todas las ventanas van sincronizadas.
         time: e.source.space === 'facade' ? e.clipTime + clip.start : e.clipTime,
+        local: e.clipTime,
+        duration: clip.duration,
+        param: e.source.width,
         aspect: surfAspect,
         global: e.source.space === 'facade',
       };
