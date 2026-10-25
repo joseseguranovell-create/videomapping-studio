@@ -30,6 +30,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   4: (doc) => ({ ...doc, schemaVersion: 5 }),
   // Versión 5 → 6: clips que viajan por la fachada (campo opcional «travel»).
   5: (doc) => ({ ...doc, schemaVersion: 6 }),
+  // Versión 6 → 7: luces de casa (lista de luces del proyecto y pista de luces en cada escena).
+  6: (doc) => ({ ...doc, schemaVersion: 7 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

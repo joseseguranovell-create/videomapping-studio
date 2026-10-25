@@ -12,11 +12,15 @@ import {
   type Scene,
   type Show,
   type SoundCue,
+  type LightCue,
+  type LightDevice,
+  type LightKind,
   type Surface,
   type SurfaceKind,
   type Vec2,
   Clip as ClipSchema,
   SoundCue as SoundCueSchema,
+  LightCue as LightCueSchema,
   Surface as SurfaceSchema,
 } from './model';
 import { quadFromBBox, rectQuad } from './geometry';
@@ -36,6 +40,7 @@ export function createProject(name: string): Project {
     assets: [],
     characters: [],
     shows: [],
+    lights: [],
     collections: [],
   };
 }
@@ -109,7 +114,7 @@ export function createShow(name: string, installationId: string | null): Show {
 }
 
 export function createScene(name: string, duration = 10): Scene {
-  return { id: newId('scn'), name, duration, transition: { type: 'fade', duration: 1 }, clips: [], sounds: [], notes: '', enabled: true };
+  return { id: newId('scn'), name, duration, transition: { type: 'fade', duration: 1 }, clips: [], sounds: [], lights: [], notes: '', enabled: true };
 }
 
 export function createClip(surfaceId: string, source: ClipSource, partial: Partial<Clip> = {}): Clip {
@@ -118,6 +123,14 @@ export function createClip(surfaceId: string, source: ClipSource, partial: Parti
 
 export function createSoundCue(assetId: string, partial: Partial<SoundCue> = {}): SoundCue {
   return SoundCueSchema.parse({ id: newId('snd'), assetId, ...partial });
+}
+
+export function createLightCue(deviceId: string, partial: Partial<LightCue> = {}): LightCue {
+  return LightCueSchema.parse({ id: newId('lgt'), deviceId, ...partial });
+}
+
+export function createLightDevice(name: string, kind: LightKind = 'color', entityId = ''): LightDevice {
+  return { id: newId('dev'), name, kind, entityId };
 }
 
 export function createCharacter(name: string): Character {
@@ -152,6 +165,7 @@ export function duplicateScene(scene: Scene, name?: string): Scene {
   c.name = name ?? `${scene.name} (copia)`;
   c.clips = c.clips.map((k) => ({ ...k, id: newId('clp') }));
   c.sounds = c.sounds.map((k) => ({ ...k, id: newId('snd') }));
+  c.lights = c.lights.map((k) => ({ ...k, id: newId('lgt') }));
   return c;
 }
 

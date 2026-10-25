@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -273,6 +273,46 @@ export const SoundCue = z.object({
 });
 export type SoundCue = z.infer<typeof SoundCue>;
 
+/** Luces de casa (Home Assistant): bombillas de color, blancas o enchufes. */
+export const LIGHT_KINDS = ['color', 'white', 'plug'] as const;
+export const LightKind = z.enum(LIGHT_KINDS);
+export type LightKind = z.infer<typeof LightKind>;
+
+export const LightDevice = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: LightKind.default('color'),
+  /** Entidad de Home Assistant (light.… o switch.…). Vacía = solo se simula en pantalla. */
+  entityId: z.string().default(''),
+});
+export type LightDevice = z.infer<typeof LightDevice>;
+
+/**
+ * color: enciende con ese color y se queda así · off: apaga · flash: relámpagos (destellos blancos y vuelve)
+ * blink: alterna dos colores · candle: vela (brillo que tiembla) · restore: vuelve a como estaba en casa.
+ */
+export const LIGHT_ACTIONS = ['color', 'off', 'flash', 'blink', 'candle', 'restore'] as const;
+export const LightAction = z.enum(LIGHT_ACTIONS);
+export type LightAction = z.infer<typeof LightAction>;
+
+export const LightCue = z.object({
+  id: z.string(),
+  /** Luz del proyecto o «*» para todas. */
+  deviceId: z.string(),
+  start: z.number().min(0).default(0),
+  /** Duración del efecto (relámpagos, parpadeo, vela). */
+  duration: z.number().positive().default(2),
+  action: LightAction.default('color'),
+  color: z.string().default('#ff6a00'),
+  color2: z.string().default('#7a2cff'),
+  brightness: z.number().min(0).max(1).default(1),
+  /** Transición al cambiar (segundos). */
+  transition: z.number().min(0).max(10).default(0.5),
+  /** Destellos o cambios por segundo. */
+  rate: z.number().min(0.2).max(3).default(1),
+});
+export type LightCue = z.infer<typeof LightCue>;
+
 export const Transition = z.object({
   type: z.enum(['cut', 'fade', 'crossfade']).default('fade'),
   duration: z.number().min(0).default(1),
@@ -286,6 +326,7 @@ export const Scene = z.object({
   transition: Transition.default({ type: 'fade', duration: 1 }),
   clips: z.array(Clip).default([]),
   sounds: z.array(SoundCue).default([]),
+  lights: z.array(LightCue).default([]),
   notes: z.string().default(''),
   enabled: z.boolean().default(true),
 });
@@ -354,6 +395,7 @@ export const Project = z.object({
   assets: z.array(Asset).default([]),
   characters: z.array(Character).default([]),
   shows: z.array(Show).default([]),
+  lights: z.array(LightDevice).default([]),
   collections: z.array(z.string()).default([]),
 });
 export type Project = z.infer<typeof Project>;
@@ -454,4 +496,14 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   hearts: 'Corazones',
   lanterns: 'Farolillos',
   comet: 'Cometa por el contorno',
+};
+
+export const LIGHT_KIND_LABELS: Record<LightKind, string> = { color: 'Bombilla o tira de color', white: 'Bombilla blanca', plug: 'Enchufe' };
+export const LIGHT_ACTION_LABELS: Record<LightAction, string> = {
+  color: 'Encender en un color',
+  off: 'Apagar',
+  flash: 'Relámpagos',
+  blink: 'Parpadeo entre dos colores',
+  candle: 'Vela (tiembla)',
+  restore: 'Como estaba en casa',
 };

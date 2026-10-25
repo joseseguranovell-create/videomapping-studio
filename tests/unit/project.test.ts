@@ -61,7 +61,7 @@ describe('formato de proyecto', () => {
     p.shows[0].scenes[0].clips.push(createClip(p.installations[0].surfaces[0].id, { type: 'text', text: 'Hola', font: 'divertida', color: '#fff', outline: '#000', glow: true, bold: true }));
     const r = parseProject(p);
     expect(r.migratedFrom).toBe(3);
-    expect(r.project.schemaVersion).toBe(6);
+    expect(r.project.schemaVersion).toBe(7);
     expect(r.project.shows[0].scenes[0].clips[1].source).toMatchObject({ type: 'text', font: 'divertida' });
   });
   it('acepta clips de texto', () => {
