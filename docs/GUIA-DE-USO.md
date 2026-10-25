@@ -127,37 +127,53 @@ Así puedes usar directamente el MP4 o la imagen que te dé la IA. Si se come pa
 
 ## 6. Espectáculos
 
+**Lo más rápido: el asistente.** En Espectáculos, el botón de la varita (**Asistente de espectáculos**) compone uno entero: eliges estilo (Halloween infantil, Terror o Navidad), los protagonistas (tus vídeos o los personajes, en el orden en que salen), la duración y el rótulo final. Crea la espera en bucle, una escena por protagonista con su luz detrás, escenas de impacto intercaladas, el gran final y la despedida. Luego lo retocas a mano.
+
+**A mano:**
+
 1. **Espectáculos → Nuevo espectáculo** y elige la **instalación**.
-2. **Escenas** (franja inferior): añadir, duplicar, reordenar y borrar. Cada escena tiene su duración y una transición de entrada (corte, fundido a negro o fundido cruzado).
-3. **Línea de tiempo**: una fila por superficie. Elige la fila (clic en su nombre), coloca el cursor en el segundo deseado (clic en la regla) y añade **Recurso**, **Personaje**, **Efecto** o **Sonido**.
-   - Arrastra un clip para cambiar su inicio, **también a otra fila** (otra ventana).
-   - Arrastra su borde derecho para cambiar la duración.
+2. **Escenas** (franja inferior):
+   - el **«+»** del final añade una escena vacía o **con plantilla**;
+   - **arrastra** una escena para cambiarla de sitio;
+   - **doble clic** la renombra;
+   - **clic derecho** abre todas las opciones (duplicar, desactivar, añadir otra detrás, eliminar…).
+   Cada escena tiene su duración y una transición de entrada (corte, fundido a negro o fundido cruzado).
+3. **Línea de tiempo**: una fila por superficie.
+   - **Doble clic en un hueco** (o clic derecho) de una fila abre un menú para añadir ahí mismo, en ese segundo: personaje, imagen o vídeo, efecto, rótulo, coreografía o plantilla.
+   - También puedes elegir la fila (clic en su nombre), colocar el cursor (clic en la regla) y usar los botones de arriba.
+   - Arrastra un clip para cambiar su inicio, **también a otra fila** (otra ventana), y su borde derecho para cambiar la duración.
+   - **Clic derecho en un clip**: duplicar, copiar, convertir en silueta, mover a otra superficie, **pasar a otra ventana** o eliminar.
+   - Atajos: **Supr** borra, **Ctrl+D** duplica, **Ctrl+C / Ctrl+V** copia y pega (también entre escenas), **Alt+← / →** mueve 0,1 s, **Ctrl+Z / Ctrl+Y** deshace y rehace.
    - En el panel derecho ajustas posición, escala, rotación, opacidad, fundidos, movimiento, bucle, velocidad y capa.
 4. **Música del espectáculo** (panel derecho sin nada seleccionado): suena de forma continua por encima de las escenas. Los **sonidos** de escena pueden cortarse al acabar la escena o seguir sonando.
 5. **Previsualización**: Espacio reproduce o pausa y la barra permite saltar. Con «contornos» ves las superficies. Lo que ves aquí es exactamente lo que irá al proyector.
-6. Ejemplo de secuencia: a los 0 s se ilumina la ventana izquierda (efecto «Luz de vela»), a los 2 s aparece un fantasma (personaje Boo, «Aparecer»), a los 4 s se esconde («Desaparecer») y a los 5 s se ilumina la ventana superior.
 
-Para que un personaje **pase de una ventana a otra**, pon un clip «Salir por la derecha» o «Cruzar» en la primera ventana y, justo después, otro «Entrar por la izquierda» en la siguiente. El espectáculo de ejemplo lo hace con el murciélago.
+### Coreografías entre ventanas
 
-### Efectos profesionales y plantillas
+El botón **Coreografía** (o «Pasar a otra ventana…» en el clic derecho de un clip) crea en un momento escenas sincronizadas entre superficies con el mismo personaje:
+- **Asomarse y pasar a otra ventana**: se asoma por el lado de la otra ventana, sale, cruza por detrás de la pared (se ve si pasa por otras ventanas por el camino) y aparece en la otra saludando.
+- **Escondite**: aparece y se esconde en cada ventana por turnos.
+- **Lanzar de ventana a ventana**: vuela en arco girando por delante de la casa y aterriza rebotando en la otra (calabazas, murciélagos, regalos…).
 
-**Efecto** (en la línea de tiempo) incluye tres grupos:
+Cualquier clip puede además **viajar por la fachada** (panel derecho → «Viajar por la fachada»): eliges desde qué superficie y hasta cuál va, el arco y si se ve solo a través de las ventanas (pasa por detrás) o en toda la fachada (vuela por delante). La duración del clip marca la velocidad.
 
-- **Bordes y contornos**: contorno de neón, contorno que se dibuja y luces de feria. Siguen el borde exacto de cada ventana o puerta (también arcos y polígonos) y **su halo ilumina la pared de alrededor**. Ajusta el grosor en el panel derecho.
-- **Luz y color**: luz de vela, resplandor, **barrido de luz**, arcoíris y color.
-- **Ambiente**: **relámpago**, fuego, niebla, lluvia, nieve, estrellas y luciérnagas. Con «Continuo en toda la fachada», el efecto va sincronizado entre ventanas: el relámpago ilumina toda la casa a la vez y la lluvia cae «a través» de las ventanas.
+### Efectos y plantillas
 
-**Plantilla** genera en un clic una coreografía en todas las superficies, escalonada de izquierda a derecha:
-- neón que se dibuja;
-- cascada de luz;
-- **tormenta** (con truenos sincronizados);
-- luces de feria;
-- barrido;
-- ventanas en llamas;
-- nieve mágica;
-- luciérnagas.
+**Efecto** (en la línea de tiempo) agrupa más de cuarenta efectos que se recortan a la forma de cada superficie:
 
-Después puedes retocar cada clip o deshacer con Ctrl+Z.
+- **Bordes y contornos**: neón, contorno que se dibuja, luces de feria y **cometa** (una bola de luz que recorre el borde). Siguen el borde exacto de cada ventana o puerta y **su halo ilumina la pared de alrededor**.
+- **Ventanas falsas**: **sombra que pasa** (alguien cruza la casa por dentro, de ventana en ventana), **cortinas** que se abren, **contraventanas** y **vidriera**.
+- **Impacto**: relámpago, **cristal que se rompe**, **interferencia de TV**, **latido de luz**, **foco buscador** y **fuegos artificiales**.
+- **Magia**: **portal**, **remolino**, **sello de runas**, **explosión de luz**, **polvo de hada** y **burbujas**.
+- **La casa despierta**: **ojo gigante** (se abre, mira alrededor y parpadea) y **boca** (sonríe, se ríe, hace «¡oh!» y bosteza).
+- **Halloween**: **ojos en la oscuridad**, **espíritus**, niebla y fuego.
+- **Navidad e invierno**: nieve, **escarcha**, **aurora boreal**, **estrellas fugaces** y estrellas.
+- **Fiesta**: **confeti**, **corazones** y **farolillos**.
+- **Luz y ambiente**: vela, resplandor, barrido, arcoíris, color, lluvia y luciérnagas.
+
+Cada efecto tiene dos colores y, con «Continuo en toda la fachada», va sincronizado entre ventanas (el relámpago ilumina toda la casa a la vez, la sombra cruza de una a otra).
+
+**Plantilla** genera en un clic una coreografía en todas las superficies, escalonada de izquierda a derecha: neón que se dibuja, **la casa despierta**, **portales mágicos**, cascada de luz, tormenta (con truenos sincronizados), ojos en la oscuridad, **alguien pasa por dentro**, **se abre el telón**, **cristales rotos**, luces de feria, barrido, ventanas en llamas, **noche de Navidad**, **fuegos artificiales**, **¡fiesta!**, nieve mágica y luciérnagas. Después puedes retocar cada clip o deshacer con Ctrl+Z.
 
 **Siluetas (sombras chinescas):** en cualquier clip de personaje, activa «Silueta». Pon debajo una luz en la ventana (luz de vela o color), y el personaje se verá como una sombra pasando por detrás de la cortina.
 
