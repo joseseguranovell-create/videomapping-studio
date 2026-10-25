@@ -794,6 +794,28 @@ try {
     for (let i = 0; i < 5; i++) await api('deshacer');
   });
 
+  await step('18f. Asistente de espectáculos: estilo, dos protagonistas y rótulo; también por la API', async () => {
+    await win.click('[data-testid="nav-shows"]');
+    const before = (await S(win)).project.shows.length;
+    await win.click('[data-testid="open-wizard"] >> nth=0');
+    await win.waitForSelector('[data-testid="wizard-run"]');
+    await win.locator('[data-testid="wizard-pick"]').nth(0).click();
+    await win.locator('[data-testid="wizard-pick"]').nth(1).click();
+    await win.click('[data-testid="wizard-run"]');
+    await win.waitForFunction((n) => window.__vmStore.getState().project.shows.length === n + 1, before, { timeout: 15000 });
+    const sh = (await S(win)).project.shows.at(-1);
+    assert(sh.scenes.length >= 6 && sh.scenes[0].name.startsWith('Espera'), `escenas del asistente: ${sh.scenes.map((x) => x.name).join(' | ')}`);
+    const texts = sh.scenes.flatMap((x) => x.clips).filter((c) => c.source.type === 'text').map((c) => c.source.text);
+    assert(texts.includes('¡Feliz Halloween!'), `rótulo del final (${texts.join(', ')})`);
+    const s = await S(win);
+    const info = JSON.parse(fs.readFileSync(path.join(userData, 'agent-api.json'), 'utf8'));
+    const r = await (await fetch(`${info.url}/api`, { method: 'POST', headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'generar_espectaculo', parametros: { estilo: 'terror', nombre: 'Miedo', protagonistas: ['Boo, el fantasma'], duracion: 90, rotulo: '¡Corre!' } }) })).json();
+    assert(r.ok && r.resultado.escenas.length >= 6, `generar_espectaculo por la API: ${JSON.stringify(r).slice(0, 200)}`);
+    const s2 = await S(win);
+    assert(s2.project.assets.some((a) => a.id === 'tr-ast-golpe'), 'el estilo terror añade los sonidos de terror al proyecto');
+    for (let i = 0; i < 3; i++) await win.evaluate(() => window.__vmStore.getState().undo());
+  });
+
   if (LONG) {
     await step('19. Reproducción en tiempo real de un ciclo completo con bucle', async () => {
       await win.evaluate((id) => window.__vmStore.getState().set({ outputMode: 'show', outputShowId: id }), (await S(win)).project.shows[0].id);

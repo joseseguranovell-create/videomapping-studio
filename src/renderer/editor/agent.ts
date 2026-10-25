@@ -5,7 +5,9 @@
  * (o en píxeles de salida si se indica `px: true`).
  */
 import { useStore } from './store';
-import { afterOpen, assetFromImported, saveProject, transport, vm, refreshMissing } from './services';
+import { afterOpen, assetFromImported, saveProject, transport, vm, refreshMissing, addPackToProject } from './services';
+import { generateShow, soundKitFrom, defaultMusic, SHOW_STYLES, type ShowStyle } from '../../shared/generator';
+import { protagonistOptions } from './components/ShowWizard';
 import { parseProject } from '../../shared/schema';
 import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource } from '../../shared/factory';
 import { layoutShow } from '../../shared/timeline';
@@ -263,6 +265,34 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
       const id = str(p, 'clipId');
       edit('eliminar clip', (d) => { for (const sc of d.shows.find((x) => x.id === sh.id)!.scenes) sc.clips = sc.clips.filter((c) => c.id !== id); });
       return { ok: true };
+    }
+    case 'generar_espectaculo': {
+      // Asistente: compone un espectáculo entero (estilo, protagonistas, duración y rótulo final).
+      const pr = project();
+      const style = ((p.estilo as string) ?? 'infantil') as ShowStyle;
+      if (!SHOW_STYLES.includes(style)) fail(`«estilo» debe ser ${SHOW_STYLES.join(', ')}`);
+      const instId = (p.instalacionId as string) ?? st().installationId ?? pr.installations[0]?.id;
+      const inst = pr.installations.find((i) => i.id === instId || i.name === instId) ?? fail('No hay instalación: crea una o indica «instalacionId»');
+      for (const pk of style === 'terror' ? ['terror-sonidos', 'halloween-infantil'] : ['halloween-infantil']) {
+        const probe = pk === 'terror-sonidos' ? 'tr-ast-golpe' : 'hx-ast-snd-pop';
+        if (!project().assets.some((a) => a.id === probe)) await addPackToProject(pk, false);
+      }
+      const opts = protagonistOptions(project());
+      const wanted = Array.isArray(p.protagonistas) ? (p.protagonistas as unknown[]).map(String) : [];
+      const protagonists = wanted.map((w) => {
+        const o = opts.find((x) => x.label === w || x.asset.id === w || x.key.slice(2) === w);
+        if (!o) fail(`No encuentro el protagonista «${w}» (nombre de un vídeo o de un personaje). Opciones: ${opts.map((x) => x.label).join(', ')}`);
+        return o!.pro;
+      });
+      const assets = project().assets;
+      const sh = generateShow({
+        style, name: (p.nombre as string) ?? 'Espectáculo del asistente', installation: inst, protagonists,
+        duration: p.duracion !== undefined ? num(p, 'duracion') : undefined, finaleText: p.rotulo as string | undefined, endText: p.despedida as string | undefined,
+        sounds: { ...soundKitFrom(assets), music: defaultMusic(style, assets) },
+      });
+      edit(`generar espectáculo «${sh.name}»`, (d) => { d.shows.push(sh); });
+      st().set({ showId: sh.id, sceneId: sh.scenes[0]?.id ?? null, clipId: null });
+      return { ok: true, espectaculoId: sh.id, escenas: sh.scenes.map((x) => x.name), duracion: layoutShow(sh).duration };
     }
     case 'aplicar_plantilla': {
       const sh = findShow(p);
