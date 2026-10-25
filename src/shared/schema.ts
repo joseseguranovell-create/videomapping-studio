@@ -28,6 +28,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   3: (doc) => ({ ...doc, schemaVersion: 4 }),
   // Versión 4 → 5: efectos de ventanas falsas, impacto y Navidad. Nada que convertir.
   4: (doc) => ({ ...doc, schemaVersion: 5 }),
+  // Versión 5 → 6: clips que viajan por la fachada (campo opcional «travel»).
+  5: (doc) => ({ ...doc, schemaVersion: 6 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

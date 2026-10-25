@@ -244,6 +244,39 @@ export function activeSlot(layout: ShowLayout, t: number): SceneSlot | null {
  * Matriz afín (en 3x3) que lleva coordenadas uv de la superficie a coordenadas del contenido (0..1).
  * Fuera de [0,1] el contenido no se dibuja.
  */
+/** Posición del clip que viaja por la fachada en el instante `k` (0..1 del clip), en coordenadas de salida. */
+export function travelPoint(tr: { from: { x: number; y: number }; to: { x: number; y: number }; arc: number }, k: number): { x: number; y: number } {
+  const u = Math.max(0, Math.min(1, k));
+  return { x: tr.from.x + (tr.to.x - tr.from.x) * u, y: tr.from.y + (tr.to.y - tr.from.y) * u - tr.arc * 4 * u * (1 - u) };
+}
+
+/**
+ * Matriz de coordenadas de salida (0..1) → contenido (0..1) para un clip que viaja por la fachada.
+ * `boxH` es el alto del contenido en unidades de alto de salida.
+ */
+export function travelMatrix(
+  center: { x: number; y: number },
+  boxH: number,
+  contentAspect: number,
+  outAspect: number,
+  p: { rotation: number; flipX: boolean },
+  motion: { dx: number; dy: number; scale: number; rotation: number } = { dx: 0, dy: 0, scale: 1, rotation: 0 },
+): Mat3 {
+  const A = outAspect > 0 ? outAspect : 16 / 9;
+  const H = Math.max(1e-4, boxH * motion.scale);
+  const W = H * (contentAspect > 0 ? contentAspect : 1);
+  const th = ((p.rotation + motion.rotation) * Math.PI) / 180;
+  const cos = Math.cos(th), sin = Math.sin(th);
+  const cx = center.x * A + motion.dx * W;
+  const cy = center.y + motion.dy * H;
+  const iw = 1 / (W * (p.flipX ? -1 : 1)), ih = 1 / H;
+  return [
+    iw * cos * A, iw * sin, iw * (-cos * cx - sin * cy) + 0.5,
+    ih * -sin * A, ih * cos, ih * (sin * cx - cos * cy) + 0.5,
+    0, 0, 1,
+  ];
+}
+
 /**
  * Escala máxima para que un rótulo no se salga de su superficie (ni por los lados ni por arriba/abajo),
  * teniendo en cuenta dónde está colocado. Así un texto largo se encoge en vez de cortarse.

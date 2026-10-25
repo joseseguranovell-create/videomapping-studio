@@ -9,7 +9,7 @@ import { MediaManager } from './media';
 import { AudioEngine } from './audio';
 import { loadFonts } from './fonts';
 import { IDENTITY, outputToSurfaceUV, surfaceAspect, surfaceOutline, centroid, squareToQuad, applyH } from '../../shared/geometry';
-import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, textMaxScale, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
+import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, textMaxScale, travelMatrix, travelPoint, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
 
 export interface PlayerOptions {
   audio: boolean;
@@ -485,11 +485,24 @@ export class Player {
 
   private drawEvals(inst: Installation, ov: CanvasRenderingContext2D | null, evals: ClipEval[]) {
     const bySurface = new Map<string, ClipEval[]>();
-    for (const e of evals) {
-      let arr = bySurface.get(e.surfaceId);
-      if (!arr) bySurface.set(e.surfaceId, (arr = []));
+    const push = (id: string, e: ClipEval) => {
+      let arr = bySurface.get(id);
+      if (!arr) bySurface.set(id, (arr = []));
       arr.push(e);
+    };
+    for (const e of evals) {
+      push(e.surfaceId, e);
+      // Un clip que viaja por la fachada se ve también a través de las demás superficies.
+      const tr = e.clip.travel;
+      if (tr) for (const s of inst.surfaces) if (s.id !== e.surfaceId && (tr.surfaces.length ? tr.surfaces.includes(s.id) : s.kind !== 'wall')) push(s.id, e);
     }
+    const heightOf = (id: string) => {
+      const s = inst.surfaces.find((x) => x.id === id);
+      if (!s) return 0.2;
+      const ys = surfaceOutline(s).map((p) => p.y);
+      return Math.max(0.01, Math.max(...ys) - Math.min(...ys));
+    };
+    const outAspect = inst.output.width / Math.max(1, inst.output.height);
     const keepVideos = new Set<string>();
     const contoursToDraw: { outline: Vec2[]; layers: ContourLayer[] }[] = [];
     for (const s of inst.surfaces) {
@@ -518,7 +531,7 @@ export class Player {
           }
           continue;
         }
-        const layer = this.layerFor(e, A, keepVideos);
+        const layer = this.layerFor(e, A, keepVideos, e.clip.travel ? { homeH: heightOf(e.surfaceId), outAspect } : undefined);
         if (layer) { layer.surfH = surfH; layers.push(layer); }
       }
       this.r.drawSurface(surfaceOutline(s), H, this.exclusions(inst, s), layers);
@@ -531,9 +544,12 @@ export class Player {
     if (ov && (this.overlay.outlines || this.overlay.labels || this.overlay.grid)) drawOverlay(ov, inst, this.overlay);
   }
 
-  private layerFor(e: ClipEval, surfAspect: number, keepVideos: Set<string>): Layer | null {
+  private layerFor(e: ClipEval, surfAspect: number, keepVideos: Set<string>, tr?: { homeH: number; outAspect: number }): Layer | null {
     const clip = e.clip;
     const motion = { dx: e.dx, dy: e.dy, scale: e.scale, rotation: e.rotation };
+    // Clips que viajan por la fachada: posición en coordenadas de salida.
+    const travelTo = (aspect: number): Pick<Layer, 'toContent' | 'fromOutput'> | null =>
+      clip.travel && tr ? { toContent: travelMatrix(travelPoint(clip.travel, e.clipTime / clip.duration), clip.scale * tr.homeH, aspect, tr.outAspect, clip, motion), fromOutput: true } : null;
     if (e.source.type === 'effect') {
       if (e.opacity <= 0) return null;
       return {
@@ -555,7 +571,7 @@ export class Player {
       if (e.opacity <= 0) return null;
       const t = this.media.text(e.source);
       const fitted = { ...clip, scale: Math.min(clip.scale, textMaxScale(clip, surfAspect, t.aspect)) };
-      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity };
+      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity, ...travelTo(t.aspect) };
     }
     const asset = this.assets.get(e.source.assetId);
     if (!asset || this.media.errors.has(asset.id)) {
@@ -598,7 +614,7 @@ export class Player {
     if (!tex || e.opacity <= 0) return null;
     const k = asset.key;
     const key = k && k.mode !== 'none' ? { mode: (k.mode === 'color' ? 1 : 2) as 1 | 2, color: hexToRgb(k.color, [0, 1, 0]), threshold: k.threshold, softness: k.softness, despill: k.despill } : undefined;
-    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key, silhouette: clip.silhouette ? hexToRgb(clip.silhouetteColor, [0, 0, 0]) : null };
+    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key, silhouette: clip.silhouette ? hexToRgb(clip.silhouetteColor, [0, 0, 0]) : null, ...travelTo(aspect) };
   }
 
   status(): OutputStatus {

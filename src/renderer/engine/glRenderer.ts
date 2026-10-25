@@ -75,6 +75,8 @@ export interface Layer {
   duration?: number;
   /** Parámetro numérico del efecto (el «grosor»). */
   param?: number;
+  /** `toContent` parte de coordenadas de salida (clips que viajan por la fachada) en vez de la superficie. */
+  fromOutput?: boolean;
   /** Alto de la superficie en la salida (0..1): para efectos de fachada con tamaño de ventana. */
   surfH?: number;
   aspect?: number;
@@ -107,6 +109,7 @@ uniform float u_local;
 uniform float u_dur;
 uniform float u_param;
 uniform float u_surfH;
+uniform int u_fromOutput;
 uniform float u_aspect;
 uniform vec3 u_color;
 uniform vec3 u_color2;
@@ -173,7 +176,7 @@ void main() {
   vec3 s = u_toSurface * vec3(v_pos, 1.0);
   if (s.z <= 0.0) discard;
   vec2 uv = s.xy / s.z;
-  vec2 c = (u_toContent * vec3(uv, 1.0)).xy;
+  vec2 c = (u_toContent * vec3(u_fromOutput == 1 ? v_pos : uv, 1.0)).xy;
   if (c.x < 0.0 || c.y < 0.0 || c.x > 1.0 || c.y > 1.0) discard;
   vec4 col;
   vec2 qn = u_global == 1 ? v_pos : c;
@@ -748,7 +751,7 @@ export class GLRenderer {
     for (const n of ['u_pts', 'u_cum', 'u_n', 'u_total', 'u_width', 'u_mode', 'u_time', 'u_dur', 'u_color', 'u_color2', 'u_opacity', 'u_res', 'u_margin']) {
       this.cu[n] = gl.getUniformLocation(this.contourProg, n);
     }
-    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
+    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_fromOutput', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
       this.u[n] = gl.getUniformLocation(this.prog, n);
     }
     this.vbo = gl.createBuffer()!;
@@ -871,6 +874,7 @@ export class GLRenderer {
       gl.uniform1f(this.u.u_dur, l.duration ?? 1e6);
       gl.uniform1f(this.u.u_param, l.param ?? 6);
       gl.uniform1f(this.u.u_surfH, l.surfH ?? 1);
+      gl.uniform1i(this.u.u_fromOutput, l.fromOutput ? 1 : 0);
       gl.uniform1f(this.u.u_aspect, l.aspect ?? 1);
       gl.uniform3fv(this.u.u_color, l.color ?? [1, 1, 1]);
       gl.uniform3fv(this.u.u_color2, l.color2 ?? [0, 0, 0]);

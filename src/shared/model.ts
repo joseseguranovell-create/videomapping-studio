@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -239,6 +239,18 @@ export const Clip = z.object({
   /** Dibujar el recurso como silueta de un solo color (sombras chinescas). */
   silhouette: z.boolean().default(false),
   silhouetteColor: z.string().default('#000000'),
+  /**
+   * Viaje por la fachada: el clip se mueve en coordenadas de toda la salida (de `from` a `to`, con un arco
+   * opcional) y se ve a través de las superficies indicadas (vacío = todas menos las paredes), como si
+   * pasara por detrás de la casa de ventana en ventana. Su tamaño es relativo al alto de su superficie.
+   */
+  travel: z.object({
+    from: Vec2,
+    to: Vec2,
+    /** Altura del arco (fracción del alto de la salida; 0 = en línea recta). */
+    arc: z.number().default(0),
+    surfaces: z.array(z.string()).default([]),
+  }).nullable().default(null),
 });
 export type Clip = z.infer<typeof Clip>;
 
