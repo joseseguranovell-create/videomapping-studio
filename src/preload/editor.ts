@@ -70,6 +70,23 @@ const api: VmApi = {
     importPackFolder: () => inv('packs:importPackFolder'),
     openUserPacksFolder: () => inv('packs:openUserFolder'),
   },
+  demo: {
+    begin: (ext) => inv('demo:begin', ext),
+    chunk: (id, data) => inv('demo:chunk', id, data),
+    finish: (id, name) => inv('demo:finish', id, name),
+    cancel: (id) => inv('demo:cancel', id),
+    reveal: () => inv('demo:reveal'),
+  },
+  lights: {
+    status: () => inv('lights:status'),
+    configure: (p) => inv('lights:configure', p),
+    setToken: (t) => inv('lights:setToken', t),
+    test: () => inv('lights:test'),
+    entities: () => inv('lights:entities'),
+    setAllowed: (l) => inv('lights:setAllowed', l),
+    apply: (c) => inv('lights:apply', c),
+    release: () => inv('lights:release'),
+  },
   agent: {
     status: () => inv('agent:status'),
     configure: (p) => inv('agent:configure', p),

@@ -1,5 +1,6 @@
 /** Contrato entre el proceso principal y las ventanas (expuesto vía preload). */
-import type { Project } from './model';
+import type { Project, LightKind } from './model';
+import type { LightState } from './lights';
 import type { PackInfo } from './pack';
 
 export interface DisplayInfo {
@@ -57,6 +58,46 @@ export interface AppSettings {
   showFps: boolean;
   schedule: ScheduleSettings;
   agentApi: { enabled: boolean; port: number; token: string };
+  /** Luces de casa con Home Assistant. La clave de acceso no va aquí: se guarda cifrada aparte. */
+  homeAssistant: HomeAssistantSettings;
+}
+
+export interface HaAllowedEntity {
+  entityId: string;
+  name: string;
+  kind: LightKind;
+}
+export interface HomeAssistantSettings {
+  enabled: boolean;
+  /** Dirección de Home Assistant en la red de casa, p. ej. http://homeassistant.local:8123 */
+  url: string;
+  /** Únicas luces y enchufes que el programa puede tocar. */
+  allowed: HaAllowedEntity[];
+}
+export interface HaStatus {
+  enabled: boolean;
+  url: string;
+  hasToken: boolean;
+  allowed: HaAllowedEntity[];
+  /** null = aún no se ha probado. */
+  connected: boolean | null;
+  lastError: string | null;
+  location: string | null;
+  version: string | null;
+  /** Luces que el espectáculo ha cambiado y que se devolverán a como estaban. */
+  inUse: number;
+}
+export interface HaEntity {
+  entityId: string;
+  name: string;
+  state: string;
+  kind: LightKind;
+}
+/** Orden para una luz real (la ventana de salida ya ha traducido la luz del proyecto a su entidad). */
+export interface LightCommand {
+  entityId: string;
+  kind: LightKind;
+  state: LightState;
 }
 
 /** Resultado de buscar actualizaciones. */
@@ -157,6 +198,8 @@ export interface OutputStatus {
   height: number;
   /** Implementación WebGL / GPU en uso. */
   gpu: string;
+  /** Estado de las luces de casa (simulado en pantalla aunque no haya Home Assistant). */
+  lights?: Record<string, LightState>;
 }
 
 export interface VmApi {
@@ -221,6 +264,28 @@ export interface VmApi {
     importPackFolder(): Promise<PackInfo | null>;
     openUserPacksFolder(): Promise<void>;
   };
+  demo: {
+    /** Empieza a guardar una grabación (trozos en un archivo temporal). */
+    begin(ext: 'mp4' | 'webm'): Promise<string>;
+    chunk(id: string, data: Uint8Array): Promise<void>;
+    /** Pide dónde guardarla; devuelve la ruta o null si se cancela. */
+    finish(id: string, name: string): Promise<string | null>;
+    cancel(id: string): Promise<void>;
+    reveal(): Promise<void>;
+  };
+  lights: {
+    status(): Promise<HaStatus>;
+    configure(p: { enabled?: boolean; url?: string }): Promise<HaStatus>;
+    setToken(token: string | null): Promise<HaStatus>;
+    /** Prueba la conexión con Home Assistant. */
+    test(): Promise<HaStatus>;
+    /** Luces e interruptores disponibles en Home Assistant (solo lectura). */
+    entities(): Promise<HaEntity[]>;
+    setAllowed(list: HaAllowedEntity[]): Promise<HaStatus>;
+    apply(cmds: LightCommand[]): Promise<void>;
+    /** Devuelve las luces a como estaban antes de empezar. */
+    release(): Promise<void>;
+  };
   agent: {
     status(): Promise<AgentApiStatus>;
     configure(p: { enabled: boolean; port?: number; regenerate?: boolean }): Promise<AgentApiStatus>;
@@ -256,6 +321,8 @@ export interface VmOutputApi {
   fullscreen(mode: 'toggle' | 'exit'): void;
   onCommand(cb: (cmd: OutputCommand) => void): void;
   sendStatus(s: OutputStatus): void;
+  lights(cmds: LightCommand[]): void;
+  lightsRelease(): void;
   ready(): void;
   log(level: 'info' | 'warn' | 'error', message: string): void;
 }

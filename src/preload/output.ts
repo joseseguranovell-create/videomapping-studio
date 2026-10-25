@@ -7,6 +7,8 @@ const api: VmOutputApi = {
   fullscreen: (m) => ipcRenderer.send('output:fullscreen', m),
   onCommand: (cb) => { ipcRenderer.on('output:cmd', (_e, c: OutputCommand) => cb(c)); },
   sendStatus: (s) => ipcRenderer.send('output:status', s),
+  lights: (c) => ipcRenderer.send('lights:out', c),
+  lightsRelease: () => ipcRenderer.send('lights:outRelease'),
   ready: () => ipcRenderer.send('output:ready'),
   log: (level, message) => ipcRenderer.send('app:log', level, message),
 };

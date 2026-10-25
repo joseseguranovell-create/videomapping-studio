@@ -8,6 +8,7 @@ import { GLRenderer, hexToRgb, type Layer, type LayerMode, type ContourLayer } f
 import { MediaManager } from './media';
 import { AudioEngine } from './audio';
 import { loadFonts } from './fonts';
+import { LightDriver, lightEvents, sceneLoopLightEvents, type LightEvent, type LightState } from '../../shared/lights';
 import { IDENTITY, outputToSurfaceUV, surfaceAspect, surfaceOutline, centroid, squareToQuad, applyH } from '../../shared/geometry';
 import { layoutShow, evaluateClipsAt, cycleTime, audioCues, mediaTime, contentMatrix, activeSlot, sceneLoopLayout, sceneLoopCues, loopTime, textMaxScale, travelMatrix, travelPoint, type ShowLayout, type AudioCue, type ClipEval } from '../../shared/timeline';
 
@@ -19,6 +20,10 @@ export interface PlayerOptions {
   /** Ancho máximo del lienzo (la previsualización no necesita resolución completa). */
   maxWidth?: number;
   onError?: (msg: string) => void;
+  /** Luces de casa: órdenes según avanza el espectáculo (solo la ventana de salida). */
+  onLights?: (cmds: { deviceId: string; state: LightState }[]) => void;
+  /** Devolver las luces a como estaban (al detener o poner en negro). */
+  onLightsRelease?: () => void;
 }
 
 export interface OverlayOptions {
@@ -73,6 +78,9 @@ export class Player {
   /** Vigilancia del reloj de audio: si se atasca (altavoz desconectado, sin tarjeta de sonido), la imagen sigue con el reloj del sistema. */
   private clockWatch: { perf: number; ctx: number } | null = null;
   private layoutCache: { show: Show | null; layout: ShowLayout; cues: AudioCue[] } = { show: null, layout: { slots: [], duration: 0 }, cues: [] };
+  private lightCache: { show: Show | null; devices: unknown; events: LightEvent[] } = { show: null, devices: null, events: [] };
+  private liveLightCache = new WeakMap<Scene, { devices: unknown; events: LightEvent[] }>();
+  private lights: LightDriver | null = null;
   private lastCycle = -1;
   // estadísticas
   private frames = 0;
@@ -98,6 +106,7 @@ export class Player {
     this.media = new MediaManager(this.r, onErr);
     this.audio = new AudioEngine(onErr);
     if (!opts.audio) this.audio.setEnabled(false, 0);
+    if (opts.onLights) this.lights = new LightDriver(opts.onLights);
     // Los rótulos se redibujan con las fuentes incluidas en cuanto están cargadas.
     void loadFonts().then(() => { this.media.clearTexts(); this.invalidate(); });
   }
@@ -137,6 +146,35 @@ export class Player {
     if (changedShow) {
       this.stop();
     }
+  }
+
+  // ───────── luces de casa ─────────
+
+  private releaseLights() {
+    if (!this.lights) return;
+    if (Object.keys(this.lights.states()).length) this.opts.onLightsRelease?.();
+    this.lights.reset();
+  }
+
+  private showLights(show: Show, layout: ShowLayout): LightEvent[] {
+    const devices = this.project?.lights ?? [];
+    if (this.lightCache.show !== show || this.lightCache.devices !== devices) this.lightCache = { show, devices, events: lightEvents(show, devices, layout) };
+    return this.lightCache.events;
+  }
+
+  private sceneLights(scene: Scene, layout: ShowLayout): LightEvent[] {
+    const devices = this.project?.lights ?? [];
+    let e = this.liveLightCache.get(scene);
+    if (!e || e.devices !== devices) {
+      e = { devices, events: sceneLoopLightEvents(scene, devices, layout) };
+      this.liveLightCache.set(scene, e);
+    }
+    return e.events;
+  }
+
+  /** Estado actual de las luces (para mostrarlo en el editor). */
+  lightStates(): Record<string, LightState> {
+    return this.lights?.states() ?? {};
   }
 
   setOnFrame(cb: ((p: Player) => void) | null) {
@@ -194,6 +232,7 @@ export class Player {
     this.live = null;
     this.playing = false;
     this.baseShow = 0;
+    this.releaseLights();
     this.audio.stopAll();
     this.media.releaseVideosExcept(new Set());
   }
@@ -447,6 +486,7 @@ export class Player {
       this.audio.sync(cues.filter((c) => c.kind === 'music'), this.assets, this.base, this.key, ct.cycle, cycleStartCtx, t, show.masterVolume, MUSIC);
       this.audio.sync(cues.filter((c) => c.kind !== 'music'), this.assets, this.base, this.key, ct.cycle, cycleStartCtx, t, show.masterVolume);
     }
+    if (this.playing && this.lights && !ct.inGap) this.lights.update(this.showLights(show, layout), `c${ct.cycle}`, t);
 
     const evals = ct.inGap ? [] : evaluateClipsAt(layout, t, 1.5);
     this.drawEvals(inst, ov, evals);
@@ -480,6 +520,7 @@ export class Player {
       this.audio.sync(fullCues.filter((c) => c.kind === 'music'), this.assets, this.base, this.key, live.musicCycle + m.loop, nowCtx - m.time, m.time, show.masterVolume, MUSIC);
       this.audio.sync(cur.cues, this.assets, this.base, this.key, lt.loop, nowCtx - lt.time, lt.time, show.masterVolume, `L${live.serial}:`);
     }
+    if (this.playing && this.lights) this.lights.update(this.sceneLights(scene, cur.layout), `L${live.serial}:${lt.loop}`, lt.time);
     this.drawEvals(inst, ov, evals);
   }
 
@@ -629,6 +670,7 @@ export class Player {
       time: abs,
       cycleTime: ct.time,
       live: this.liveInfo(),
+      lights: this.lightStates(),
       duration: layout?.duration ?? 0,
       sceneName: this.lastSceneName,
       fps: Math.round(this.fps * 10) / 10,

@@ -3,7 +3,8 @@
  * y reproduce con su propio reloj; el editor puede cerrarse o bloquearse sin detener el espectáculo.
  */
 import { Player } from '../engine/player';
-import type { OutputCommand, VmOutputApi } from '../../shared/api';
+import type { LightCommand, OutputCommand, VmOutputApi } from '../../shared/api';
+import type { LightDevice } from '../../shared/model';
 import { setupInteraction } from './interaction';
 
 declare global {
@@ -17,8 +18,18 @@ const wrap = document.getElementById('wrap') as HTMLDivElement;
 const msg = document.getElementById('msg') as HTMLDivElement;
 
 let player: Player;
+/** Luces del proyecto → entidades de Home Assistant (las que no tienen entidad solo se simulan). */
+let devices = new Map<string, LightDevice>();
+const onLights = (cmds: { deviceId: string; state: LightCommand['state'] }[]) => {
+  const out: LightCommand[] = [];
+  for (const c of cmds) {
+    const d = devices.get(c.deviceId);
+    if (d?.entityId) out.push({ entityId: d.entityId, kind: d.kind, state: c.state });
+  }
+  if (out.length) api.lights(out);
+};
 try {
-  player = new Player(gl, { audio: true, showMissing: false, overlay: ov, onError: (m) => api.log('warn', m) });
+  player = new Player(gl, { audio: true, showMissing: false, overlay: ov, onError: (m) => api.log('warn', m), onLights, onLightsRelease: () => api.lightsRelease() });
 } catch (e) {
   msg.textContent = `Error de gráficos: ${(e as Error).message}`;
   api.log('error', `No se pudo iniciar WebGL2: ${(e as Error).message}`);
@@ -46,6 +57,7 @@ player.setOnFrame((p) => {
 api.onCommand((cmd: OutputCommand) => {
   switch (cmd.type) {
     case 'doc':
+      devices = new Map((cmd.project?.lights ?? []).map((d) => [d.id, d]));
       player.setProject(cmd.project, cmd.mediaBase, cmd.projectKey);
       break;
     case 'mode':

@@ -2,7 +2,7 @@
  * Proceso principal: ventanas (editor + salida de proyección), pantallas, archivos y diálogos.
  * El estado del proyecto vive en la ventana del editor; aquí solo se hace E/S y orquestación.
  */
-import { app, BrowserWindow, dialog, ipcMain, screen, shell, powerSaveBlocker, Menu, session, type IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, screen, shell, powerSaveBlocker, Menu, session, safeStorage, type IpcMainInvokeEvent } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { registerSchemePrivileges, installProtocol } from './protocol';
@@ -17,6 +17,8 @@ import { newId } from '../shared/ids';
 import { startAgentApi, stopAgentApi, agentApiRunning, newToken } from './agentApi';
 import type { AgentApiStatus } from '../shared/api';
 import * as updater from './updater';
+import { HomeAssistant } from './homeAssistant';
+import type { LightCommand } from '../shared/api';
 
 registerSchemePrivileges();
 
@@ -231,6 +233,7 @@ function openOutput(displayId: number | null, fullscreen: boolean): OutputState 
   outputWin.on('leave-full-screen', () => { outputFullscreen = false; notifyOutputState(); });
   outputWin.on('closed', () => {
     outputWin = null;
+    void ha?.release();
     outputDisplayId = null;
     if (powerBlockId !== null && powerSaveBlocker.isStarted(powerBlockId)) powerSaveBlocker.stop(powerBlockId);
     powerBlockId = null;
@@ -381,7 +384,79 @@ async function applyAgentSettings(): Promise<AgentApiStatus> {
   return agentStatus();
 }
 
+// ───────── Luces de casa (Home Assistant) ─────────
+
+let ha: HomeAssistant | null = null;
+function lights(): HomeAssistant {
+  if (!ha) ha = new HomeAssistant(() => settings.get().homeAssistant, async (h) => { await settings.set({ homeAssistant: h }); });
+  return ha;
+}
+/** Órdenes que llegan de la ventana de salida (se filtran contra las luces permitidas). */
+function sanitizeLightCommands(v: unknown): LightCommand[] {
+  if (!Array.isArray(v)) return [];
+  return v.slice(0, 200).filter((c): c is LightCommand => !!c && typeof c.entityId === 'string' && typeof c.state === 'object' && c.state !== null && ['color', 'white', 'plug'].includes(c.kind));
+}
+
+// ───────── Vídeo de demostración (grabado por el editor a trozos) ─────────
+
+let lastDemo: string | null = null;
+const demos = new Map<string, { file: string; ext: string; stream: fs.WriteStream }>();
+
 function registerIpc() {
+  handle('demo:begin', (_e, ext: string) => {
+    const e = ext === 'mp4' ? 'mp4' : 'webm';
+    const id = newId('demo');
+    const file = path.join(app.getPath('temp'), `vmstudio-${id}.${e}`);
+    demos.set(id, { file, ext: e, stream: fs.createWriteStream(file) });
+    return id;
+  });
+  handle('demo:chunk', async (_e, id: string, data: Uint8Array) => {
+    const d = demos.get(id);
+    if (!d || !(data instanceof Uint8Array)) throw new Error('Grabación desconocida');
+    await new Promise<void>((res, rej) => d.stream.write(Buffer.from(data), (err) => (err ? rej(err) : res())));
+  });
+  handle('demo:finish', async (_e, id: string, name: string) => {
+    const d = demos.get(id);
+    if (!d) throw new Error('Grabación desconocida');
+    demos.delete(id);
+    await new Promise<void>((res) => d.stream.end(() => res()));
+    const safe = String(name || 'Demostración').replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 80) || 'Demostración';
+    const r = await dialog.showSaveDialog(editorWin!, {
+      title: 'Guardar vídeo de demostración',
+      defaultPath: path.join(app.getPath('videos'), `${safe}.${d.ext}`),
+      filters: [{ name: d.ext === 'mp4' ? 'Vídeo MP4' : 'Vídeo WebM', extensions: [d.ext] }],
+    });
+    if (r.canceled || !r.filePath) { await fs.promises.rm(d.file, { force: true }); return null; }
+    try { await fs.promises.rename(d.file, r.filePath); } catch { await fs.promises.copyFile(d.file, r.filePath); await fs.promises.rm(d.file, { force: true }); }
+    lastDemo = r.filePath;
+    log('info', 'demo', `Vídeo de demostración guardado en ${r.filePath}`);
+    return r.filePath;
+  });
+  handle('demo:cancel', async (_e, id: string) => {
+    const d = demos.get(id);
+    if (!d) return;
+    demos.delete(id);
+    await new Promise<void>((res) => d.stream.end(() => res()));
+    await fs.promises.rm(d.file, { force: true });
+  });
+  // Solo se puede mostrar el último vídeo guardado.
+  handle('demo:reveal', () => { if (lastDemo) shell.showItemInFolder(lastDemo); });
+  handle('lights:status', () => lights().status());
+  handle('lights:configure', (_e, p: { enabled?: boolean; url?: string }) => lights().configure(p ?? {}));
+  handle('lights:setToken', (_e, t: string | null) => lights().setToken(typeof t === 'string' ? t : null));
+  handle('lights:test', () => lights().test());
+  handle('lights:entities', () => lights().entities());
+  handle('lights:setAllowed', (_e, list) => lights().setAllowed(Array.isArray(list) ? list : []));
+  handle('lights:apply', (_e, cmds) => { lights().apply(sanitizeLightCommands(cmds)); });
+  handle('lights:release', () => lights().release());
+  ipcMain.on('lights:out', (e, cmds) => {
+    if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
+    lights().apply(sanitizeLightCommands(cmds));
+  });
+  ipcMain.on('lights:outRelease', (e) => {
+    if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
+    void lights().release();
+  });
   // ── Actualizaciones (solo cuando el usuario lo pide) ──
   handle('updates:info', () => ({ current: updater.BUILD, hasToken: updater.hasToken(), canInstall: app.isPackaged && process.platform === 'win32' }));
   handle('updates:check', () => updater.checkForUpdate());
@@ -702,6 +777,8 @@ async function startApp() {
     app.quit();
     return;
   }
+  // Solo para las pruebas automáticas en Linux sin llavero (en Windows el cifrado siempre está disponible).
+  if (process.platform === 'linux' && process.env.VMSTUDIO_TEST_BASIC_KEYS === '1') safeStorage.setUsePlainTextEncryption(true);
   log('info', 'main', 'Paso: menú');
   Menu.setApplicationMenu(
     isDev
@@ -725,7 +802,16 @@ async function startApp() {
   log('info', 'main', `Videomapping Studio ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
 }
 
-app.on('will-quit', () => { void stopAgentApi(); });
+let lightsReleased = false;
+app.on('will-quit', (e) => {
+  void stopAgentApi();
+  // Antes de salir, las luces de casa vuelven a como estaban (como mucho unos segundos).
+  if (!lightsReleased && ha?.hasChanges()) {
+    e.preventDefault();
+    lightsReleased = true;
+    void ha.release().finally(() => app.quit());
+  }
+});
 
 app.on('before-quit', () => {
   // El cierre con cambios pendientes lo gestiona el evento 'close' del editor.

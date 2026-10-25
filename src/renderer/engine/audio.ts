@@ -57,6 +57,15 @@ export class AudioEngine {
     if (this.master && this.ctx) this.master.gain.setTargetAtTime(enabled ? volume : 0, this.ctx.currentTime, 0.03);
   }
 
+  /** Sonido como pista para grabar un vídeo. `monitor` = seguir oyéndolo por los altavoces. */
+  captureStream(monitor: boolean): MediaStream | null {
+    if (!this.ctx || !this.master) return null;
+    const dest = this.ctx.createMediaStreamDestination();
+    this.master.connect(dest);
+    if (!monitor) this.master.disconnect(this.ctx.destination);
+    return dest.stream;
+  }
+
   isEnabled() {
     return this.enabled;
   }
