@@ -649,9 +649,12 @@ try {
       c2 = await get();
     }
     assert(c2.scale > c1.scale * 1.1, `la rueda escala el clip (${c1.scale.toFixed(2)} → ${c2.scale.toFixed(2)})`);
-    await win.click('[data-testid="undo"]');
-    await win.click('[data-testid="undo"]');
-    const c3 = await get();
+    // Arrastre + rueda (la rueda puede haberse registrado más de una vez en equipos lentos).
+    let c3 = c2;
+    for (let k = 0; k < 5 && !(Math.abs(c3.x - c0.x) < 1e-9 && Math.abs(c3.scale - c0.scale) < 1e-9); k++) {
+      await win.click('[data-testid="undo"]');
+      c3 = await get();
+    }
     assert(Math.abs(c3.x - c0.x) < 1e-9 && Math.abs(c3.scale - c0.scale) < 1e-9, 'deshacer devuelve posición y escala');
   });
 
@@ -862,6 +865,42 @@ try {
     const r = await (await fetch(`${info.url}/api`, { method: 'POST', headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion: 'coreografia', parametros: { tipo: 'escondite', protagonista: 'Boo, el fantasma' } }) })).json();
     assert(r.ok && r.resultado.clips.length >= 2, `coreografía por la API: ${JSON.stringify(r).slice(0, 160)}`);
     await win.evaluate(() => window.__vmStore.getState().undo());
+  });
+
+  await step('18h. Todos los efectos se dibujan (ninguno se queda en negro)', async () => {
+    const info = JSON.parse(fs.readFileSync(path.join(userData, 'agent-api.json'), 'utf8'));
+    const api = async (accion, parametros = {}) => (await fetch(`${info.url}/api`, { method: 'POST', headers: { Authorization: `Bearer ${info.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ accion, parametros }) })).json();
+    const est = (await api('estado')).resultado;
+    const sh = est.espectaculos[0];
+    const kinds = est.opciones.efectos.filter((k) => k !== 'testPattern');
+    const sc = (await api('crear_escena', { espectaculoId: sh.id, nombre: 'Todos los efectos', duracion: 8, transicion: 'cut', posicion: 0 })).resultado.escenaId;
+    const clip = (await api('anadir_clip', { espectaculoId: sh.id, escenaId: sc, superficieId: 'Ventana alta izquierda', efecto: 'solid', inicio: 0, duracion: 8, fundidoEntrada: 0, fundidoSalida: 0 })).resultado.clipId;
+    await api('modo_salida', { modo: 'espectaculo', espectaculoId: sh.id });
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.mode === 'show');
+    const inst = (await S(win)).project.installations[0];
+    const w = inst.surfaces.find((x) => x.name === 'Ventana alta izquierda');
+    const X0 = w.quad[0].x * 1920, X1 = w.quad[1].x * 1920, Y0 = w.quad[0].y * 1080, Y1 = w.quad[2].y * 1080;
+    const pts = [];
+    for (let i = 0; i <= 18; i++) for (let j = 0; j <= 12; j++) pts.push([X0 - 6 + ((X1 - X0 + 12) * i) / 18, Y0 - 6 + ((Y1 - Y0 + 12) * j) / 12]);
+    const dark = [];
+    for (const k of kinds) {
+      await api('editar_clip', { clipId: clip, efecto: k });
+      await win.waitForFunction(([id, k]) => window.__vmStore.getState().project.shows.some((s) => s.scenes.some((c) => c.clips.some((x) => x.id === id && x.source.effect === k))), [clip, k]);
+      let best = 0;
+      // relámpagos, ojos y foco son intermitentes o se mueven: se miran varios instantes
+      for (const t of [1.2, 2.6, 0.05, 4.1, 4.5, 5.5, 0.8, 1.9, 3.2, 6.3, 7.1]) {
+        await out.evaluate((t) => { window.__vmPlayer.pause(); window.__vmPlayer.seek(t); }, t);
+        await out.waitForTimeout(60);
+        best = Math.max(best, ...(await outputPixel(out, pts)).map(bright));
+        if (best > 25) break;
+      }
+      if (best <= 25) dark.push(`${k}(${best.toFixed(0)})`);
+    }
+    const errs = await out.evaluate(() => window.__vmPlayer.status().errors);
+    assert(errs.length === 0, `sin errores de dibujo: ${errs.join(' | ')}`);
+    assert(dark.length === 0, `efectos que no se ven: ${dark.join(', ')}`);
+    console.log(`      ${kinds.length} efectos comprobados`);
+    await win.evaluate(() => { window.__vmStore.getState().undo(); window.__vmStore.getState().undo(); });
   });
 
   if (LONG) {

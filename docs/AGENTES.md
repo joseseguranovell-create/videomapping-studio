@@ -86,7 +86,7 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 | `editar_clip` / `eliminar_clip` | `clipId`, … | |
 | `coreografia` | `tipo` (pasar, escondite, lanzar), `protagonista`, `desde?`, `hasta?`, `inicio?`, `escenaId?` | Un personaje que se asoma y pasa a otra ventana por detrás de la pared, juega al escondite o vuela en arco. |
 | `generar_espectaculo` | `estilo` (infantil, terror, navidad), `nombre?`, `protagonistas?` [nombres de vídeos o personajes], `duracion?`, `rotulo?`, `despedida?`, `instalacionId?` | Asistente: compone un espectáculo entero listo para retocar. |
-| `aplicar_plantilla` | `plantilla` (neonDibujo, cascadaLuz, tormenta, ojos, sombras, telon, cristalRoto, navidad, fuegosArtificiales, lucesFeria, barrido, incendio, nieveMagica, luciernagas), `escenaId?`, `inicio?` | Coreografía en todas las superficies. |
+| `aplicar_plantilla` | `plantilla` (neonDibujo, casaDespierta, portales, fiesta, cascadaLuz, tormenta, ojos, sombras, telon, cristalRoto, navidad, fuegosArtificiales, lucesFeria, barrido, incendio, nieveMagica, luciernagas), `escenaId?`, `inicio?` | Coreografía en todas las superficies. |
 | `anadir_sonido` | `recursoId`, `inicio`, `volumen?`, `bucle?`, `continuar?` | Efecto de sonido en la escena. |
 | `anadir_musica` | `recursoId`, `volumen?` | Música continua del espectáculo. |
 | `importar_recurso` | `ruta`, `nombre?` | Copia un archivo al proyecto. |
@@ -104,7 +104,7 @@ Los ids y nombres se pueden usar indistintamente (superficie «Puerta principal�
 - `movimiento`: none, float, bounce, wave, lookAround, pulse, shake, spin, popIn, popOut, peekLeft, peekRight, peekBottom, peekTop, enterLeft, enterRight, exitLeft, exitRight, crossLeftToRight, crossRightToLeft, rise, grow o shrink.
 - `intensidad` y `velocidad` del movimiento.
 - `silueta` (true/false) y `colorSilueta`, para dibujar un personaje como sombra.
-- Efectos (`efecto`): solid, glow, stars, flicker, rainbow, **neon, drawOn, chase** (contornos; `grosor` en px), **sweep, lightning, fire, fog, rain, snow, fireflies**, de Halloween **eyes** (ojos en la oscuridad) y **spirits** (espíritus), ventanas falsas **shadowPass, curtains, shutters, stainedGlass**, de impacto **cracks, glitch, pulse, searchlight, fireworks** y de invierno **frost, aurora, shootingStars**. `espacio: "fachada"` hace que vayan sincronizados en toda la casa.
+- Efectos (`efecto`): solid, glow, stars, flicker, rainbow, **neon, drawOn, chase** (contornos; `grosor` en px), **sweep, lightning, fire, fog, rain, snow, fireflies**, de Halloween **eyes** (ojos en la oscuridad) y **spirits** (espíritus), ventanas falsas **shadowPass, curtains, shutters, stainedGlass**, de impacto **cracks, glitch, pulse, searchlight, fireworks** de invierno **frost, aurora, shootingStars**, de magia y fiesta **portal, burst, vortex, runes, bigEye, mouth, bubbles, confetti, fairyDust, hearts, lanterns** y el contorno **comet**. `espacio: "fachada"` hace que vayan sincronizados en toda la casa.
 
 ## Opción 4: editar el archivo del proyecto
 

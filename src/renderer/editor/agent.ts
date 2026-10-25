@@ -250,6 +250,16 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
           found = true;
           applyClipFields(c, p);
           if ((c as any).__surface) { c.surfaceId = surfaceFor(sh, { superficieId: (c as any).__surface }); delete (c as any).__surface; }
+          if (p.efecto !== undefined) {
+            if (!(EFFECT_KINDS as readonly string[]).includes(String(p.efecto))) fail(`Efecto no válido. Opciones: ${EFFECT_KINDS.join(', ')}`);
+            c.source = effectSource(p.efecto as any);
+          }
+          if (c.source.type === 'effect') {
+            if (p.color !== undefined) c.source.color = String(p.color);
+            if (p.color2 !== undefined) c.source.color2 = String(p.color2);
+            if (p.grosor !== undefined) c.source.width = num(p, 'grosor');
+            if (p.espacio !== undefined) c.source.space = p.espacio === 'fachada' ? 'facade' : 'surface';
+          }
           if (c.source.type === 'text') {
             if (p.texto !== undefined) c.source.text = String(p.texto);
             if (p.color !== undefined) c.source.color = String(p.color);
