@@ -639,10 +639,15 @@ try {
     await win.mouse.up();
     const c1 = await get();
     assert(c1.x > c0.x + 0.05 && c1.y > c0.y, `el clip se mueve dentro de la superficie (${c0.x.toFixed(3)} → ${c1.x.toFixed(3)})`);
-    await win.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2 + 10);
-    await win.mouse.wheel(0, -200);
-    await win.waitForTimeout(500);
-    const c2 = await get();
+    // La caja del clip se ha movido: se busca su posición real antes de usar la rueda.
+    let c2 = c1;
+    for (let k = 0; k < 4 && c2.scale <= c1.scale * 1.1; k++) {
+      const b2 = await win.locator('[data-testid="clip-box"]').boundingBox();
+      await win.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
+      await win.mouse.wheel(0, -200);
+      await win.waitForTimeout(500);
+      c2 = await get();
+    }
     assert(c2.scale > c1.scale * 1.1, `la rueda escala el clip (${c1.scale.toFixed(2)} → ${c2.scale.toFixed(2)})`);
     await win.click('[data-testid="undo"]');
     await win.click('[data-testid="undo"]');
