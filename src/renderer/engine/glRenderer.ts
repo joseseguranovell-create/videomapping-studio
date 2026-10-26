@@ -100,6 +100,12 @@ export interface Layer {
   fromOutput?: boolean;
   /** Alto de la superficie en la salida (0..1): para efectos de fachada con tamaño de ventana. */
   surfH?: number;
+  /** Borde inferior de la superficie en la salida (0..1), para figuras de tamaño real en la fachada. */
+  surfBottom?: number;
+  /** y (0..1) que separa la fila de arriba de la de abajo; <0 si solo hay una fila. */
+  rowSplit?: number;
+  /** Cuánto queda por debajo del borde inferior el suelo donde pisa una figura (alturas de persona): 0 en puertas. */
+  sill?: number;
   aspect?: number;
   /** El efecto usa coordenadas de toda la fachada (continuo entre superficies). */
   global?: boolean;
@@ -130,6 +136,9 @@ uniform float u_local;
 uniform float u_dur;
 uniform float u_param;
 uniform float u_surfH;
+uniform float u_surfBottom;
+uniform float u_rowSplit;
+uniform float u_sill;
 uniform int u_fromOutput;
 uniform float u_aspect;
 uniform vec3 u_color;
@@ -506,7 +515,13 @@ void main() {
     if (u_global == 1) {
       float X = (-0.08 + lp * 1.16) * u_outAspect;
       if (dir < 0.0) X = u_outAspect - X;
-      p = vec2((v_pos.x * u_outAspect - X) / (Hf * u_surfH), (c.y - 1.02) / Hf);
+      // Persona de tamaño real: la misma altura en todas las ventanas y pisando el suelo de su planta,
+      // por debajo del alféizar (en las ventanas se ve cortada por las piernas). Cada paso recorre una sola planta.
+      float Hp = 0.26;
+      float feetY = u_surfBottom + u_sill * Hp;
+      bool lowRow = u_rowSplit > 0.0 && u_surfBottom > u_rowSplit;
+      if (u_rowSplit > 0.0 && (lowRow ? mod(n, 2.0) > 0.5 : mod(n, 2.0) < 0.5)) { Hp = 1e6; }
+      p = vec2((v_pos.x * u_outAspect - X) / Hp, (v_pos.y - feetY) / Hp);
     } else {
       float X = (-0.25 + lp * 1.5) * u_aspect;
       if (dir < 0.0) X = u_aspect - X;
@@ -1468,7 +1483,7 @@ export class GLRenderer {
     for (const n of ['u_pts', 'u_cum', 'u_n', 'u_total', 'u_width', 'u_mode', 'u_time', 'u_dur', 'u_color', 'u_color2', 'u_opacity', 'u_res', 'u_margin']) {
       this.cu[n] = gl.getUniformLocation(this.contourProg, n);
     }
-    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_fromOutput', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
+    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_surfBottom', 'u_rowSplit', 'u_sill', 'u_fromOutput', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
       this.u[n] = gl.getUniformLocation(this.prog, n);
     }
     this.vbo = gl.createBuffer()!;
@@ -1591,6 +1606,9 @@ export class GLRenderer {
       gl.uniform1f(this.u.u_dur, l.duration ?? 1e6);
       gl.uniform1f(this.u.u_param, l.param ?? 6);
       gl.uniform1f(this.u.u_surfH, l.surfH ?? 1);
+      gl.uniform1f(this.u.u_surfBottom, l.surfBottom ?? 1);
+      gl.uniform1f(this.u.u_rowSplit, l.rowSplit ?? -1);
+      gl.uniform1f(this.u.u_sill, l.sill ?? 0);
       gl.uniform1i(this.u.u_fromOutput, l.fromOutput ? 1 : 0);
       gl.uniform1f(this.u.u_aspect, l.aspect ?? 1);
       gl.uniform3fv(this.u.u_color, l.color ?? [1, 1, 1]);

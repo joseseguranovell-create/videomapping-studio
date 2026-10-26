@@ -544,6 +544,9 @@ export class Player {
       return Math.max(0.01, Math.max(...ys) - Math.min(...ys));
     };
     const outAspect = inst.output.width / Math.max(1, inst.output.height);
+    // Plantas: si los huecos están a alturas muy distintas, se separa la fila de arriba de la de abajo.
+    const bottoms = inst.surfaces.filter((s) => s.visible && s.kind !== 'wall' && s.kind !== 'roof').map((s) => Math.max(...surfaceOutline(s).map((p) => p.y)));
+    const rowSplit = bottoms.length > 1 && Math.max(...bottoms) - Math.min(...bottoms) > 0.12 ? (Math.max(...bottoms) + Math.min(...bottoms)) / 2 : -1;
     const keepVideos = new Set<string>();
     const contoursToDraw: { outline: Vec2[]; layers: ContourLayer[] }[] = [];
     for (const s of inst.surfaces) {
@@ -554,6 +557,8 @@ export class Player {
       const A = surfaceAspect(s, inst.output);
       const ys = surfaceOutline(s).map((p) => p.y);
       const surfH = Math.max(0.01, Math.max(...ys) - Math.min(...ys));
+      const surfBottom = Math.max(...ys);
+      const sill = s.kind === 'door' || s.kind === 'garage' ? 0 : 0.5;
       list.sort((a, b) => a.order - b.order);
       const layers: Layer[] = [];
       const contours: ContourLayer[] = [];
@@ -573,7 +578,7 @@ export class Player {
           continue;
         }
         const layer = this.layerFor(e, A, keepVideos, e.clip.travel ? { homeH: heightOf(e.surfaceId), outAspect } : undefined);
-        if (layer) { layer.surfH = surfH; layers.push(layer); }
+        if (layer) { layer.surfH = surfH; layer.surfBottom = surfBottom; layer.rowSplit = rowSplit; layer.sill = sill; layers.push(layer); }
       }
       this.r.drawSurface(surfaceOutline(s), H, this.exclusions(inst, s), layers);
       if (contours.length) contoursToDraw.push({ outline: surfaceOutline(s), layers: contours });
