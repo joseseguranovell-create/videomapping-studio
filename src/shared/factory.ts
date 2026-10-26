@@ -290,6 +290,16 @@ export const EFFECT_DEFAULTS: Record<EffectKind, { color: string; color2: string
   fairyDust: { color: '#fff1a8', color2: '#b26bff', space: 'facade' },
   hearts: { color: '#ff3d6e', color2: '#ff9ad2' },
   lanterns: { color: '#ff9a3a', color2: '#ffd23a', space: 'facade' },
+  blood: { color: '#8a0008', color2: '#ff2a1a', space: 'surface' },
+  handprints: { color: '#b0000a', color2: '#3a0004', space: 'surface' },
+  claws: { color: '#ff1f1a', color2: '#ffd0b0', space: 'surface' },
+  powerFail: { color: '#d8f0ff', color2: '#7a9cff', space: 'facade' },
+  searchBeams: { color: '#fff4d8', color2: '#cfe0ff', space: 'facade' },
+  policeTape: { color: '#ffd400', color2: '#000000', space: 'facade' },
+  policeLights: { color: '#ff1010', color2: '#1040ff', space: 'facade' },
+  cobwebs: { color: '#dcdcf0', color2: '#8080a0', space: 'surface' },
+  bats: { color: '#ff7a1a', color2: '#5a1f8c', space: 'facade' },
+  spiders: { color: '#9b7bff', color2: '#3a1a5a', space: 'surface' },
   comet: { color: '#ff8a1c', color2: '#ffffff', width: 5 },
 };
 

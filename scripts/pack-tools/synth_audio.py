@@ -351,10 +351,152 @@ def riser():
     return normalize((tone + hiss) * (t / d) ** 1.5, 0.85)
 
 
+def electric():
+    """Fluorescente que falla: zumbido de 100 Hz que se corta a trompicones, chispazos y apagón final."""
+    d = 6.0
+    t = t_axis(d)
+    hum = sum(np.sin(2 * np.pi * 100 * k * t + k) / k for k in range(1, 9)) * 0.35
+    on = np.ones(len(t))
+    k = 0.0
+    while k < d:
+        seg = rng.uniform(0.03, 0.4) * (1 - 0.6 * k / d)
+        if rng.random() < 0.25 + 0.5 * k / d:
+            on[int(k * SR):int((k + seg) * SR)] = 0
+        k += seg
+    on[int(4.9 * SR):] = 0
+    on = lowpass(on, 0.02)
+    zaps = np.zeros(len(t))
+    for at in rng.uniform(0.2, 4.8, 9):
+        n = int(rng.uniform(0.02, 0.07) * SR)
+        i = int(at * SR)
+        zaps[i:i + n] += rng.standard_normal(len(zaps[i:i + n])) * np.exp(-np.arange(len(zaps[i:i + n])) / (0.01 * SR))
+    tt = t - 4.9
+    clunk = np.where(tt > 0, np.sin(2 * np.pi * 55 * tt) * np.exp(-np.maximum(tt, 0) * 7) * 1.6 + rng.standard_normal(len(t)) * np.exp(-np.maximum(tt, 0) * 40) * (tt > 0), 0)
+    return normalize(hum * on + zaps * 0.8 + clunk, 0.9)
+
+
+def drips():
+    """Goteo en la oscuridad (bucle de 8 s): gotas que caen con eco."""
+    d = 8.0
+    buf = np.zeros(int(SR * d))
+    at = 0.2
+    while at < d - 0.5:
+        f = rng.uniform(900, 1600)
+        tt = t_axis(0.18)
+        drop = np.sin(2 * np.pi * np.cumsum(f * (1 + 1.2 * np.exp(-tt * 40))) / SR) * np.exp(-tt * 30)
+        for e, g in ((0, 1.0), (0.11, 0.35), (0.23, 0.15)):
+            mix_into(buf, drop * g * rng.uniform(0.5, 1), at + e)
+        at += rng.uniform(0.35, 1.3)
+    return normalize(loopify(buf, 0.3), 0.7)
+
+
+def scratch():
+    """Arañazo: cuatro uñas rascando madera y cristal."""
+    d = 1.8
+    buf = np.zeros(int(SR * d))
+    for k in range(3):
+        n = int(SR * 0.42)
+        tt = np.arange(n) / SR
+        noise = rng.standard_normal(n)
+        hp = noise - lowpass(noise, 0.15)
+        squeal = np.sin(2 * np.pi * np.cumsum(2400 + 900 * np.sin(2 * np.pi * 7 * tt) + 600 * tt / 0.42) / SR) * 0.35
+        grain = (np.sin(2 * np.pi * 55 * tt) > 0.2).astype(float) * 0.5 + 0.5
+        mix_into(buf, (hp * grain + squeal) * np.sin(np.pi * tt / 0.42) ** 0.5, 0.05 + k * 0.5)
+    return normalize(buf, 0.85)
+
+
+def knocks():
+    """Tres golpes secos en la puerta."""
+    d = 2.6
+    buf = np.zeros(int(SR * d))
+    for k, at in enumerate((0.1, 0.62, 1.14)):
+        tt = t_axis(0.5)
+        body = np.sin(2 * np.pi * 95 * tt) * np.exp(-tt * 18) + 0.6 * np.sin(2 * np.pi * 190 * tt + 1) * np.exp(-tt * 25)
+        click = rng.standard_normal(len(tt)) * np.exp(-tt * 120) * 0.8
+        mix_into(buf, (body + click) * (1 + 0.15 * k), at)
+    return normalize(buf, 0.95)
+
+
+def breath():
+    """Respiración pesada muy cerca (bucle de 5 s)."""
+    d = 5.0
+    t = t_axis(d)
+    n = rng.standard_normal(len(t))
+    bp = lowpass(n, 0.25) - lowpass(n, 0.03)
+    cyc = np.sin(2 * np.pi * t / 2.5)
+    env = np.clip(cyc, 0, 1) ** 1.5 * 1.0 + np.clip(-cyc, 0, 1) ** 1.2 * 0.6
+    rasp = 1 + 0.4 * np.sin(2 * np.pi * 38 * t)
+    return normalize(loopify(bp * env * rasp, 0.4), 0.7)
+
+
+def boom():
+    """Impacto grave para los grandes sustos: golpe y caída de tono que retumba."""
+    d = 5.0
+    t = t_axis(d)
+    f = 30 + 90 * np.exp(-t * 2.2)
+    sub = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 0.9)
+    hit = rng.standard_normal(len(t)) * np.exp(-t * 18)
+    metal = sum(np.sin(2 * np.pi * fr * t + i) for i, fr in enumerate((233, 247, 370, 523))) * np.exp(-t * 1.8) * 0.12
+    return normalize(sub * 1.4 + lowpass(hit, 0.2) * 0.9 + metal, 0.95)
+
+
+def dark_pulse():
+    """Música de tensión (bucle de 16 s): bajo que late, notas graves y armónicos disonantes."""
+    d = 16.0
+    t = t_axis(d)
+    buf = 0.25 * (np.sin(2 * np.pi * 41.2 * t) + 0.5 * np.sin(2 * np.pi * 82.4 * t + 0.4 * np.sin(2 * np.pi * 0.1 * t)))
+    seq = [0, 0, 1, 0, -2, 0, 3, 1]
+    for k in range(int(d / 0.5)):
+        at = k * 0.5
+        n = seq[k % len(seq)]
+        tt = t_axis(0.45)
+        f = 55 * 2 ** (n / 12)
+        hit = (np.sin(2 * np.pi * f * tt) + 0.4 * np.sin(2 * np.pi * 2 * f * tt)) * np.exp(-tt * 7) * (1.0 if k % 2 == 0 else 0.55)
+        mix_into(buf, hit * 0.8, at)
+    pad = sum(np.sin(2 * np.pi * fr * t + i) for i, fr in enumerate((622.3, 659.3, 932.3))) * (0.5 + 0.5 * np.sin(2 * np.pi * t / 8)) * 0.04
+    return normalize(loopify(buf + pad, 0.5), 0.8)
+
+
+def siren():
+    """Sirena de policía lejana (bucle de 8 s): sube y baja de tono, con eco de calle."""
+    d = 8.0
+    t = t_axis(d)
+    f = 750 + 350 * np.sin(2 * np.pi * t / 4.0 - np.pi / 2)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    tone = np.sin(ph) + 0.35 * np.sin(2 * ph) + 0.15 * np.sin(3 * ph)
+    x = lowpass(tone, 0.25)
+    echo = np.zeros_like(x)
+    k = int(0.19 * SR)
+    echo[k:] = x[:-k] * 0.35
+    return normalize(loopify(x + echo, 0.4), 0.55)
+
+
+def bat_squeaks():
+    """Chillidos y aleteos de murciélagos (bucle de 6 s)."""
+    d = 6.0
+    buf = np.zeros(int(SR * d))
+    at = 0.1
+    while at < d - 0.3:
+        tt = t_axis(rng.uniform(0.03, 0.07))
+        f0 = rng.uniform(3500, 6000)
+        ch = np.sin(2 * np.pi * np.cumsum(f0 * (1 - 0.4 * tt / tt[-1])) / SR) * np.sin(np.pi * tt / tt[-1])
+        mix_into(buf, ch * rng.uniform(0.3, 0.8), at)
+        if rng.random() < 0.3:
+            ft = t_axis(0.25)
+            n = rng.standard_normal(len(ft))
+            flap = lowpass(n, 0.2) * (np.sin(2 * np.pi * 14 * ft) > 0.3) * np.sin(np.pi * ft / 0.25)
+            mix_into(buf, flap * 0.5, at)
+        at += rng.uniform(0.08, 0.45)
+    return normalize(loopify(buf, 0.2), 0.6)
+
+
 def main_terror(out):
     os.makedirs(out, exist_ok=True)
     items = {'zumbido-oscuro': drone(), 'latidos': heartbeat(), 'golpe-susto': stinger(), 'susurros': whisper(),
-             'cajita-musica': music_box(), 'viento': wind(), 'crujido': creak(), 'tension': riser()}
+             'cajita-musica': music_box(), 'viento': wind(), 'crujido': creak(), 'tension': riser(),
+             'luz-que-falla': electric(), 'goteo': drips(), 'aranazo': scratch(), 'golpes-puerta': knocks(),
+             'respiracion': breath(), 'impacto-grave': boom(), 'pulso-tension': dark_pulse(),
+             'sirena': siren(), 'murcielagos': bat_squeaks()}
     for name, x in items.items():
         write_wav(os.path.join(out, f'{name}.wav'), x)
         print(f'{name}.wav {len(x) / SR:.2f}s')

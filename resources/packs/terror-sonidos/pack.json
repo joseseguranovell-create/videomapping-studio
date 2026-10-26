@@ -3,10 +3,10 @@
   "formatVersion": 1,
   "id": "terror-sonidos",
   "name": "Sonidos de terror",
-  "description": "Zumbido de fondo, latidos, golpe de susto, susurros, cajita de música, viento, crujido y subida de tensión.",
+  "description": "Zumbido de fondo, música de tensión, latidos, golpe de susto, impacto grave, susurros, respiración, cajita de música, viento, crujido, golpes en la puerta, arañazo, goteo, luz que falla, sirena, murciélagos y subida de tensión.",
   "author": "Videomapping Studio",
   "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "tags": [
     "terror",
     "Halloween"
@@ -250,6 +250,293 @@
       "tags": [
         "efecto",
         "susto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-luz-falla",
+      "name": "Luz que falla (zumbido y apagón)",
+      "kind": "audio",
+      "file": "files/luz-que-falla.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 6,
+      "hasAlpha": null,
+      "size": 31691,
+      "tags": [
+        "efecto",
+        "apagón"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-goteo",
+      "name": "Goteo (bucle)",
+      "kind": "audio",
+      "file": "files/goteo.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 7.7,
+      "hasAlpha": null,
+      "size": 36927,
+      "tags": [
+        "efecto",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-aranazo",
+      "name": "Arañazo",
+      "kind": "audio",
+      "file": "files/aranazo.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 1.8,
+      "hasAlpha": null,
+      "size": 18933,
+      "tags": [
+        "efecto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-golpes-puerta",
+      "name": "Golpes en la puerta",
+      "kind": "audio",
+      "file": "files/golpes-puerta.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 2.6,
+      "hasAlpha": null,
+      "size": 15771,
+      "tags": [
+        "efecto",
+        "susto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-respiracion",
+      "name": "Respiración (bucle)",
+      "kind": "audio",
+      "file": "files/respiracion.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 4.6,
+      "hasAlpha": null,
+      "size": 51438,
+      "tags": [
+        "efecto",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-impacto",
+      "name": "Impacto grave",
+      "kind": "audio",
+      "file": "files/impacto-grave.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 5,
+      "hasAlpha": null,
+      "size": 30900,
+      "tags": [
+        "efecto",
+        "susto"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-pulso",
+      "name": "Pulso de tensión (música en bucle)",
+      "kind": "audio",
+      "file": "files/pulso-tension.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 15.5,
+      "hasAlpha": null,
+      "size": 61158,
+      "tags": [
+        "música",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-sirena",
+      "name": "Sirena de policía (bucle)",
+      "kind": "audio",
+      "file": "files/sirena.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 7.6,
+      "hasAlpha": null,
+      "size": 30284,
+      "tags": [
+        "efecto",
+        "bucle"
+      ],
+      "collections": [
+        "Terror"
+      ],
+      "license": "CC0 1.0 — sonidos originales sintetizados para Videomapping Studio",
+      "source": "Paquete Sonidos de terror",
+      "thumbnail": "",
+      "key": {
+        "mode": "none",
+        "color": "#00ff00",
+        "threshold": 0.3,
+        "softness": 0.1,
+        "despill": true
+      },
+      "addedAt": "2026-10-25T00:00:00.000Z"
+    },
+    {
+      "id": "tr-ast-murcielagos",
+      "name": "Murciélagos (bucle)",
+      "kind": "audio",
+      "file": "files/murcielagos.ogg",
+      "frames": [],
+      "fps": 24,
+      "format": "ogg",
+      "width": null,
+      "height": null,
+      "duration": 5.8,
+      "hasAlpha": null,
+      "size": 26767,
+      "tags": [
+        "efecto",
+        "bucle"
       ],
       "collections": [
         "Terror"

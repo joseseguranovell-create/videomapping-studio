@@ -175,13 +175,15 @@ export const EFFECT_KINDS = [
   'frost', 'aurora', 'shootingStars',
   // magia y fiesta
   'portal', 'burst', 'vortex', 'runes', 'bigEye', 'mouth', 'bubbles', 'confetti', 'fairyDust', 'hearts', 'lanterns',
+  'blood', 'handprints', 'claws', 'powerFail',
+  'searchBeams', 'policeTape', 'policeLights', 'cobwebs', 'bats', 'spiders',
   // contorno: bola de luz que recorre el borde
   'comet',
 ] as const;
 /** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
 export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase', 'comet'] as const;
 /** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
-export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass', 'fairyDust', 'lanterns', 'confetti'] as const;
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass', 'fairyDust', 'lanterns', 'confetti', 'searchBeams', 'policeTape', 'policeLights', 'bats'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
@@ -495,6 +497,16 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   fairyDust: 'Polvo de hada',
   hearts: 'Corazones',
   lanterns: 'Farolillos',
+  blood: 'Sangre que gotea',
+  handprints: 'Manos en el cristal',
+  claws: 'Arañazos',
+  powerFail: 'Luz que falla (apagón)',
+  searchBeams: 'Focos que buscan',
+  policeTape: 'Cinta policial «NO PASAR»',
+  policeLights: 'Sirena de policía',
+  cobwebs: 'Telarañas',
+  bats: 'Murciélagos',
+  spiders: 'Arañas que bajan',
   comet: 'Cometa por el contorno',
 };
 

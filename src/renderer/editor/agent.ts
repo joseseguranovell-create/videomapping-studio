@@ -14,7 +14,7 @@ import { parseProject } from '../../shared/schema';
 import { createClip, createScene, createShow, createSoundCue, createSurface, createInstallation, effectSource, createLightCue, createLightDevice } from '../../shared/factory';
 import { autoLights } from '../../shared/lights';
 import { layoutShow } from '../../shared/timeline';
-import { applyTemplate, TEMPLATE_KINDS, type TemplateKind } from '../../shared/templates';
+import { applyTemplate, templateSounds, TEMPLATE_KINDS, type TemplateKind } from '../../shared/templates';
 import { newId } from '../../shared/ids';
 import { orderQuad } from '../../shared/geometry';
 import {
@@ -345,7 +345,7 @@ export async function handleAgentRequest(action: string, p: P): Promise<unknown>
       if (!(TEMPLATE_KINDS as readonly string[]).includes(kind)) fail(`Plantilla no válida. Opciones: ${TEMPLATE_KINDS.join(', ')}`);
       const inst = project().installations.find((i) => i.id === sh.installationId) ?? fail('El espectáculo no tiene instalación');
       const thunder = project().assets.find((a) => a.kind === 'audio' && (a.tags.includes('trueno') || /trueno/i.test(a.name)));
-      const r = applyTemplate(kind, inst, sc, { start: num(p, 'inicio', 0), thunderAssetId: thunder?.id ?? null });
+      const r = applyTemplate(kind, inst, sc, { start: num(p, 'inicio', 0), thunderAssetId: thunder?.id ?? null, sounds: templateSounds(project().assets) });
       edit(`plantilla ${kind}`, (d) => { const x = d.shows.find((s) => s.id === sh.id)!.scenes.find((s) => s.id === sc.id)!; x.clips.push(...r.clips); x.sounds.push(...r.sounds); });
       return { clips: r.clips.length, sonidos: r.sounds.length };
     }

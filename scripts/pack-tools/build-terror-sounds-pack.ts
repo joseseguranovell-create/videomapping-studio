@@ -34,6 +34,15 @@ const SOUNDS: [string, string, string, string[]][] = [
   ['tr-ast-viento', 'Viento (bucle)', 'files/viento.ogg', ['efecto', 'bucle']],
   ['tr-ast-crujido', 'Crujido de puerta', 'files/crujido.ogg', ['efecto']],
   ['tr-ast-tension', 'Subida de tensión', 'files/tension.ogg', ['efecto', 'susto']],
+  ['tr-ast-luz-falla', 'Luz que falla (zumbido y apagón)', 'files/luz-que-falla.ogg', ['efecto', 'apagón']],
+  ['tr-ast-goteo', 'Goteo (bucle)', 'files/goteo.ogg', ['efecto', 'bucle']],
+  ['tr-ast-aranazo', 'Arañazo', 'files/aranazo.ogg', ['efecto']],
+  ['tr-ast-golpes-puerta', 'Golpes en la puerta', 'files/golpes-puerta.ogg', ['efecto', 'susto']],
+  ['tr-ast-respiracion', 'Respiración (bucle)', 'files/respiracion.ogg', ['efecto', 'bucle']],
+  ['tr-ast-impacto', 'Impacto grave', 'files/impacto-grave.ogg', ['efecto', 'susto']],
+  ['tr-ast-pulso', 'Pulso de tensión (música en bucle)', 'files/pulso-tension.ogg', ['música', 'bucle']],
+  ['tr-ast-sirena', 'Sirena de policía (bucle)', 'files/sirena.ogg', ['efecto', 'bucle']],
+  ['tr-ast-murcielagos', 'Murciélagos (bucle)', 'files/murcielagos.ogg', ['efecto', 'bucle']],
 ];
 
 const assets: Asset[] = SOUNDS.map(([id, name, file, tags]) => ({
@@ -44,8 +53,8 @@ const assets: Asset[] = SOUNDS.map(([id, name, file, tags]) => ({
 
 const manifest = PackManifest.parse({
   format: PACK_FORMAT, formatVersion: 1, id: 'terror-sonidos', name: 'Sonidos de terror',
-  description: 'Zumbido de fondo, latidos, golpe de susto, susurros, cajita de música, viento, crujido y subida de tensión.',
-  author: 'Videomapping Studio', license: LICENSE, version: '1.0.0', tags: ['terror', 'Halloween'], assets,
+  description: 'Zumbido de fondo, música de tensión, latidos, golpe de susto, impacto grave, susurros, respiración, cajita de música, viento, crujido, golpes en la puerta, arañazo, goteo, luz que falla, sirena, murciélagos y subida de tensión.',
+  author: 'Videomapping Studio', license: LICENSE, version: '1.1.0', tags: ['terror', 'Halloween'], assets,
 });
 fs.writeFileSync(path.join(PACK, 'pack.json'), JSON.stringify(manifest, null, 2));
 console.log(`pack.json: ${manifest.assets.length} sonidos`);

@@ -58,6 +58,15 @@ describe('asistente de espectáculos', () => {
     expect(c.scale).toBeGreaterThan(2);
     expect(c.duration).toBeLessThanOrEqual(6);
   });
+  it('en terror, la tormenta y el gran final iluminan toda la casa e incluye apagón y escena del crimen', () => {
+    const inst = house();
+    const sh = generateShow({ style: 'terror', name: 'x', installation: inst, protagonists: heroes, duration: 200 });
+    const all = inst.surfaces.map((s) => s.id).sort();
+    const finale = sh.scenes.find((s) => s.name === 'Gran final')!;
+    expect(finale.clips.filter((c) => c.source.type === 'effect' && c.source.effect === 'lightning').map((c) => c.surfaceId).sort()).toEqual(all);
+    const fx = new Set(sh.scenes.flatMap((s) => s.clips.flatMap((c) => (c.source.type === 'effect' ? [c.source.effect] : []))));
+    for (const e of ['powerFail', 'policeTape', 'handprints']) expect(fx.has(e as any), e).toBe(true);
+  });
   it('funciona con una instalación mínima y sin protagonistas', () => {
     const inst = createInstallation('Escaparate');
     const s = createSurface('Cristal', 'shopwindow', 0);

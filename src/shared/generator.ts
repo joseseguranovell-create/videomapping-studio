@@ -33,6 +33,7 @@ export interface Protagonist {
 export interface SoundKit {
   music?: string; ambient?: string; heartbeat?: string; stinger?: string; whisper?: string; tension?: string;
   thunder?: string; creak?: string; musicBox?: string; pop?: string; sparkle?: string; giggle?: string; chime?: string; whoosh?: string; boo?: string;
+  powerFail?: string; drips?: string; knocks?: string; scratch?: string; boom?: string; siren?: string; bats?: string;
 }
 
 /** Asocia los sonidos de los paquetes incluidos (si están en el proyecto) a sus funciones. */
@@ -43,6 +44,7 @@ export function soundKitFrom(assets: readonly Asset[]): SoundKit {
     tension: has('tr-ast-tension'), thunder: has('hx-ast-snd-trueno'), creak: has('tr-ast-crujido'), musicBox: has('tr-ast-cajita'),
     pop: has('hx-ast-snd-pop'), sparkle: has('hx-ast-snd-destello'), giggle: has('hx-ast-snd-risita'), chime: has('hx-ast-snd-campanilla'),
     whoosh: has('hx-ast-snd-whoosh'), boo: has('hx-ast-snd-boo'),
+    powerFail: has('tr-ast-luz-falla'), drips: has('tr-ast-goteo'), knocks: has('tr-ast-golpes-puerta'), scratch: has('tr-ast-aranazo'), boom: has('tr-ast-impacto'), siren: has('tr-ast-sirena'), bats: has('tr-ast-murcielagos'),
   };
 }
 export function defaultMusic(style: ShowStyle, assets: readonly Asset[]): string | undefined {
@@ -94,7 +96,7 @@ export function generateShow(o: GenerateOptions): Show {
   const clip = (s: Surface, src: ClipSource, start: number, dur: number, p: Partial<Clip> = {}) => createClip(s.id, src, { start, duration: Math.max(0.2, dur), fit: 'stretch', fadeIn: 0.6, fadeOut: 0.6, ...p });
   const snd = (id: string | undefined, start: number, p: Partial<SoundCue> = {}) => (id ? [createSoundCue(id, { start, ...p })] : []);
   const scene = (name: string, d: number, tr: Scene['transition'], clips: Clip[], sounds: SoundCue[], notes = ''): Scene => ({ ...createScene(name, d), transition: tr, clips, sounds, notes });
-  const tpl = (kind: TemplateKind, d: number, surfaces: Surface[]) => applyTemplate(kind, { ...inst, surfaces }, createScene('t', d), { thunderAssetId: K.thunder ?? null });
+  const tpl = (kind: TemplateKind, d: number, surfaces: Surface[]) => applyTemplate(kind, { ...inst, surfaces }, createScene('t', d), { thunderAssetId: K.thunder ?? null, sounds: { powerFail: K.powerFail, drips: K.drips, knocks: K.knocks, scratch: K.scratch, siren: K.siren } });
   const text = (t: string, color: string, font: string): ClipSource => ({ type: 'text', text: t, font: font as any, color, outline: P.outline, glow: true, bold: true });
   const fx = (e: Parameters<typeof effectSource>[0], over: Parameters<typeof effectSource>[1] = {}) => effectSource(e, over);
   const light = (s: Surface, d: number, color = P.light, p: Partial<Clip> = {}) =>
@@ -139,14 +141,14 @@ export function generateShow(o: GenerateOptions): Show {
   const target = Math.max(40, o.duration ?? 110);
   const fixed = 10 + 12 + 8;
   const nP = Math.max(o.protagonists.length, 1);
-  const nI = Math.max(1, Math.min(4, Math.round((target - fixed - nP * 9) / 9)));
-  const impacts: TemplateKind[] = o.style === 'terror' ? ['tormenta', 'cristalRoto', 'ojos', 'sombras'] : o.style === 'navidad' ? ['navidad', 'sombras', 'fuegosArtificiales', 'nieveMagica'] : ['tormenta', 'sombras', 'ojos', 'lucesFeria'];
+  const nI = Math.max(1, Math.min(o.style === 'terror' ? 6 : 4, Math.round((target - fixed - nP * 9) / 9)));
+  const impacts: TemplateKind[] = o.style === 'terror' ? ['tormenta', 'algoQuiereEntrar', 'escenaCrimen', 'apagon', 'sangre', 'casaEncantada', 'cristalRoto', 'sombras'] : o.style === 'navidad' ? ['navidad', 'sombras', 'fuegosArtificiales', 'nieveMagica'] : ['tormenta', 'casaEncantada', 'sombras', 'ojos', 'lucesFeria'];
   let ii = 0;
   const impactScene = () => {
     const kind = impacts[ii % impacts.length];
     ii++;
     const r = tpl(kind, 9, all);
-    const extra: SoundCue[] = kind === 'cristalRoto' ? snd(K.stinger, 0, { volume: 0.9 }) : kind === 'ojos' ? snd(K.giggle ?? K.whisper, 2.5, { volume: 0.6 }) : [];
+    const extra: SoundCue[] = kind === 'apagon' ? snd(K.boom, 5.2, { volume: 0.9 }) : kind === 'casaEncantada' ? snd(K.bats, 0.5, { volume: 0.5, loop: true, duration: 8 }) : kind === 'cristalRoto' ? snd(K.stinger, 0, { volume: 0.9 }) : kind === 'ojos' ? snd(K.giggle ?? K.whisper, 2.5, { volume: 0.6 }) : [];
     scenes.push(scene(TEMPLATE_TITLES[kind] ?? kind, 9, { type: 'crossfade', duration: 0.8 }, r.clips, [...r.sounds, ...extra]));
   };
   o.protagonists.forEach((p, i) => {
@@ -175,7 +177,8 @@ export function generateShow(o: GenerateOptions): Show {
   scenes.push(scene('Gran final', 12, { type: o.style === 'terror' ? 'cut' : 'fade', duration: 0.6 }, [
     ...finale.clips,
     ...(o.style === 'terror' ? [
-      ...(mainWall ? [clip(mainWall, fx('lightning'), 0, 12, { fadeIn: 0, fadeOut: 0, z: 2, name: 'Relámpago' })] : []),
+      // El relámpago ilumina toda la casa a la vez (mismo reloj en todas las superficies).
+      ...all.map((s) => clip(s, fx('lightning'), 0, 12, { fadeIn: 0, fadeOut: 0, z: 2, name: 'Relámpago' })),
       ...frames.map((s) => clip(s, fx('neon', { color: P.main, width: 3 }), 0.2, 8, { opacity: 0.6, fadeIn: 0.1, z: 5, name: 'Marco' })),
     ] : stages.map((s) => light(s, 12))),
     ...heroes.map((p, k) => hero(p, places[k], 0.3 + (o.style === 'terror' ? 0 : k * 0.4), 11)),
@@ -198,6 +201,6 @@ export function generateShow(o: GenerateOptions): Show {
 }
 
 const TEMPLATE_TITLES: Partial<Record<TemplateKind, string>> = {
-  tormenta: 'Tormenta', cristalRoto: 'Cristales rotos', ojos: 'Ojos en la oscuridad', sombras: 'Alguien pasa por dentro',
+  tormenta: 'Tormenta', cristalRoto: 'Cristales rotos', apagon: 'Se va la luz', sangre: 'La casa sangra', algoQuiereEntrar: 'Algo quiere entrar', escenaCrimen: 'Escena del crimen', casaEncantada: 'Casa encantada', ojos: 'Ojos en la oscuridad', sombras: 'Alguien pasa por dentro',
   navidad: 'Noche de Navidad', fuegosArtificiales: 'Fuegos artificiales', nieveMagica: 'Nieve mágica', lucesFeria: 'Luces de feria',
 };

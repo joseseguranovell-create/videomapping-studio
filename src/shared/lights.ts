@@ -284,6 +284,19 @@ export function autoLights(show: Show, devices: LightDevice[]): Show {
       plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'color', start: 0 })));
       all({ action: 'restore', start: Math.max(0, D - 1) });
       plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'restore', start: Math.max(0, D - 1) })));
+    } else if (fx.has('powerFail') || /apag[oó]n|se va la luz/.test(name)) {
+      // Las luces de casa fallan a la vez que la proyección y se apagan al final.
+      all({ action: 'blink', color: '#d8f0ff', color2: '#000000', duration: D * 0.85, rate: 2.5, transition: 0 });
+      all({ action: 'off', start: D * 0.88, transition: 0 });
+      plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'off', start: D * 0.88 })));
+    } else if (fx.has('policeLights')) {
+      all({ action: 'blink', color: '#ff1010', color2: '#1040ff', duration: D, rate: 1.6, transition: 0 });
+      plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'off' })));
+    } else if (fx.has('bats') || fx.has('cobwebs') || fx.has('spiders')) {
+      all({ action: 'candle', color: '#7a2cff', brightness: 0.45, duration: D, rate: 0.8 });
+    } else if (fx.has('blood') || fx.has('handprints') || fx.has('claws') || /sangr/.test(name)) {
+      all({ action: 'candle', color: '#a00010', brightness: 0.55, duration: D, rate: 1 });
+      plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'off' })));
     } else if (fx.has('lightning') || fx.has('cracks') || /tormenta|rayo|susto/.test(name)) {
       all({ action: 'color', color: '#1a2a6a', brightness: 0.25, transition: 1 });
       all({ action: 'flash', start: Math.min(1.5, D * 0.2), duration: Math.max(1, D - 2), rate: 0.6 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyTemplate, orderedSurfaces, lightningStrikes, TEMPLATE_KINDS } from '../../src/shared/templates';
+import { applyTemplate, orderedSurfaces, lightningStrikes, templateSounds, TEMPLATE_KINDS } from '../../src/shared/templates';
 import { createInstallation, createSurface, createScene } from '../../src/shared/factory';
 import { Clip, SoundCue } from '../../src/shared/model';
 
@@ -53,6 +53,20 @@ describe('plantillas de escena', () => {
     expect(r.sounds).toHaveLength(strikes.length);
     expect(r.sounds[0].start).toBeCloseTo(strikes[0] + 0.35);
     expect(applyTemplate('tormenta', casa(), sc).sounds).toHaveLength(0);
+  });
+  it('el apagón y la escena del crimen llegan a toda la casa a la vez, con su sonido si está el paquete', () => {
+    const inst = casa();
+    const visibles = inst.surfaces.filter((s) => s.visible).map((s) => s.id).sort();
+    const snd = templateSounds([{ id: 'tr-ast-luz-falla' }, { id: 'tr-ast-sirena' }, { id: 'tr-ast-golpes-puerta' }]);
+    const ap = applyTemplate('apagon', inst, createScene('S', 8), { sounds: snd });
+    expect(ap.clips.map((c) => c.surfaceId).sort()).toEqual(visibles);
+    expect(ap.clips.every((c) => c.start === 0 && c.source.type === 'effect' && c.source.effect === 'powerFail')).toBe(true);
+    expect(ap.sounds.map((s) => s.assetId)).toEqual(['tr-ast-luz-falla']);
+    const cr = applyTemplate('escenaCrimen', inst, createScene('S', 10), { sounds: snd });
+    for (const e of ['policeTape', 'policeLights', 'searchBeams']) expect(cr.clips.filter((c) => c.source.type === 'effect' && c.source.effect === e).map((c) => c.surfaceId).sort()).toEqual(visibles);
+    expect(cr.sounds[0].assetId).toBe('tr-ast-sirena');
+    // sin el paquete de sonidos, las plantillas no suenan
+    expect(applyTemplate('algoQuiereEntrar', inst, createScene('S', 8), { sounds: templateSounds([]) }).sounds).toEqual([]);
   });
   it('respeta un instante de inicio', () => {
     const r = applyTemplate('barrido', casa(), createScene('S', 10), { start: 4 });

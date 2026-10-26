@@ -7,7 +7,7 @@ import type { Clip, Installation, Scene, SoundCue, Surface } from './model';
 import { createClip, createSoundCue, effectSource } from './factory';
 import { centroid, surfaceOutline, surfaceAspect } from './geometry';
 
-export const TEMPLATE_KINDS = ['neonDibujo', 'casaDespierta', 'portales', 'cascadaLuz', 'tormenta', 'ojos', 'sombras', 'telon', 'cristalRoto', 'lucesFeria', 'barrido', 'incendio', 'navidad', 'fuegosArtificiales', 'fiesta', 'nieveMagica', 'luciernagas'] as const;
+export const TEMPLATE_KINDS = ['neonDibujo', 'casaDespierta', 'portales', 'cascadaLuz', 'tormenta', 'ojos', 'sombras', 'telon', 'cristalRoto', 'lucesFeria', 'barrido', 'incendio', 'navidad', 'fuegosArtificiales', 'fiesta', 'nieveMagica', 'luciernagas', 'apagon', 'sangre', 'algoQuiereEntrar', 'escenaCrimen', 'casaEncantada'] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 
 export const TEMPLATE_INFO: Record<TemplateKind, { name: string; description: string }> = {
@@ -28,6 +28,11 @@ export const TEMPLATE_INFO: Record<TemplateKind, { name: string; description: st
   incendio: { name: 'Ventanas en llamas', description: 'Fuego que prende ventana a ventana (de broma, sin miedo).' },
   nieveMagica: { name: 'Nieve mágica', description: 'Nieve continua en toda la fachada con estrellas (ideal para Navidad).' },
   luciernagas: { name: 'Luciérnagas', description: 'Puntos de luz que vagan dentro de cada ventana.' },
+  apagon: { name: 'Se va la luz', description: 'Toda la casa se ilumina como un fluorescente que falla, parpadea cada vez más y se apaga de golpe.' },
+  sangre: { name: 'La casa sangra', description: 'La sangre rezuma por arriba de cada ventana, puerta y franja y va cayendo en hilos, con un latido rojo en la pared.' },
+  escenaCrimen: { name: 'Escena del crimen', description: 'Cinta policial «NO PASAR» cruzando la casa, sirena roja y azul y focos que barren la fachada buscando a alguien.' },
+  casaEncantada: { name: 'Casa encantada', description: 'Telarañas en las esquinas de ventanas y puerta, arañas que bajan por su hilo y murciélagos cruzando la fachada.' },
+  algoQuiereEntrar: { name: 'Algo quiere entrar', description: 'Manos que golpean los cristales una tras otra y zarpazos en la puerta.' },
 };
 
 /** Superficies visibles ordenadas de izquierda a derecha (y de arriba abajo si están alineadas). */
@@ -56,7 +61,16 @@ export interface TemplateResult {
   sounds: SoundCue[];
 }
 
-export function applyTemplate(kind: TemplateKind, inst: Installation, scene: Scene, opts: { start?: number; thunderAssetId?: string | null } = {}): TemplateResult {
+/** Sonidos opcionales de las plantillas (ids de recursos del proyecto). */
+export interface TemplateSounds { powerFail?: string; drips?: string; knocks?: string; scratch?: string; siren?: string }
+
+/** Sonidos de las plantillas sacados del paquete «Sonidos de terror», si el proyecto lo tiene. */
+export function templateSounds(assets: { id: string }[]): TemplateSounds {
+  const has = (id: string) => (assets.some((a) => a.id === id) ? id : undefined);
+  return { powerFail: has('tr-ast-luz-falla'), drips: has('tr-ast-goteo'), knocks: has('tr-ast-golpes-puerta'), scratch: has('tr-ast-aranazo'), siren: has('tr-ast-sirena') };
+}
+
+export function applyTemplate(kind: TemplateKind, inst: Installation, scene: Scene, opts: { start?: number; thunderAssetId?: string | null; sounds?: TemplateSounds } = {}): TemplateResult {
   const start = Math.max(0, Math.min(opts.start ?? 0, scene.duration - 0.5));
   const D = scene.duration - start;
   const surfaces = orderedSurfaces(inst);
@@ -128,6 +142,45 @@ export function applyTemplate(kind: TemplateKind, inst: Installation, scene: Sce
         if (s.kind !== 'wall') clip(s, effectSource('curtains'), i * step * 0.6, D - i * step * 0.6, { fadeIn: 0, fadeOut: 0, z: 8 });
       });
       break;
+    case 'apagon':
+      // Igual en todas las superficies (mismo reloj): la casa entera parpadea y se apaga a la vez.
+      surfaces.forEach((s) => clip(s, effectSource('powerFail'), 0, D, { fadeIn: 0, fadeOut: 0, z: 8 }));
+      if (opts.sounds?.powerFail) sounds.push(createSoundCue(opts.sounds.powerFail, { start, volume: 0.9, duration: Math.min(6, D) }));
+      break;
+    case 'sangre':
+      surfaces.forEach((s, i) => {
+        if (s.kind === 'wall' && surfaceAspect(s, inst.output) < 3) clip(s, effectSource('pulse', { color: '#a00010', color2: '#1a0000', width: 7 }), 0, D, { fadeIn: 1.5, opacity: 0.55, z: -8 });
+        else clip(s, effectSource('blood'), i * step * 0.6, D - i * step * 0.6, { fadeIn: 0, z: 6 });
+      });
+      if (opts.sounds?.drips) sounds.push(createSoundCue(opts.sounds.drips, { start, volume: 0.7, loop: true, duration: D }));
+      break;
+    case 'escenaCrimen':
+      // Todo en el espacio de la fachada: la cinta, la sirena y los focos cruzan la casa entera.
+      surfaces.forEach((s) => {
+        clip(s, effectSource('policeLights'), 0, D, { fadeIn: 0.2, opacity: 0.55, z: -6 });
+        clip(s, effectSource('searchBeams'), 0, D, { fadeIn: 1, z: 2 });
+        clip(s, effectSource('policeTape'), 0.5, D - 0.5, { fadeIn: 0, z: 7 });
+      });
+      if (opts.sounds?.siren) sounds.push(createSoundCue(opts.sounds.siren, { start, volume: 0.6, loop: true, duration: D }));
+      break;
+    case 'casaEncantada':
+      surfaces.forEach((s) => {
+        if (s.kind === 'wall') clip(s, effectSource('bats'), 0, D, { fadeIn: 1, z: 3 });
+        else {
+          clip(s, effectSource('cobwebs'), 0, D, { fadeIn: 1.5, opacity: 0.85, z: 6 });
+          if (s.kind === 'window' || s.kind === 'door' || s.kind === 'shopwindow') clip(s, effectSource('spiders'), 1, D - 1, { fadeIn: 0.5, z: 7 });
+        }
+      });
+      break;
+    case 'algoQuiereEntrar': {
+      const wins = surfaces.filter((s) => s.kind === 'window' || s.kind === 'shopwindow');
+      const doors = surfaces.filter((s) => s.kind === 'door' || s.kind === 'garage');
+      wins.forEach((s, i) => clip(s, effectSource('handprints'), i * 0.45, D - i * 0.45, { fadeIn: 0, z: 6 }));
+      doors.forEach((s) => clip(s, effectSource('claws'), Math.min(1.5, D * 0.3), D - Math.min(1.5, D * 0.3), { fadeIn: 0, z: 6 }));
+      if (opts.sounds?.knocks) sounds.push(createSoundCue(opts.sounds.knocks, { start: start + 0.25, volume: 0.9 }));
+      if (opts.sounds?.scratch && doors.length) sounds.push(createSoundCue(opts.sounds.scratch, { start: start + Math.min(1.5, D * 0.3), volume: 0.9 }));
+      break;
+    }
     case 'cristalRoto':
       surfaces.forEach((s, i) => {
         if (s.kind !== 'wall') clip(s, effectSource('cracks', { width: 6 + i }), i * Math.min(0.7, step * 1.4), D - i * Math.min(0.7, step * 1.4), { fadeIn: 0, fadeOut: 0.6, z: 6 });

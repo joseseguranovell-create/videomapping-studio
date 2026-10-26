@@ -161,7 +161,7 @@ Cualquier clip puede además **viajar por la fachada** (panel derecho → «Viaj
 
 ### Efectos y plantillas
 
-**Efecto** (en la línea de tiempo) agrupa más de cuarenta efectos que se recortan a la forma de cada superficie:
+**Efecto** (en la línea de tiempo) agrupa más de cincuenta efectos que se recortan a la forma de cada superficie:
 
 - **Bordes y contornos**: neón, contorno que se dibuja, luces de feria y **cometa** (una bola de luz que recorre el borde). Siguen el borde exacto de cada ventana o puerta y **su halo ilumina la pared de alrededor**.
 - **Ventanas falsas**: **sombra que pasa** (alguien cruza la casa por dentro, de ventana en ventana), **cortinas** que se abren, **contraventanas** y **vidriera**.
@@ -169,13 +169,16 @@ Cualquier clip puede además **viajar por la fachada** (panel derecho → «Viaj
 - **Magia**: **portal**, **remolino**, **sello de runas**, **explosión de luz**, **polvo de hada** y **burbujas**.
 - **La casa despierta**: **ojo gigante** (se abre, mira alrededor y parpadea) y **boca** (sonríe, se ríe, hace «¡oh!» y bosteza).
 - **Halloween**: **ojos en la oscuridad**, **espíritus**, niebla y fuego.
+- **Terror**: **sangre que gotea**, **manos en el cristal**, **arañazos** y **luz que falla** (un fluorescente que tiembla y se apaga: puesto en todas las superficies, toda la casa sufre el apagón a la vez).
+- **Casa encantada**: **telarañas** en las esquinas, **murciélagos** que cruzan la fachada y **arañas** que bajan por su hilo.
+- **Escena del crimen**: **cinta policial «NO PASAR»** que se desenrolla y ondea, **sirena** roja y azul y **focos que buscan** por la fachada (a ratos coinciden en un punto, como si encontraran a alguien).
 - **Navidad e invierno**: nieve, **escarcha**, **aurora boreal**, **estrellas fugaces** y estrellas.
 - **Fiesta**: **confeti**, **corazones** y **farolillos**.
 - **Luz y ambiente**: vela, resplandor, barrido, arcoíris, color, lluvia y luciérnagas.
 
-Cada efecto tiene dos colores y, con «Continuo en toda la fachada», va sincronizado entre ventanas (el relámpago ilumina toda la casa a la vez, la sombra cruza de una a otra).
+Cada efecto tiene dos colores y, con «Continuo en toda la fachada», va sincronizado entre ventanas (el relámpago ilumina toda la casa a la vez, la sombra cruza de una a otra). **Para que un efecto se vea en toda la casa, ponlo en todas las superficies** (las plantillas ya lo hacen).
 
-**Plantilla** genera en un clic una coreografía en todas las superficies, escalonada de izquierda a derecha: neón que se dibuja, **la casa despierta**, **portales mágicos**, cascada de luz, tormenta (con truenos sincronizados), ojos en la oscuridad, **alguien pasa por dentro**, **se abre el telón**, **cristales rotos**, luces de feria, barrido, ventanas en llamas, **noche de Navidad**, **fuegos artificiales**, **¡fiesta!**, nieve mágica y luciérnagas. Después puedes retocar cada clip o deshacer con Ctrl+Z.
+**Plantilla** genera en un clic una coreografía en todas las superficies, escalonada de izquierda a derecha: neón que se dibuja, **la casa despierta**, **portales mágicos**, cascada de luz, tormenta (con truenos sincronizados), ojos en la oscuridad, **alguien pasa por dentro**, **se abre el telón**, **cristales rotos**, luces de feria, barrido, ventanas en llamas, **noche de Navidad**, **fuegos artificiales**, **¡fiesta!**, nieve mágica, luciérnagas y, para dar miedo, **se va la luz**, **la casa sangra**, **algo quiere entrar** (manos y zarpazos), **escena del crimen** y **casa encantada**. Si el proyecto tiene el paquete «Sonidos de terror», las plantillas de miedo añaden también su sonido (apagón, goteo, golpes, arañazo, sirena). Después puedes retocar cada clip o deshacer con Ctrl+Z.
 
 **Siluetas (sombras chinescas):** en cualquier clip de personaje, activa «Silueta». Pon debajo una luz en la ventana (luz de vela o color), y el personaje se verá como una sombra pasando por detrás de la cortina.
 

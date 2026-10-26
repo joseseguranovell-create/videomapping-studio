@@ -16,7 +16,7 @@ import {
   MOTION_PRESETS, MOTION_LABELS, EFFECT_KINDS, EFFECT_LABELS, TEXT_FONTS, TEXT_FONT_LABELS, CONTOUR_EFFECTS, FACADE_EFFECTS, type EffectKind, type Clip, type Scene, type Show, type SoundCue, type MusicTrack, type Project, type LightCue, type LightAction, LIGHT_ACTIONS, LIGHT_ACTION_LABELS,
 } from '../../../shared/model';
 import { layoutShow, formatTime } from '../../../shared/timeline';
-import { applyTemplate, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
+import { applyTemplate, templateSounds, TEMPLATE_KINDS, TEMPLATE_INFO } from '../../../shared/templates';
 import { transport } from '../services';
 import { ShowWizard } from '../components/ShowWizard';
 import { ChoreoModal, type ChoreoPreset } from '../components/ChoreoModal';
@@ -844,7 +844,7 @@ function SceneTimeline({ show }: { show: Show }) {
                 data-testid={`template-${k}`}
                 onClick={() => {
                   const thunder = project.assets.find((a) => a.kind === 'audio' && (a.tags.includes('trueno') || /trueno/i.test(a.name)));
-                  const r = applyTemplate(k, inst, scene, { start: startAt, thunderAssetId: thunder?.id ?? null });
+                  const r = applyTemplate(k, inst, scene, { start: startAt, thunderAssetId: thunder?.id ?? null, sounds: templateSounds(project.assets) });
                   mutScene(false, (sc) => { sc.clips.push(...r.clips); sc.sounds.push(...r.sounds); }, `Plantilla: ${TEMPLATE_INFO[k].name}`);
                   if (k === 'tormenta' && !thunder) useStore.getState().toast('info', 'Añade un sonido con «trueno» en el nombre (el paquete Halloween incluye uno) para que suenen truenos.', 7000);
                   setPicker(null);
@@ -887,6 +887,9 @@ const EFFECT_GROUPS: { title: string; kinds: EffectKind[] }[] = [
   { title: 'Ventanas falsas (sobre las reales)', kinds: ['shadowPass', 'curtains', 'shutters', 'stainedGlass'] },
   { title: 'Impacto', kinds: ['lightning', 'cracks', 'glitch', 'pulse', 'searchlight', 'fireworks'] },
   { title: 'Halloween', kinds: ['eyes', 'spirits', 'fog', 'fire'] },
+  { title: 'Terror', kinds: ['blood', 'handprints', 'claws', 'powerFail'] },
+  { title: 'Casa encantada', kinds: ['cobwebs', 'bats', 'spiders'] },
+  { title: 'Escena del crimen', kinds: ['searchBeams', 'policeTape', 'policeLights'] },
   { title: 'Navidad e invierno', kinds: ['snow', 'frost', 'aurora', 'shootingStars', 'stars'] },
   { title: 'Ambiente', kinds: ['rain', 'fireflies'] },
 ];
