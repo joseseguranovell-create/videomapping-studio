@@ -64,6 +64,7 @@ export const EFFECT_MODE = {
   cobwebs: 47,
   bats: 48,
   spiders: 49,
+  slitEye: 50,
 } as const;
 
 export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2, comet: 3 } as const;
@@ -901,6 +902,34 @@ void main() {
     float rim = smoothstep(0.05, 0.0, abs(eye - 0.98));
     outc += u_color * rim * 0.5;
     col = vec4(outc, sclera);
+  } else if (u_mode == 50) {
+    // Ojo de pupila vertical para rodear un foco: la pupila es un hueco (por ahí sigue saliendo la luz real del foco),
+    // alrededor un iris de fibras con aro oscuro, el párpado se abre, mira a los lados, parpadea y la pupila se dilata.
+    vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
+    float open = smoothstep(0.0, 1.8, u_local) * (1.0 - smoothstep(max(u_dur - 1.4, 0.1), u_dur, u_local));
+    float bl = mod(t + 2.1, 5.3);
+    float blink = 1.0 - (smoothstep(0.0, 0.07, bl) - smoothstep(0.11, 0.21, bl));
+    float lid = open * blink;
+    vec2 look = vec2(0.11 * sin(t * 0.6) + 0.05 * sin(t * 1.7), 0.025 * sin(t * 0.8));
+    float ax = d.x / 0.47;
+    float H = 0.31 * lid * pow(max(0.0, 1.0 - ax * ax), 0.8);          // semialtura entre párpados
+    float inside = step(abs(d.y), H) * step(abs(ax), 1.0);
+    float edge = smoothstep(0.014, 0.0, abs(abs(d.y) - H)) * step(abs(ax), 1.0) * smoothstep(0.0, 0.06, lid);
+    vec2 ip = d - look;
+    float r = length(ip);
+    float ang = atan(ip.y, ip.x);
+    float irisMask = smoothstep(0.27, 0.25, r);
+    float fib = 0.62 + 0.38 * sin(ang * 38.0 + sin(ang * 9.0 + t * 0.5) * 0.7) * (0.65 + 0.35 * sin(r * 80.0));
+    vec3 iris = mix(u_color2 * 1.5, u_color, smoothstep(0.03, 0.2, r)) * fib;
+    iris += u_color * 0.4 * smoothstep(0.08, 0.0, abs(r - 0.09));
+    iris *= 1.0 - 0.75 * smoothstep(0.18, 0.27, r);                    // aro oscuro del iris
+    float dil = 0.5 + 0.5 * sin(t * 0.8);
+    float sw = mix(0.026, 0.075, dil);
+    float pupil = smoothstep(sw, sw * 0.55, abs(ip.x)) * smoothstep(0.225, 0.19, abs(ip.y));
+    float a = inside * irisMask * (1.0 - pupil);
+    vec3 rim = (u_color * 1.3 + vec3(0.3, 0.2, 0.1)) * edge;
+    float halo = exp(-r * 8.0) * 0.28 * lid;
+    col = vec4(clamp(iris * a + rim + u_color * halo, 0.0, 1.0), clamp(a + edge + halo, 0.0, 1.0));
   } else if (u_mode == 34) {
     // Boca (la casa despierta): sonríe, se ríe, hace «¡oh!» y bosteza, en un ciclo de 8 s.
     vec2 d = (c - vec2(0.5, 0.45)) * vec2(u_aspect, 1.0);

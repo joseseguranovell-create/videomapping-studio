@@ -34,6 +34,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   6: (doc) => ({ ...doc, schemaVersion: 7 }),
   // Versión 7 → 8: encuadre de la foto de referencia (`referenceCrop`, opcional en cada instalación).
   7: (doc) => ({ ...doc, schemaVersion: 8 }),
+  // Versión 8 → 9: efecto «slitEye» (ojo de pupila vertical). Nada que convertir.
+  8: (doc) => ({ ...doc, schemaVersion: 9 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

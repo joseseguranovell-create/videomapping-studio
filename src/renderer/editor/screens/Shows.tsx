@@ -881,7 +881,7 @@ function SceneTimeline({ show }: { show: Show }) {
 const EFFECT_GROUPS: { title: string; kinds: EffectKind[] }[] = [
   { title: 'Bordes y contornos (brillan fuera de la superficie)', kinds: ['neon', 'drawOn', 'chase', 'comet'] },
   { title: 'Magia', kinds: ['portal', 'vortex', 'runes', 'burst', 'fairyDust', 'bubbles'] },
-  { title: 'La casa despierta', kinds: ['bigEye', 'mouth'] },
+  { title: 'La casa despierta', kinds: ['bigEye', 'slitEye', 'mouth'] },
   { title: 'Fiesta', kinds: ['confetti', 'hearts', 'lanterns'] },
   { title: 'Luz y color', kinds: ['flicker', 'glow', 'sweep', 'rainbow', 'solid'] },
   { title: 'Ventanas falsas (sobre las reales)', kinds: ['shadowPass', 'curtains', 'shutters', 'stainedGlass'] },

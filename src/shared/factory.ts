@@ -301,6 +301,7 @@ export const EFFECT_DEFAULTS: Record<EffectKind, { color: string; color2: string
   cobwebs: { color: '#dcdcf0', color2: '#8080a0', space: 'surface' },
   bats: { color: '#b7a6e8', color2: '#3a1d63', space: 'facade' },
   spiders: { color: '#9b7bff', color2: '#3a1a5a', space: 'surface' },
+  slitEye: { color: '#ff9a1a', color2: '#4a0a00' },
   comet: { color: '#ff8a1c', color2: '#ffffff', width: 5 },
 };
 

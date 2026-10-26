@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -179,6 +179,8 @@ export const EFFECT_KINDS = [
   'portal', 'burst', 'vortex', 'runes', 'bigEye', 'mouth', 'bubbles', 'confetti', 'fairyDust', 'hearts', 'lanterns',
   'blood', 'handprints', 'claws', 'powerFail',
   'searchBeams', 'policeTape', 'policeLights', 'cobwebs', 'bats', 'spiders',
+  // ojo de pupila vertical para rodear un foco
+  'slitEye',
   // contorno: bola de luz que recorre el borde
   'comet',
 ] as const;
@@ -509,6 +511,7 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   cobwebs: 'Telarañas',
   bats: 'Murciélagos',
   spiders: 'Arañas que bajan',
+  slitEye: 'Ojo de pupila vertical (para un foco)',
   comet: 'Cometa por el contorno',
 };
 

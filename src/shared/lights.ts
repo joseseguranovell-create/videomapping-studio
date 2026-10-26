@@ -307,7 +307,7 @@ export function autoLights(show: Show, devices: LightDevice[]): Show {
     } else if (fx.has('fire') || fx.has('flicker') || fx.has('lanterns') || /vela|fuego|incendio|espera/.test(name)) {
       all({ action: 'candle', color: fx.has('fire') ? '#ff4a00' : '#ff8a2a', brightness: 0.7, duration: D, rate: 1.5 });
       plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'off' })));
-    } else if (fx.has('eyes') || fx.has('bigEye') || fx.has('shadowPass') || fx.has('spirits')) {
+    } else if (fx.has('eyes') || fx.has('bigEye') || fx.has('slitEye') || fx.has('shadowPass') || fx.has('spirits')) {
       all({ action: 'off', transition: 1.5 });
       plugs.forEach((d) => L.push(createLightCue(d.id, { action: 'off' })));
     } else {
