@@ -209,6 +209,32 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
+float edgeD(vec2 p, vec2 a, vec2 b) { return (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y); }
+/** Triángulo suave (1 dentro, 0 fuera); el borde se difumina e = ancho en unidades locales. */
+float triM(vec2 p, vec2 a, vec2 b, vec2 c, float e) {
+  float s = sign(edgeD(c, a, b));
+  float d = min(edgeD(p, a, b) * s / length(b - a), min(edgeD(p, b, c) * s / length(c - b), edgeD(p, c, a) * s / length(a - c)));
+  return smoothstep(0.0, e, d);
+}
+/** Murciélago de frente: cuerpo, cabeza con orejas y alas con dedos y borde festoneado. p en el espacio de la figura (arriba = -y), f = aleteo -1..1. */
+float batMask(vec2 p, float f, float e) {
+  vec2 q2 = vec2(abs(p.x), p.y);
+  vec2 S = vec2(0.09, -0.06);
+  vec2 W = vec2(0.5, -0.1 - 0.42 * f);
+  vec2 T1 = W + vec2(0.46, 0.3 - 0.5 * f);
+  vec2 T2 = W + vec2(0.3, 0.52 - 0.34 * f);
+  vec2 T3 = W + vec2(0.04, 0.58 - 0.14 * f);
+  vec2 B = vec2(0.11, 0.36);
+  float m = triM(q2, S, W, T1, e);
+  m = max(m, triM(q2, S, T1, T2, e));
+  m = max(m, triM(q2, S, T2, T3, e));
+  m = max(m, triM(q2, S, T3, B, e));
+  m = max(m, smoothstep(1.0, 1.0 - e * 4.0, length((q2 - vec2(0.0, 0.08)) / vec2(0.14, 0.3))));
+  m = max(m, smoothstep(1.0, 1.0 - e * 4.0, length((q2 - vec2(0.0, -0.3)) / vec2(0.1, 0.1))));
+  m = max(m, triM(q2, vec2(0.02, -0.36), vec2(0.1, -0.35), vec2(0.085, -0.58), e));
+  return m;
+}
+
 void main() {
   vec3 s = u_toSurface * vec3(v_pos, 1.0);
   if (s.z <= 0.0) discard;
@@ -314,17 +340,38 @@ void main() {
     float a = clamp(f * 1.15 + bolt * 1.5, 0.0, 1.0);
     col = vec4(mix(u_color2, mix(u_color, vec3(1.0), 0.35), clamp(f + bolt, 0.0, 1.0)) * a, a);
   } else if (u_mode == 10) {
-    // Fuego: ruido deformado (domain warping) que sube y se apaga con la altura.
-    float h = 1.0 - qn.y;
-    vec2 p = vec2(q.x * 3.2, h * 2.6);
-    vec2 warp = vec2(fbm(p * 0.8 + vec2(0.0, -t * 0.9)), fbm(p * 0.8 + vec2(5.2, -t * 1.1)));
-    float n = fbm(p + warp * 1.4 - vec2(0.0, t * 2.4));
-    float inten = n * (1.25 - h * 1.35);
-    inten = pow(clamp(inten * 1.7 - 0.15, 0.0, 1.0), 1.5);
-    vec3 fc = mix(u_color * 0.35, u_color, smoothstep(0.0, 0.35, inten));
-    fc = mix(fc, u_color2, smoothstep(0.35, 0.75, inten));
-    fc = mix(fc, vec3(1.0, 0.95, 0.8), smoothstep(0.85, 1.0, inten) * 0.7);
-    col = vec4(fc * inten, inten);
+    // Fuego: lenguas alargadas que suben (ruido estirado en vertical), núcleo incandescente, brasas y chispas.
+    float h = 1.0 - qn.y;                       // 0 abajo … 1 arriba
+    float w = u_global == 1 ? u_outAspect : u_aspect;
+    float x = (q.x / max(w, 0.0001)) * (3.0 + w * 2.0); // ancho de lengua independiente del tamaño de la superficie
+    float sway = (fbm(vec2(h * 1.3 - t * 0.55, 4.0)) - 0.5) * 0.9 * h;
+    vec2 p = vec2(x + sway, h * 1.5);
+    float n1 = fbm(vec2(p.x * 1.1, p.y * 0.9 - t * 1.5));
+    float n2 = fbm(vec2(p.x * 2.6 + 7.0, p.y * 1.7 - t * 2.6));
+    float n3 = vnoise(vec2(p.x * 6.0 + 3.0, p.y * 3.2 - t * 4.2));
+    float turb = n1 * 0.6 + n2 * 0.3 + n3 * 0.1;
+    float prof = 0.5 + 0.5 * smoothstep(0.0, 0.5, 1.0 - abs(fract(x * 0.5) - 0.5) * 2.0 * 0.0); // (sin perfil lateral: la lengua la dibuja el ruido)
+    float heat = ((1.0 - h * 1.05) * 0.62 + (turb - 0.5) * 1.55) * prof;
+    heat += smoothstep(0.06, 0.0, h) * 0.2;                   // lecho de brasas
+    heat = clamp(heat, 0.0, 1.0);
+    float body = smoothstep(0.12, 0.5, heat);
+    vec3 fc = mix(vec3(0.35, 0.02, 0.0), u_color, smoothstep(0.12, 0.45, heat));
+    fc = mix(fc, u_color2, smoothstep(0.45, 0.78, heat));
+    fc = mix(fc, vec3(1.0, 0.93, 0.7), smoothstep(0.9, 1.0, heat) * 0.8);
+    float a = body;
+    // chispas que se desprenden y suben
+    float sp = 0.0;
+    for (int l = 0; l < 2; l++) {
+      vec2 g = vec2(x * (2.2 + float(l)), h * (4.0 + float(l) * 2.0) - t * (0.9 + 0.7 * float(l)));
+      vec2 id = floor(g);
+      vec2 f = fract(g) - 0.5;
+      float hh = hash(id + float(l) * 19.0);
+      vec2 off = (vec2(hash(id + 2.1), hash(id + 8.3)) - 0.5) * 0.5;
+      sp += smoothstep(0.11, 0.0, length(f - off)) * step(0.86, hh) * (1.0 - smoothstep(0.2, 0.95, h)) * (0.6 + 0.4 * sin(t * 12.0 + hh * 50.0));
+    }
+    fc = mix(fc, vec3(1.0, 0.75, 0.3), clamp(sp, 0.0, 1.0));
+    a = clamp(a + sp * 0.9, 0.0, 1.0);
+    col = vec4(fc * a, a);
   } else if (u_mode == 11) {
     // Niebla que se desliza.
     float n = fbm(q * 2.2 + vec2(t * 0.06, t * 0.015)) * 0.65 + fbm(q * 4.5 - vec2(t * 0.11, 0.0)) * 0.35;
@@ -332,20 +379,27 @@ void main() {
     float a = smoothstep(0.32, 0.85, n) * 0.8 * (0.55 + 0.45 * qn.y) * edge;
     col = vec4(mix(u_color2, u_color, n) * a, a);
   } else if (u_mode == 12) {
-    // Lluvia: gotas alargadas cayendo en diagonal.
+    // Lluvia: cuatro capas de profundidad (lejos = fina y lenta, cerca = larga y rápida), inclinadas por el viento,
+    // con la cabeza de cada hilo más brillante que su cola y una bruma ligera que cae.
     float a = 0.0;
-    for (int l = 0; l < 2; l++) {
-      float s = 24.0 + float(l) * 18.0;
-      vec2 p = q * vec2(s, s * 0.35);
-      p.x += p.y * 0.12;
-      float cx = floor(p.x);
-      float off = hash1(cx * 1.7 + float(l) * 13.0);
-      float y = fract(p.y * 0.25 - t * (1.3 + off) + off * 10.0);
-      float dx = abs(fract(p.x) - 0.5);
-      a += smoothstep(0.08, 0.0, dx) * smoothstep(0.0, 0.25, y) * smoothstep(0.45, 0.25, y) * (0.5 + 0.5 * off);
+    vec2 r = vec2(q.x + q.y * 0.16, q.y);
+    for (int l = 0; l < 4; l++) {
+      float depth = float(l) / 3.0;
+      float dens = 150.0 - 80.0 * depth;
+      float id = floor(r.x * dens);
+      float fx = fract(r.x * dens) - 0.5;
+      float hh = hash1(id * 7.13 + float(l) * 31.7);
+      float present = step(0.3, hash1(id * 3.77 + float(l) * 5.3));
+      float speed = 1.0 + 1.6 * depth + hh * 0.5;
+      float y = fract(r.y * (0.5 + 0.2 * depth) - t * speed + hh * 9.0);
+      float len = 0.16 + 0.22 * depth;
+      float streak = (1.0 - smoothstep(len - 0.004, len, y)) * pow(y / len, 2.2);
+      float line = smoothstep(0.10 + 0.08 * depth, 0.0, abs(fx));
+      a += streak * line * present * (0.45 + 0.55 * depth);
     }
-    a = clamp(a, 0.0, 1.0) * 0.85;
-    col = vec4(u_color * a, a);
+    float mist = fbm(vec2(q.x * 2.5 + q.y * 0.4, q.y * 1.6 - t * 1.4));
+    a = clamp(a * 0.95 + (mist - 0.35) * 0.18, 0.0, 0.9);
+    col = vec4(mix(u_color, vec3(1.0), 0.25) * a, a);
   } else if (u_mode == 13) {
     // Nieve: copos de varios tamaños que caen balanceándose.
     float a = 0.0;
@@ -398,21 +452,30 @@ void main() {
       float blink = 1.0 - (smoothstep(1.55, 1.62, lt) - smoothstep(1.66, 1.75, lt));
       float o = open * blink;
       vec2 cen = vec2(0.3 + 0.4 * h2, 0.35 + 0.3 * h3);
-      float sep = 0.26 + 0.06 * h;
-      float rx = 0.1 + 0.03 * h3, ry = 0.075;
+      float sep = 0.34 + 0.06 * h;
+      float rx = 0.1 + 0.03 * h3, ry = 0.058 + 0.014 * h3;
       float look = 0.35 * sin(t * 0.9 + h * 20.0);
       vec3 ec = h3 > 0.5 ? u_color : u_color2;
       for (int k = 0; k < 2; k++) {
         vec2 e = cen + vec2(k == 0 ? -sep * 0.5 : sep * 0.5, 0.0);
         vec2 d = (f - e) / vec2(rx, ry * max(o, 0.001));
         // forma almendrada: más estrecha en los extremos
-        float dist = length(vec2(d.x, d.y * (1.0 + 0.6 * d.x * d.x)));
-        float iris = smoothstep(1.0, 0.75, dist) * step(0.02, o);
-        float px = d.x - look;
-        float slit = h > 0.7 ? smoothstep(0.22, 0.12, abs(px)) : smoothstep(0.45, 0.32, length(vec2(px, d.y * 0.8)));
-        float glow = exp(-length((f - e) / vec2(rx, ry)) * 1.1) * 0.7 * o;
-        acc += ec * (iris * (1.0 - 0.92 * slit) * (0.8 + 0.4 * (1.0 - dist))) + ec * glow;
-        a += iris + glow;
+        float dist = length(vec2(d.x, d.y * (1.0 + 0.9 * d.x * d.x)));
+        float ball = smoothstep(1.0, 0.88, dist) * step(0.02, o);             // ojo (borde del párpado suave)
+        vec2 pl = vec2(d.x - look * 0.6, d.y * 0.9);
+        float rr = length(pl);
+        float dil = 0.5 + 0.5 * sin(t * 0.7 + h * 9.0);
+        float slitW = mix(0.1, 0.34, dil);
+        float pupil = h > 0.62 ? smoothstep(slitW, slitW * 0.55, abs(pl.x)) * smoothstep(0.98, 0.75, abs(d.y))
+                               : smoothstep(0.4, 0.26, rr);
+        // brillo de animal: más claro hacia el centro, aro oscuro en el borde, fibras finas en el iris
+        float fib = 0.85 + 0.15 * sin(atan(pl.y, pl.x) * 14.0 + rr * 6.0);
+        float tone = (0.5 + 0.7 * smoothstep(0.95, 0.15, rr)) * (1.0 - 0.55 * smoothstep(0.62, 1.0, dist)) * fib;
+        float glint = smoothstep(0.16, 0.0, length(d - vec2(-0.28 + look * 0.25, -0.34))) * step(0.02, o);
+        float bloom = exp(-length((f - e) / vec2(rx, ry)) * 1.5) * 0.35 * o;
+        vec3 shine = mix(ec, vec3(1.0), 0.18) * tone;
+        acc += shine * ball * (1.0 - 0.96 * pupil) + vec3(1.0) * glint * 0.9 + ec * bloom;
+        a += ball + bloom + glint;
       }
     }
     a = clamp(a, 0.0, 1.0);
@@ -450,16 +513,37 @@ void main() {
       p = (vec2(c.x * u_aspect, c.y) - vec2(X, 1.02)) / Hf; // pies en (0,0); arriba es -y
     }
     p.x *= dir;
-    float w = tt * 7.0;
-    float bob = abs(sin(w)) * 0.015;
-    p.y += bob;
-    float d = length(p - vec2(0.0, -0.86)) - 0.085;                       // cabeza
-    d = min(d, sdCapsule(p, vec2(0.0, -0.74), vec2(0.0, -0.42), 0.1));    // tronco
-    d = min(d, sdCapsule(p, vec2(0.0, -0.44), vec2(0.13 * sin(w), -0.02), 0.045));
-    d = min(d, sdCapsule(p, vec2(0.0, -0.44), vec2(-0.13 * sin(w), -0.02), 0.045));
-    d = min(d, sdCapsule(p, vec2(0.0, -0.7), vec2(-0.12 * sin(w), -0.44), 0.035));
-    d = min(d, sdCapsule(p, vec2(0.0, -0.7), vec2(0.12 * sin(w), -0.44), 0.035));
-    float sh = smoothstep(0.03, -0.01, d) * 0.92;                          // sombra suave, como sobre una cortina
+    // Persona de perfil andando: cabeza con nariz, cuello, hombros, tronco, caderas, brazos con codo y piernas con rodilla.
+    float w = tt * 5.2;
+    p.y += abs(sin(w)) * 0.02;                                    // el cuerpo sube y baja al dar cada paso
+    p.x -= 0.035 * (-p.y);                                        // ligera inclinación hacia delante
+    float d = (length((p - vec2(0.01, -0.89)) / vec2(0.07, 0.086)) - 1.0) * 0.075;   // cabeza
+    d = min(d, length(p - vec2(0.075, -0.875)) - 0.022);                               // nariz
+    d = min(d, sdCapsule(p, vec2(0.0, -0.81), vec2(0.0, -0.76), 0.034));                // cuello
+    d = min(d, sdCapsule(p, vec2(-0.015, -0.74), vec2(0.0, -0.5), 0.1));                // tronco
+    d = min(d, sdCapsule(p, vec2(-0.01, -0.5), vec2(0.0, -0.45), 0.085));               // caderas
+    for (int k = 0; k < 2; k++) {
+      float ph = w + float(k) * 3.14159;
+      float th = 0.46 * sin(ph);                                                       // muslo
+      vec2 hip = vec2(0.0, -0.45);
+      vec2 knee = hip + 0.215 * vec2(sin(th), cos(th));
+      float sa = th - 0.7 * max(0.0, sin(ph + 1.1));                                   // la pantorrilla se dobla hacia atrás
+      vec2 ankle = knee + 0.215 * vec2(sin(sa), cos(sa));
+      d = min(d, sdCapsule(p, hip, knee, 0.058));
+      d = min(d, sdCapsule(p, knee, ankle, 0.044));
+      d = min(d, sdCapsule(p, ankle, ankle + vec2(0.075, 0.012), 0.026));              // pie
+      float ta = -0.5 * sin(ph);                                                       // brazo (opuesto a la pierna)
+      vec2 sho = vec2(0.0, -0.72);
+      vec2 elb = sho + 0.18 * vec2(sin(ta), cos(ta));
+      float fa = ta + 0.35 + 0.35 * max(0.0, sin(ph));
+      vec2 hand = elb + 0.17 * vec2(sin(fa), cos(fa));
+      d = min(d, sdCapsule(p, sho, elb, 0.036));
+      d = min(d, sdCapsule(p, elb, hand, 0.03));
+    }
+    float sh = smoothstep(0.035, -0.012, d) * 0.93;                // sombra algo borrosa, como sobre una cortina
+    // la cortina: pliegues verticales y luz que cae hacia abajo
+    float fold = 0.9 + 0.1 * sin(c.x * u_aspect * 15.0 + fbm(vec2(c.x * 3.0, c.y * 1.5)) * 1.6);
+    light *= fold * (1.05 - 0.2 * c.y);
     col = vec4(mix(light, u_color2, sh), 1.0);
   } else if (u_mode == 18) {
     // Cortinas de teatro que se abren al empezar el clip y se cierran al acabar.
@@ -506,19 +590,41 @@ void main() {
   } else if (u_mode == 21) {
     // Cristal que se rompe: grietas que se extienden desde el impacto, con destello.
     vec2 p0 = vec2((0.35 + 0.3 * hash1(floor(u_param) + 3.0)) * u_aspect, 0.4 + 0.2 * hash1(floor(u_param) + 9.0));
-    vec2 d = q - p0;
+    // Cristal roto: fractura tipo telaraña. Se reparte el cristal en fragmentos (Voronoi en coordenadas log-polares:
+    // pequeños junto al impacto y cada vez mayores), las grietas son los bordes de los fragmentos y se propagan desde el golpe.
+    vec2 d = q - p0 + (vec2(vnoise(q * 9.0), vnoise(q * 9.0 + 5.0)) - 0.5) * 0.012;
     float r = length(d);
-    float ang = atan(d.y, d.x) / 6.2831 + 0.5;
-    float R = 1.6 * smoothstep(0.0, 0.35, u_local);
-    float N = 13.0;
-    float jag = (vnoise(vec2(r * 18.0, floor(ang * N))) - 0.5) * 0.35 / N;
-    float sa = fract(ang * N + jag * N);
-    float radial = smoothstep(0.012, 0.0, min(sa, 1.0 - sa) / N * 6.2831 * max(r, 0.02)) * step(r, R);
-    float ring = smoothstep(0.012, 0.0, abs(fract(r * 4.0 + vnoise(vec2(ang * 40.0, 2.0)) * 0.3) - 0.5) * 0.25) * step(r, min(R, 0.9)) * step(0.06, r);
-    float lines = clamp(radial + ring * 0.7, 0.0, 1.0) * (1.0 - smoothstep(0.6, 1.4, r));
-    float flash = exp(-u_local * 7.0) * step(0.0, u_local);
-    float a = clamp(lines + flash * 0.9, 0.0, 1.0);
-    col = vec4(mix(u_color2, u_color, lines) * a + vec3(flash), a);
+    float ang = atan(d.y, d.x);
+    float R = 1.7 * smoothstep(0.0, 0.4, u_local);
+    float NA = 15.0;
+    vec2 pc = vec2(log(r + 0.025) * 3.4, (ang / 6.2831853 + 0.5) * NA);
+    vec2 n = floor(pc), f = fract(pc);
+    float md = 8.0;
+    vec2 mr = vec2(0.0), mid = vec2(0.0);
+    for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+      vec2 g = vec2(float(i), float(j));
+      vec2 id = n + g; id.y = mod(id.y, NA);
+      vec2 rr = g + vec2(hash(id), hash(id + 17.3)) - f;
+      float dd = dot(rr, rr);
+      if (dd < md) { md = dd; mr = rr; mid = id; }
+    }
+    float me = 8.0;
+    for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++) {
+      vec2 g = vec2(float(i), float(j));
+      vec2 id = n + g; id.y = mod(id.y, NA);
+      vec2 rr = g + vec2(hash(id), hash(id + 17.3)) - f;
+      if (dot(mr - rr, mr - rr) > 0.00001) me = min(me, dot(0.5 * (mr + rr), normalize(rr - mr)));
+    }
+    float ep = me * 0.38 * max(r, 0.025);                       // distancia al borde en unidades de la superficie
+    float reach = step(r, R) * (1.0 - smoothstep(0.75, 1.5, r));
+    float crack = smoothstep(0.0032, 0.0006, ep) * reach;
+    float glow = smoothstep(0.011, 0.0, ep) * 0.22 * reach;
+    float shard = (hash(mid + 3.7) - 0.4) * 0.075 * reach * step(0.03, r); // cada fragmento refleja un poco distinto
+    float flash = exp(-u_local * 8.0) * step(0.0, u_local) * exp(-r * 2.2);
+    float chip = smoothstep(0.035, 0.0, r) * step(0.15, u_local);
+    float a = clamp(crack + glow + max(shard, 0.0) + flash * 0.8 + chip * 0.6, 0.0, 1.0);
+    vec3 cc = u_color * crack + u_color2 * (glow + max(shard, 0.0)) + vec3(1.0) * (flash * 0.8 + chip * 0.4);
+    col = vec4(clamp(cc, 0.0, 1.0), a);
   } else if (u_mode == 22) {
     // Interferencia: estática de televisión, líneas, barra que sube y saltos.
     float fr = floor(t * 24.0);
@@ -680,18 +786,32 @@ void main() {
     float lt = mod(u_local, per);
     vec2 d = (c - 0.5) * vec2(u_aspect, 1.0);
     float r = length(d), ang = atan(d.y, d.x);
-    float pre = smoothstep(0.0, 0.5, lt) * step(lt, 0.5);
-    float e = max(lt - 0.5, 0.0);
-    float R1 = e * 1.3, R2 = e * 0.8;
-    float ring = exp(-pow((r - R1) / 0.03, 2.0)) * exp(-e * 1.8) + 0.6 * exp(-pow((r - R2) / 0.05, 2.0)) * exp(-e * 2.5);
-    float rays = pow(0.5 + 0.5 * sin(ang * 14.0 + hash1(floor(u_local / per)) * 6.0), 8.0) * exp(-r * 2.5) * exp(-e * 2.0) * step(0.0, e);
-    float N = 30.0;
-    float sec = floor(ang / 6.2831 * N + 0.5);
-    float sa = sec / N * 6.2831;
-    float pr = e * (0.9 + 0.6 * hash1(sec + floor(u_local / per) * 7.0));
-    float spark = exp(-length(d - vec2(cos(sa), sin(sa)) * pr) * 90.0) * exp(-e * 1.5) * step(0.0, e);
-    float glow = exp(-r * 8.0) * (pre * 1.2 + exp(-e * 5.0));
-    vec3 cc = u_color * (ring * 1.5 + rays) + mix(u_color2, vec3(1.0), 0.4) * spark * 1.5 + vec3(1.0) * glow;
+    // Destello: carga breve, fogonazo blanco, onda de choque fina, rayos y estría horizontal de lente, y chispas con estela que caen.
+    float cyc = floor(u_local / per);
+    float seed = hash1(cyc + 3.0);
+    float pre = smoothstep(0.0, 0.45, lt) * step(lt, 0.45);
+    float e = max(lt - 0.45, 0.0);
+    float R1 = e * 1.7;
+    float shock = exp(-pow((r - R1) / 0.012, 2.0)) * exp(-e * 2.2) + 0.35 * exp(-pow((r - R1 * 0.62) / 0.03, 2.0)) * exp(-e * 3.0);
+    float rays = pow(0.5 + 0.5 * sin(ang * 22.0 + seed * 6.0), 26.0) * exp(-r * 3.2) * exp(-e * 4.5) * step(0.0, e);
+    float streak = exp(-abs(d.y) * 70.0) * exp(-abs(d.x) * 2.6) * exp(-e * 4.0) * step(0.0, e);
+    float core = (exp(-r * 22.0) * 1.6 + 0.45 / (1.0 + pow(r / 0.09, 2.0))) * exp(-e * 7.0) * step(0.0, e);
+    float charge = exp(-r * 16.0) * pre * 0.9;
+    vec3 cc = vec3(1.0, 0.97, 0.9) * (core + charge)
+            + mix(u_color, vec3(1.0), 0.35) * (rays * 1.2 + streak * 0.9)
+            + u_color * shock * 1.3;
+    // chispas: velocidades repartidas por sector, con estela y caída por gravedad
+    float N = 26.0;
+    for (int k = 0; k < 2; k++) {
+      float sec = floor(ang / 6.2831 * N + 0.5) + float(k) * 0.0;
+      float sa = sec / N * 6.2831;
+      float vv = 0.55 + 0.9 * hash1(sec * 1.7 + cyc * 7.0 + float(k) * 3.0);
+      vec2 vel = vec2(cos(sa), sin(sa)) * vv;
+      vec2 pos = vel * e * (1.0 - 0.25 * e) + vec2(0.0, 0.55 * e * e);
+      vec2 prev = vel * max(e - 0.06, 0.0) * (1.0 - 0.25 * e) + vec2(0.0, 0.55 * max(e - 0.06, 0.0) * max(e - 0.06, 0.0));
+      float sp = smoothstep(0.007, 0.0, sdCapsule(d, prev, pos, 0.0)) * exp(-e * 1.4) * step(0.0, e) * step(0.35, hash1(sec + cyc * 5.0));
+      cc += mix(u_color2, vec3(1.0, 0.85, 0.5), 0.5) * sp * 1.6;
+    }
     float a = clamp(max(max(cc.r, cc.g), cc.b), 0.0, 1.0);
     col = vec4(clamp(cc, 0.0, 1.0), a);
   } else if (u_mode == 31) {
@@ -893,13 +1013,23 @@ void main() {
       vec2 f = fract(p) - 0.5;
       float h = hash(id + float(l) * 23.0);
       if (h < 0.6) continue;
-      vec2 g = f / vec2(0.16, 0.22);
-      float body = smoothstep(1.0, 0.9, length(vec2(g.x, g.y * (g.y > 0.0 ? 0.85 : 1.15))));
-      float flick = 0.85 + 0.15 * sin(t * 9.0 + h * 30.0);
-      float inner = exp(-length(g - vec2(0.0, 0.45)) * 2.2) * flick;
-      float halo = exp(-length(f) * 6.0) * 0.4 * flick;
+      f.x += 0.04 * sin(t * 0.9 + h * 20.0);                      // se balancea
+      vec2 g = f / vec2(0.15, 0.23);
+      // farolillo de papel: cilindro algo abombado, más ancho abajo, con aro arriba y abajo
+      float hw = 0.82 + 0.18 * cos(g.y * 1.6) + 0.06 * g.y;
+      float inX = abs(g.x) / hw;
+      float body = smoothstep(1.0, 0.93, inX) * smoothstep(1.0, 0.94, abs(g.y));
+      float flick = 0.88 + 0.12 * sin(t * 8.0 + h * 30.0) + 0.05 * sin(t * 17.0 + h * 11.0);
+      // luz de la llama a través del papel: muy clara abajo, el papel se oscurece hacia los bordes y la parte alta
+      float flame = exp(-length(vec2(g.x * 1.1, g.y - 0.55)) * 2.6) * flick;
+      float paper = 0.34 + 0.4 * sqrt(max(0.0, 1.0 - inX * inX)) + 0.2 * smoothstep(0.9, -0.6, g.y);
+      float ribs = 0.9 + 0.1 * cos(g.x * 15.0 / max(hw, 0.2));
+      float cap = smoothstep(0.78, 0.9, abs(g.y));                // aros superior e inferior
       vec3 lc = mix(u_color, u_color2, hash(id + 2.0));
-      acc += lc * (body * (0.45 + inner)) + lc * halo;
+      vec3 lit = lc * (paper * ribs) + mix(lc, vec3(1.0, 0.9, 0.6), 0.55) * flame * 1.1;
+      lit = mix(lit, lc * 0.25, cap * 0.7);
+      float halo = exp(-length(f * vec2(1.0, 0.8)) * 5.5) * 0.45 * flick;
+      acc += lit * body * flick + lc * halo;
       a += body + halo;
     }
     col = vec4(clamp(acc, 0.0, 1.0), clamp(a, 0.0, 1.0));
@@ -915,18 +1045,27 @@ void main() {
     float y = q.y;
     float top = 0.04 + 0.03 * vnoise(vec2(q.x * 7.0, 1.0)) + 0.012 * sin(q.x * 37.0);
     float grow = smoothstep(0.0, 1.2, lt);
-    float len = top * grow + max(0.0, lt - h2 * 1.5) * (0.04 + 0.2 * h * h);
+    // la gota acelera como un líquido espeso (arranca despacio y coge velocidad)
+    float len = top * grow + pow(max(0.0, lt - h2 * 1.5), 1.35) * (0.025 + 0.13 * h * h);
     len = mix(top * grow, len, step(0.3, h));
-    float wq = (0.13 + 0.14 * h) / W * (1.0 - 0.5 * smoothstep(0.0, max(len, 0.001), y));
-    float dx = fx / W;
+    float wob = 0.82 + 0.36 * vnoise(vec2(y * 16.0, id * 3.3));          // grosor irregular del hilo
+    float wq = (0.12 + 0.13 * h) / W * wob * (1.0 - 0.45 * smoothstep(0.0, max(len, 0.001), y));
+    float dx = fx / W + (vnoise(vec2(y * 9.0, id)) - 0.5) * 0.05 / W;    // el hilo serpentea un poco
     float body = step(y, len) * smoothstep(wq + 0.6 / W * 0.1, wq, abs(dx));
-    float hr = (0.2 + 0.08 * h) / W;
-    float head = smoothstep(hr, hr * 0.75, length(vec2(dx, (y - len) * 0.8))) * step(0.3, h) * step(top * grow + 0.005, len);
+    float hr = (0.21 + 0.08 * h) / W;
+    vec2 hp = vec2(dx, (y - len) * 0.78);
+    float head = smoothstep(hr, hr * 0.8, length(hp)) * step(0.3, h) * step(top * grow + 0.005, len);
     float band = step(y, top * grow);
     float m = max(band, max(body, head));
-    float spec = smoothstep(0.5, 0.0, abs(dx / max(wq, 0.0001) + 0.35)) * 0.6;
-    vec3 bc = mix(u_color, u_color2, spec + 0.25 * head);
-    bc *= 0.75 + 0.25 * (1.0 - smoothstep(0.0, 1.0, y));
+    // volumen de líquido: centro más claro, bordes casi negros, brillo húmedo estrecho y reflejo en la gota
+    float prof = clamp(abs(dx) / max(max(wq, hr * head), 0.0001), 0.0, 1.0);
+    float thick = sqrt(max(0.0, 1.0 - prof * prof));
+    vec3 bc = mix(vec3(0.07, 0.0, 0.01), u_color, 0.3 + 0.7 * thick);
+    float spec = pow(clamp(1.0 - abs(dx / max(wq, 0.0001) + 0.38) * 2.6, 0.0, 1.0), 3.0) * (0.5 + 0.5 * body);
+    float bulb = smoothstep(hr * 0.45, 0.0, length(hp - vec2(-hr * 0.3, -hr * 0.3))) * head;
+    bc += vec3(1.0, 0.55, 0.55) * (spec * 0.4 + bulb * 0.8);
+    bc = mix(bc, u_color2 * 0.5, band * 0.35 * (1.0 - body));
+    bc *= 0.8 + 0.2 * (1.0 - smoothstep(0.0, 1.0, y));
     col = vec4(bc * m, m);
   } else if (u_mode == 41) {
     // Manos en el cristal: huellas que golpean una tras otra y resbalan dejando el rastro de los dedos.
@@ -950,14 +1089,20 @@ void main() {
       d = min(d, sdCapsule(p, vec2(0.09, -0.3), vec2(0.11, -0.94), 0.08));
       d = min(d, sdCapsule(p, vec2(0.25, -0.25), vec2(0.32, -0.78), 0.072));
       d = min(d, sdCapsule(p, vec2(0.28, 0.06), vec2(0.6, -0.24), 0.085));
-      float tex = (0.7 + 0.3 * vnoise(p * 14.0)) * (0.92 + 0.08 * sin(length(p - vec2(0.0, -0.3)) * 70.0));
-      float fill = smoothstep(0.02, -0.015, d) * tex;
-      // rastro de los dedos hacia arriba al resbalar
-      float trail = step(-0.95 - slide / sc, p.y) * step(p.y, -0.55) * smoothstep(0.45, 0.3, abs(p.x)) * step(0.5, vnoise(vec2(p.x * 11.0, fi))) * 0.45;
+      d += (fbm(p * 8.0 + fi * 3.0) - 0.5) * 0.06;                         // borde irregular, como una huella real
+      // presión desigual: la palma se marca menos en el centro y la huella queda a trozos
+      float press = (1.0 - 0.5 * exp(-dot(p - vec2(0.0, 0.02), p - vec2(0.0, 0.02)) * 9.0)) * (0.45 + 0.75 * fbm(p * 5.0 + fi * 7.0));
+      float ridge = 0.85 + 0.15 * sin(length(p - vec2(0.0, -0.3)) * 90.0);
+      float tex = clamp(press, 0.0, 1.0) * ridge;
+      float fill = smoothstep(0.025, -0.02, d) * smoothstep(0.2, 0.55, tex) * (0.55 + 0.45 * tex);
+      // al resbalar, los dedos dejan cuatro estelas irregulares que se van apagando
+      float fingerX = min(min(abs(p.x + 0.34), abs(p.x + 0.12)), min(abs(p.x - 0.11), abs(p.x - 0.32)));
+      float tl = slide / sc + 0.12;
+      float trail = step(p.y, -0.7) * step(-0.8 - tl, p.y) * smoothstep(0.075, 0.03, fingerX) * (0.4 + 0.6 * vnoise(vec2(p.x * 26.0, p.y * 7.0))) * (1.0 - clamp((-0.7 - p.y) / tl, 0.0, 1.0)) * 0.55;
       float appear = smoothstep(0.0, 0.08, lt);
       float flash = exp(-lt * 10.0) * smoothstep(0.1, -0.05, d) * 0.6;
       float m = max(fill, trail) * appear;
-      acc = max(acc, mix(u_color2, u_color, tex) * m + vec3(flash));
+      acc = max(acc, mix(u_color2, u_color, tex) * m + u_color * flash * 0.7);
       a = max(a, max(m, flash));
     }
     col = vec4(acc, clamp(a, 0.0, 1.0));
@@ -1039,28 +1184,37 @@ void main() {
     float AS = u_global == 1 ? u_outAspect : u_aspect;
     vec3 acc = vec3(0.0);
     float a = 0.0;
-    for (int b = 0; b < 2; b++) {
+    // Tres cintas tensadas con holgura (catenaria), que ondean y se retuercen: al girar, la cinta se estrecha y
+    // enseña su cara trasera, más oscura y sin letras. Plástico mate, amarillo apagado, con grano y bordes más oscuros.
+    for (int b = 0; b < 3; b++) {
       float fb = float(b);
-      float ang = b == 0 ? 0.16 : -0.2;
-      vec2 cen = vec2(AS * 0.5, b == 0 ? 0.42 : 0.6);
+      float ang = b == 0 ? 0.13 : (b == 1 ? -0.17 : 0.05);
+      vec2 cen = vec2(AS * 0.5, b == 0 ? 0.3 : (b == 1 ? 0.55 : 0.8));
       vec2 dir = vec2(cos(ang), sin(ang));
       vec2 pq = q - cen;
       float u = dot(pq, dir);
       float v = dot(pq, vec2(-dir.y, dir.x));
-      v -= 0.012 * sin(u * 9.0 - t * 3.0 + fb * 2.0) + 0.04 * (u * u) * 2.0;
-      float W = 0.052;
+      float halfL = AS * 0.62;
+      float x01 = clamp(u / halfL, -1.0, 1.0);
+      v -= (0.045 + 0.02 * fb) * (1.0 - x01 * x01);                                     // catenaria
+      float wind = 0.0035 * sin(u * 13.0 - t * 4.1 + fb * 2.0) + 0.0025 * sin(u * 29.0 - t * 6.7 + fb);
+      v -= wind * (1.0 + 2.0 * abs(x01));
+      float tw = cos(u * 4.6 + t * 0.8 + fb * 2.3 + sin(t * 0.37 + fb) * 1.5);          // giro de la cinta
+      float W = 0.027 * (0.32 + 0.68 * abs(tw));
       float unroll = (u + AS * 0.75) / (AS * 1.5);
-      float shown = step(unroll, smoothstep(0.0, 1.3, u_local - fb * 0.5) * 1.05);
-      float inBand = smoothstep(W, W * 0.92, abs(v)) * shown;
+      float shown = step(unroll, smoothstep(0.0, 1.3, u_local - fb * 0.45) * 1.05);
+      float inBand = smoothstep(W + 0.0016, W - 0.0016, abs(v)) * shown;
       if (inBand <= 0.0) continue;
-      float cell = W * 2.0 * 0.62 / 9.0 * 6.0;
+      float cell = 0.027 * 2.0 * 0.62 / 9.0 * 6.0;
       float uu = (u + AS) / cell;
       int ci = int(mod(floor(uu), 10.0));
       vec2 f = vec2(fract(uu), (v + W * 0.62) / (W * 2.0 * 0.62));
-      float letter = (f.y >= 0.0 && f.y < 1.0) ? glyph57(TAPE_TEXT[ci], vec2(f.x, f.y)) : 0.0;
-      float edge = smoothstep(W * 0.82, W * 0.86, abs(v));
-      float shade = 0.82 + 0.18 * sin(u * 9.0 - t * 3.0 + fb * 2.0);
-      vec3 tc = mix(u_color, u_color2, max(letter, edge * 0.7)) * shade;
+      float letter = (f.y >= 0.0 && f.y < 1.0 && tw > 0.0) ? glyph57(TAPE_TEXT[ci], vec2(f.x, f.y)) : 0.0;
+      float edge = smoothstep(0.72, 1.0, abs(v) / max(W, 0.0001));
+      float shade = (0.55 + 0.45 * abs(tw)) * (0.9 + 0.1 * sin(u * 9.0 - t * 3.0 + fb * 2.0));
+      float grain = 0.94 + 0.06 * vnoise(vec2(u * 140.0, v * 140.0));
+      vec3 base = tw > 0.0 ? u_color : u_color * 0.62;
+      vec3 tc = mix(base, u_color2, letter * 0.92) * shade * grain * (1.0 - 0.35 * edge);
       acc = mix(acc, tc, inBand);
       a = max(a, inBand);
     }
@@ -1114,17 +1268,20 @@ void main() {
       if (dirx < 0.0) x = AS - x;
       float y = 0.15 + 0.55 * hash1(fi * 2.1 + 4.0) + 0.06 * sin(t * 1.7 + fi * 3.0);
       float sc = 0.06 + 0.07 * hash1(fi * 9.1);
+      sc *= 1.35;
       vec2 p = (q - vec2(x, y)) / sc;
+      // aleteo irregular (golpes rápidos y planeos cortos) y balanceo del cuerpo al batir
+      float ph = t * (9.0 + 3.0 * h) + fi * 2.0;
+      float flap = sin(ph) * (0.75 + 0.25 * sin(ph * 0.31 + fi)) + 0.12;
+      p.y += 0.06 * flap;
       p.x *= dirx;
-      float ax = abs(p.x);
-      float flap = sin(t * (11.0 + 4.0 * h) + fi * 2.0);
-      float body = smoothstep(1.0, 0.85, length(p / vec2(0.16, 0.3)));
-      float ears = step(ax, 0.12) * step(0.05, ax) * step(-0.42, p.y) * step(p.y, -0.2) * step(p.y, -0.2 - (0.12 - ax) * 2.0 + 0.2);
-      float top = -0.08 - 0.55 * flap * ax;
-      float bot = top + 0.42 * (1.0 - ax / 1.0) - 0.12 * abs(sin(ax * 9.0));
-      float wing = step(0.1, ax) * step(ax, 1.0) * step(top, p.y) * step(p.y, bot);
-      float m = clamp(body + wing + ears, 0.0, 1.0);
-      acc = max(acc, mix(u_color, u_color2, 0.3 + 0.4 * step(0.1, ax)) * m);
+      p *= 1.0 + 0.0 * flap;
+      float m = batMask(p, flap, 0.025);
+      float inner = batMask(p * 1.1, flap, 0.03);
+      float rim = clamp(m - inner, 0.0, 1.0);
+      // cuerpo oscuro con membrana algo más clara hacia las puntas y el borde iluminado
+      vec3 fillc = u_color2 * (0.28 + 0.16 * smoothstep(0.0, 1.0, abs(p.x)));
+      acc = max(acc, fillc * m + u_color * rim * 0.9);
       a = max(a, m);
     }
     col = vec4(acc, a);

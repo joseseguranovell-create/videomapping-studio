@@ -296,10 +296,10 @@ export const EFFECT_DEFAULTS: Record<EffectKind, { color: string; color2: string
   claws: { color: '#ff1f1a', color2: '#ffd0b0', space: 'surface' },
   powerFail: { color: '#d8f0ff', color2: '#7a9cff', space: 'facade' },
   searchBeams: { color: '#fff4d8', color2: '#cfe0ff', space: 'facade' },
-  policeTape: { color: '#ffd400', color2: '#000000', space: 'facade' },
+  policeTape: { color: '#e0b800', color2: '#0a0a0a', space: 'facade' },
   policeLights: { color: '#ff1010', color2: '#1040ff', space: 'facade' },
   cobwebs: { color: '#dcdcf0', color2: '#8080a0', space: 'surface' },
-  bats: { color: '#ff7a1a', color2: '#5a1f8c', space: 'facade' },
+  bats: { color: '#b7a6e8', color2: '#3a1d63', space: 'facade' },
   spiders: { color: '#9b7bff', color2: '#3a1a5a', space: 'surface' },
   comet: { color: '#ff8a1c', color2: '#ffffff', width: 5 },
 };
