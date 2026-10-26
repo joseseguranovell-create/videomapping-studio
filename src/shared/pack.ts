@@ -38,4 +38,13 @@ export interface PackInfo {
   characterCount: number;
   showCount: number;
   tags: string[];
+  /** Qué trae el paquete, para mostrarlo en la Biblioteca y compararlo con lo que ya hay en el proyecto. */
+  contents: PackContents;
+}
+
+export interface PackContents {
+  assets: { id: string; name: string; kind: string }[];
+  characters: { id: string; name: string }[];
+  shows: { id: string; name: string; scenes: number; duration: number }[];
+  installations: { id: string; name: string; surfaces: number }[];
 }

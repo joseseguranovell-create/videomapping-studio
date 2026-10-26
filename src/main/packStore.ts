@@ -28,6 +28,12 @@ export async function listPacks(dirs: { dir: string; builtIn: boolean }[]): Prom
         packs.push({
           id: m.id, name: m.name, description: m.description, version: m.version, license: m.license, author: m.author,
           builtIn, dir: pdir, assetCount: m.assets.length, characterCount: m.characters.length, showCount: m.shows.length, tags: m.tags,
+          contents: {
+            assets: m.assets.map((a) => ({ id: a.id, name: a.name, kind: a.kind })),
+            characters: m.characters.map((c) => ({ id: c.id, name: c.name })),
+            shows: m.shows.map((s) => ({ id: s.id, name: s.name, scenes: s.scenes.length, duration: s.scenes.filter((x) => x.enabled).reduce((t, x) => t + x.duration, 0) })),
+            installations: m.installations.map((i) => ({ id: i.id, name: i.name, surfaces: i.surfaces.length })),
+          },
         });
       } catch (err) {
         errors.push(String((err as Error).message));

@@ -216,20 +216,11 @@ function PacksModal({ onClose }: { onClose: () => void }) {
   useEffect(() => { void load(); }, []);
   return (
     <Modal title="Paquetes de contenido" onClose={onClose} wide>
-      <p className="muted small">Los paquetes reúnen personajes, animaciones, sonidos y espectáculos de ejemplo reutilizables. Al añadirlos, sus archivos se copian dentro del proyecto.</p>
-      <Toggle checked={withShows} onChange={setWithShows} label="Incluir instalaciones y espectáculos de ejemplo del paquete" />
+      <p className="muted small">Un paquete es un lote de recursos (imágenes, vídeos, sonidos), personajes y, a veces, espectáculos y la casa para los que se hicieron. Al añadirlo, sus archivos se copian dentro del proyecto. Despliega «Ver contenido» para ver qué trae y qué ya tienes.</p>
+      <Toggle checked={withShows} onChange={setWithShows} label="Incluir también las instalaciones (casas) y los espectáculos del paquete" />
       {packs === null ? <p>Cargando…</p> : packs.length === 0 ? <Empty title="No hay paquetes" /> : (
         <ul className="packs">
-          {packs.map((p) => (
-            <li key={p.id}>
-              <div>
-                <div className="pack-name"><Sparkles size={14} /> {p.name} <span className="muted small">v{p.version}{p.builtIn ? ' · incluido' : ' · usuario'}</span></div>
-                <div className="pack-desc">{p.description}</div>
-                <div className="pack-meta">{p.characterCount} personajes · {p.assetCount} recursos · {p.showCount} espectáculos{p.license ? ` · Licencia: ${p.license}` : ''}</div>
-              </div>
-              <Button variant="primary" onClick={async () => { await addPackToProject(p.id, withShows); onClose(); }} data-testid={`add-pack-${p.id}`}>Añadir al proyecto</Button>
-            </li>
-          ))}
+          {packs.map((p) => <PackCard key={p.id} p={p} withShows={withShows} onClose={onClose} />)}
         </ul>
       )}
       {errors.map((e, i) => <div key={i} className="banner error small">{e}</div>)}
@@ -240,6 +231,72 @@ function PacksModal({ onClose }: { onClose: () => void }) {
         <Button onClick={() => void vm.packs.openUserPacksFolder()}>Abrir carpeta de paquetes</Button>
       </div>
     </Modal>
+  );
+}
+
+const KIND_PLURAL: Record<string, string> = { image: 'Imágenes', video: 'Vídeos', audio: 'Sonidos y música', sequence: 'Secuencias' };
+
+/** Tarjeta de un paquete: resumen, qué trae y qué parte ya está en el proyecto. */
+function PackCard({ p, withShows, onClose }: { p: PackInfo; withShows: boolean; onClose: () => void }) {
+  const project = useStore((s) => s.project)!;
+  const c = p.contents;
+  const haveA = new Set(project.assets.map((a) => a.id));
+  const haveC = new Set(project.characters.map((x) => x.id));
+  const haveS = new Set(project.shows.map((x) => x.id));
+  const haveI = new Set(project.installations.map((x) => x.id));
+  const missA = c.assets.filter((a) => !haveA.has(a.id)).length;
+  const missC = c.characters.filter((x) => !haveC.has(x.id)).length;
+  const missS = withShows ? c.shows.filter((x) => !haveS.has(x.id)).length : 0;
+  const missI = withShows ? c.installations.filter((x) => !haveI.has(x.id)).length : 0;
+  const missing = missA + missC + missS + missI;
+  const total = c.assets.length + c.characters.length;
+  const have = total - missA - missC;
+  const mark = (ok: boolean) => ok ? <span className="pk-ok">✓ ya está</span> : <span className="pk-no">falta</span>;
+  const byKind: Record<string, typeof c.assets> = {};
+  c.assets.forEach((a) => { (byKind[a.kind] ??= []).push(a); });
+  return (
+    <li className="pack-card" data-testid={`pack-${p.id}`}>
+      <div className="pack-head">
+        <div>
+          <div className="pack-name"><Sparkles size={14} /> {p.name} <span className="muted small">v{p.version}{p.builtIn ? ' · incluido' : ' · tuyo'}</span></div>
+          <div className="pack-desc">{p.description}</div>
+          <div className="pack-meta">
+            {c.assets.length} recursos · {c.characters.length} personajes · {c.shows.length} espectáculos · {c.installations.length} casa(s)
+            {p.license ? ` · Licencia: ${p.license}` : ''}
+          </div>
+          <div className="pack-state">
+            {missing === 0
+              ? <span className="pk-ok">✓ Ya lo tienes todo en este proyecto</span>
+              : have > 0
+                ? <span className="pk-part">Tienes {have} de {total} · faltan {missing}</span>
+                : <span className="pk-no">Aún no está en este proyecto</span>}
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          disabled={missing === 0}
+          onClick={async () => { await addPackToProject(p.id, withShows); onClose(); }}
+          data-testid={`add-pack-${p.id}`}
+        >
+          {missing === 0 ? 'Ya añadido' : have > 0 ? `Añadir lo que falta (${missing})` : 'Añadir al proyecto'}
+        </Button>
+      </div>
+      <details className="pack-detail">
+        <summary>Ver contenido</summary>
+        {c.installations.length > 0 && (
+          <div className="pk-sec"><b>Casas</b>{c.installations.map((i) => <div key={i.id} className="pk-row"><span>{i.name} <span className="muted small">({i.surfaces} superficies)</span></span>{mark(haveI.has(i.id))}</div>)}</div>
+        )}
+        {c.shows.length > 0 && (
+          <div className="pk-sec"><b>Espectáculos</b>{c.shows.map((s) => <div key={s.id} className="pk-row"><span>{s.name} <span className="muted small">({s.scenes} escenas, {formatTime(s.duration)})</span></span>{mark(haveS.has(s.id))}</div>)}</div>
+        )}
+        {c.characters.length > 0 && (
+          <div className="pk-sec"><b>Personajes</b>{c.characters.map((x) => <div key={x.id} className="pk-row"><span>{x.name}</span>{mark(haveC.has(x.id))}</div>)}</div>
+        )}
+        {Object.entries(byKind).map(([k, list]) => (
+          <div key={k} className="pk-sec"><b>{KIND_PLURAL[k] ?? k} ({list.length})</b>{list.map((a) => <div key={a.id} className="pk-row"><span>{a.name}</span>{mark(haveA.has(a.id))}</div>)}</div>
+        ))}
+      </details>
+    </li>
   );
 }
 
