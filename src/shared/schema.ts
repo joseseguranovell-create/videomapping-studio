@@ -32,6 +32,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   5: (doc) => ({ ...doc, schemaVersion: 6 }),
   // Versión 6 → 7: luces de casa (lista de luces del proyecto y pista de luces en cada escena).
   6: (doc) => ({ ...doc, schemaVersion: 7 }),
+  // Versión 7 → 8: encuadre de la foto de referencia (`referenceCrop`, opcional en cada instalación).
+  7: (doc) => ({ ...doc, schemaVersion: 8 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

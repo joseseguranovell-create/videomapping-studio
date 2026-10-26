@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useStore, selInstallation, type Pattern } from '../store';
 import { SurfaceCanvas } from '../components/SurfaceCanvas';
+import { FacadeWizard } from '../components/FacadeWizard';
 import { Button, Field, TextInput, NumberInput, Select, Toggle, Panel, Empty, confirmDialog, promptDialog, Slider, formatDate } from '../components/ui';
 import { createInstallation, createSurface, duplicateInstallation, cloneDeep } from '../../../shared/factory';
 import { newId } from '../../../shared/ids';
@@ -28,15 +29,17 @@ export function CalibrateScreen() {
   const inst = useStore(selInstallation);
   const set = useStore((s) => s.set);
   const update = useStore((s) => s.update);
+  const [wizard, setWizard] = React.useState(false);
 
   if (!project.installations.length || !inst) {
     return (
       <div className="screen center">
+        {wizard && <FacadeWizard onClose={() => setWizard(false)} />}
         <Empty icon={<Building2 size={40} />} title="Crea una instalación para empezar">
           Una instalación representa el lugar donde se proyecta: una fachada, un escaparate, un escenario…
           <div style={{ marginTop: 16 }}>
+            <Button variant="primary" icon={<ImageIcon size={16} />} data-testid="facade-wizard" onClick={() => setWizard(true)}>Crear fachada desde una foto</Button>{' '}
             <Button
-              variant="primary"
               icon={<Plus size={16} />}
               data-testid="create-installation"
               onClick={async () => {
@@ -61,8 +64,9 @@ export function CalibrateScreen() {
 
   return (
     <div className="screen calibrate">
+      {wizard && <FacadeWizard onClose={() => setWizard(false)} />}
       <aside className="side left">
-        <InstallationPicker inst={inst} />
+        <InstallationPicker inst={inst} onWizard={() => setWizard(true)} />
         <SurfaceList inst={inst} />
       </aside>
       <section className="center-col">
@@ -76,7 +80,7 @@ export function CalibrateScreen() {
   );
 }
 
-function InstallationPicker({ inst }: { inst: Installation }) {
+function InstallationPicker({ inst, onWizard }: { inst: Installation; onWizard: () => void }) {
   const project = useStore((s) => s.project)!;
   const set = useStore((s) => s.set);
   const update = useStore((s) => s.update);
@@ -85,6 +89,7 @@ function InstallationPicker({ inst }: { inst: Installation }) {
       title="Instalación"
       actions={
         <>
+          <Button small variant="ghost" icon={<ImageIcon size={15} />} title="Crear una fachada nueva desde una foto (asistente)" data-testid="facade-wizard-open" onClick={onWizard} />
           <Button
             small
             variant="ghost"

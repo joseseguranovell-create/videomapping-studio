@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -71,6 +71,8 @@ export const Installation = z.object({
   /** Foto de referencia opcional de la fachada (solo se ve en el editor). */
   referenceImageAssetId: z.string().nullable().default(null),
   referenceImageOpacity: z.number().min(0).max(1).default(0.5),
+  /** Zona de la foto (0..1 de la foto) que cubre el fotograma del proyector. null = la foto entera, estirada. */
+  referenceCrop: z.object({ x: z.number(), y: z.number(), w: z.number().positive(), h: z.number().positive() }).nullable().default(null),
   calibratedAt: z.string().nullable().default(null),
   createdAt: z.string(),
   updatedAt: z.string(),

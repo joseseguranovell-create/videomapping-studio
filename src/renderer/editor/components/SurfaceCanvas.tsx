@@ -18,6 +18,7 @@ import type { Installation, Mask, Surface, Vec2, Quad } from '../../../shared/mo
 import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateSurface, translatePoints, quadFromBBox } from '../../../shared/geometry';
 import { createMask, createPolygonSurface, createSurface } from '../../../shared/factory';
 import { SURFACE_KIND_LABELS } from '../../../shared/model';
+import { cropStyle } from '../../../shared/crop';
 import { confirmDialog } from './ui';
 
 type Target = 'quad' | 'polygon' | 'mask';
@@ -462,7 +463,9 @@ export function SurfaceCanvas() {
       >
         <canvas ref={glRef} className="stage-gl" data-testid="calib-gl" />
         {refAsset && (
-          <img className="stage-ref" src={mediaUrl(mediaBase(), refAsset.file, projectKey)} style={{ opacity: inst.referenceImageOpacity }} alt="" draggable={false} />
+          <div className="stage-ref-box" style={{ opacity: inst.referenceImageOpacity }}>
+            <img className="stage-ref-img" src={mediaUrl(mediaBase(), refAsset.file, projectKey)} style={cropStyle(inst.referenceCrop)} alt="" draggable={false} />
+          </div>
         )}
         <svg
           ref={svgRef}

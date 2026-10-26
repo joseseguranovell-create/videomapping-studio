@@ -61,8 +61,16 @@ describe('formato de proyecto', () => {
     p.shows[0].scenes[0].clips.push(createClip(p.installations[0].surfaces[0].id, { type: 'text', text: 'Hola', font: 'divertida', color: '#fff', outline: '#000', glow: true, bold: true }));
     const r = parseProject(p);
     expect(r.migratedFrom).toBe(3);
-    expect(r.project.schemaVersion).toBe(7);
+    expect(r.project.schemaVersion).toBe(SCHEMA_VERSION);
     expect(r.project.shows[0].scenes[0].clips[1].source).toMatchObject({ type: 'text', font: 'divertida' });
+  });
+  it('migra v7 → v8: la foto de referencia queda sin encuadre', () => {
+    const p = sample() as any;
+    p.schemaVersion = 7;
+    for (const i of p.installations) delete i.referenceCrop;
+    const r = parseProject(p);
+    expect(r.migratedFrom).toBe(7);
+    expect(r.project.installations[0].referenceCrop).toBeNull();
   });
   it('acepta clips de texto', () => {
     const p = sample();

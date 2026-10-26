@@ -58,6 +58,7 @@ export function createInstallation(name: string, output = { width: 1920, height:
     masks: [],
     referenceImageAssetId: null,
     referenceImageOpacity: 0.5,
+    referenceCrop: null,
     calibratedAt: null,
     createdAt: t,
     updatedAt: t,

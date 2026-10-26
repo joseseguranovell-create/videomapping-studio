@@ -11,6 +11,7 @@ import { mediaUrl } from '../../engine/media';
 import { Player } from '../../engine/player';
 import { Button, Field, Modal, Select, Toggle } from './ui';
 import { layoutShow, formatTime } from '../../../shared/timeline';
+import { cropSource } from '../../../shared/crop';
 
 const TYPES: { mime: string; ext: 'mp4' | 'webm' }[] = [
   { mime: 'video/mp4;codecs=avc1.42E01F,mp4a.40.2', ext: 'mp4' },
@@ -83,7 +84,8 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
         if (img) {
           // La casa de noche y, encima, la luz del proyector.
           c2.filter = 'brightness(0.45) saturate(0.85)';
-          c2.drawImage(img, 0, 0, W, H);
+          const [sx, sy, sw, sh] = cropSource(inst?.referenceCrop ?? null, img.naturalWidth, img.naturalHeight);
+          c2.drawImage(img, sx, sy, sw, sh, 0, 0, W, H);
           c2.filter = 'none';
           c2.globalCompositeOperation = 'screen';
         } else {
