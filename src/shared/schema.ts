@@ -36,6 +36,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   7: (doc) => ({ ...doc, schemaVersion: 8 }),
   // Versión 8 → 9: efecto «slitEye» (ojo de pupila vertical). Nada que convertir.
   8: (doc) => ({ ...doc, schemaVersion: 9 }),
+  // Versión 9 → 10: clips de fachada entera (facade) y linterna que revela (reveal). Campos opcionales.
+  9: (doc) => ({ ...doc, schemaVersion: 10 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

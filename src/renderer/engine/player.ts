@@ -36,7 +36,7 @@ export interface OverlayOptions {
 
 const EFFECT_TO_MODE: Record<string, LayerMode> = {
   solid: 'solid', glow: 'glow', stars: 'stars', flicker: 'flicker', rainbow: 'rainbow', testPattern: 'testPattern',
-  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits', shadowPass: 'shadowPass', curtains: 'curtains', shutters: 'shutters', stainedGlass: 'stainedGlass', cracks: 'cracks', glitch: 'glitch', pulse: 'pulse', searchlight: 'searchlight', fireworks: 'fireworks', frost: 'frost', aurora: 'aurora', shootingStars: 'shootingStars', portal: 'portal', burst: 'burst', vortex: 'vortex', runes: 'runes', bigEye: 'bigEye', mouth: 'mouth', bubbles: 'bubbles', confetti: 'confetti', fairyDust: 'fairyDust', hearts: 'hearts', lanterns: 'lanterns', blood: 'blood', handprints: 'handprints', claws: 'claws', powerFail: 'powerFail', searchBeams: 'searchBeams', policeTape: 'policeTape', policeLights: 'policeLights', cobwebs: 'cobwebs', bats: 'bats', spiders: 'spiders', slitEye: 'slitEye',
+  sweep: 'sweep', lightning: 'lightning', fire: 'fire', fog: 'fog', rain: 'rain', snow: 'snow', fireflies: 'fireflies', eyes: 'eyes', spirits: 'spirits', shadowPass: 'shadowPass', curtains: 'curtains', shutters: 'shutters', stainedGlass: 'stainedGlass', cracks: 'cracks', glitch: 'glitch', pulse: 'pulse', searchlight: 'searchlight', fireworks: 'fireworks', frost: 'frost', aurora: 'aurora', shootingStars: 'shootingStars', portal: 'portal', burst: 'burst', vortex: 'vortex', runes: 'runes', bigEye: 'bigEye', mouth: 'mouth', bubbles: 'bubbles', confetti: 'confetti', fairyDust: 'fairyDust', hearts: 'hearts', lanterns: 'lanterns', blood: 'blood', handprints: 'handprints', claws: 'claws', powerFail: 'powerFail', searchBeams: 'searchBeams', policeTape: 'policeTape', policeLights: 'policeLights', cobwebs: 'cobwebs', bats: 'bats', spiders: 'spiders', slitEye: 'slitEye', flashlight: 'flashlight',
 };
 const CONTOUR_KINDS = new Set(['neon', 'drawOn', 'chase', 'comet']);
 /** Fundido entre escenas en el modo directo (segundos). */
@@ -536,6 +536,8 @@ export class Player {
       // Un clip que viaja por la fachada se ve también a través de las demás superficies.
       const tr = e.clip.travel;
       if (tr) for (const s of inst.surfaces) if (s.id !== e.surfaceId && (tr.surfaces.length ? tr.surfaces.includes(s.id) : s.kind !== 'wall')) push(s.id, e);
+      // Un clip de fachada entera se ve a través de todas las superficies visibles.
+      if (e.clip.facade) for (const s of inst.surfaces) if (s.id !== e.surfaceId) push(s.id, e);
     }
     const heightOf = (id: string) => {
       const s = inst.surfaces.find((x) => x.id === id);
@@ -577,7 +579,7 @@ export class Player {
           }
           continue;
         }
-        const layer = this.layerFor(e, A, keepVideos, e.clip.travel ? { homeH: heightOf(e.surfaceId), outAspect } : undefined);
+        const layer = this.layerFor(e, A, keepVideos, e.clip.travel || e.clip.facade ? { homeH: heightOf(e.surfaceId), outAspect } : undefined);
         if (layer) { layer.surfH = surfH; layer.surfBottom = surfBottom; layer.rowSplit = rowSplit; layer.sill = sill; layers.push(layer); }
       }
       this.r.drawSurface(surfaceOutline(s), H, this.exclusions(inst, s), layers);
@@ -594,8 +596,13 @@ export class Player {
     const clip = e.clip;
     const motion = { dx: e.dx, dy: e.dy, scale: e.scale, rotation: e.rotation };
     // Clips que viajan por la fachada: posición en coordenadas de salida.
+    const facadeTo = (aspect: number): Pick<Layer, 'toContent' | 'fromOutput'> | null =>
+      clip.facade && tr ? { toContent: contentMatrix(clip, tr.outAspect, aspect, motion), fromOutput: true } : null;
+    const rv = clip.reveal;
+    const sceneT = e.clipTime + clip.start;
+    const reveal = rv ? { radius: rv.radius, ambient: rv.ambient, mask: rv.mask, t: sceneT, prog: (sceneT - rv.start) / rv.duration, points: rv.points.map((p) => [p.x, p.y] as [number, number]), speed: rv.speed, phase: rv.phase } : null;
     const travelTo = (aspect: number): Pick<Layer, 'toContent' | 'fromOutput'> | null =>
-      clip.travel && tr ? { toContent: travelMatrix(travelPoint(clip.travel, e.clipTime / clip.duration), clip.scale * tr.homeH, aspect, tr.outAspect, clip, motion), fromOutput: true } : null;
+      facadeTo(aspect) ?? (clip.travel && tr ? { toContent: travelMatrix(travelPoint(clip.travel, e.clipTime / clip.duration), clip.scale * tr.homeH, aspect, tr.outAspect, clip, motion), fromOutput: true } : null);
     if (e.source.type === 'effect') {
       if (e.opacity <= 0) return null;
       return {
@@ -611,13 +618,14 @@ export class Player {
         param: e.source.width,
         aspect: surfAspect,
         global: e.source.space === 'facade',
+        reveal,
       };
     }
     if (e.source.type === 'text') {
       if (e.opacity <= 0) return null;
       const t = this.media.text(e.source);
       const fitted = { ...clip, scale: Math.min(clip.scale, textMaxScale(clip, surfAspect, t.aspect)) };
-      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity, ...travelTo(t.aspect) };
+      return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity, ...travelTo(t.aspect), reveal };
     }
     const asset = this.assets.get(e.source.assetId);
     if (!asset || this.media.errors.has(asset.id)) {
@@ -660,7 +668,7 @@ export class Player {
     if (!tex || e.opacity <= 0) return null;
     const k = asset.key;
     const key = k && k.mode !== 'none' ? { mode: (k.mode === 'color' ? 1 : 2) as 1 | 2, color: hexToRgb(k.color, [0, 1, 0]), threshold: k.threshold, softness: k.softness, despill: k.despill } : undefined;
-    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key, silhouette: clip.silhouette ? hexToRgb(clip.silhouetteColor, [0, 0, 0]) : null, ...travelTo(aspect) };
+    return { mode: 'texture', texture: tex, toContent: contentMatrix(clip, surfAspect, aspect, motion), opacity: e.opacity, key, silhouette: clip.silhouette ? hexToRgb(clip.silhouetteColor, [0, 0, 0]) : null, ...travelTo(aspect), reveal };
   }
 
   status(): OutputStatus {

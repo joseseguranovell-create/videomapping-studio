@@ -65,6 +65,7 @@ export const EFFECT_MODE = {
   bats: 48,
   spiders: 49,
   slitEye: 50,
+  flashlight: 51,
 } as const;
 
 export const CONTOUR_MODE = { neon: 0, drawOn: 1, chase: 2, comet: 3 } as const;
@@ -107,6 +108,8 @@ export interface Layer {
   rowSplit?: number;
   /** Cuánto queda por debajo del borde inferior el suelo donde pisa una figura (alturas de persona): 0 en puertas. */
   sill?: number;
+  /** Linterna que revela el contenido: radio (0..1 del alto), velocidad y fase del recorrido; null = sin linterna. */
+  reveal?: { radius: number; ambient: number; mask: boolean; t: number; prog: number; points: [number, number][]; speed: number; phase: number } | null;
   aspect?: number;
   /** El efecto usa coordenadas de toda la fachada (continuo entre superficies). */
   global?: boolean;
@@ -140,6 +143,15 @@ uniform float u_surfH;
 uniform float u_surfBottom;
 uniform float u_rowSplit;
 uniform float u_sill;
+uniform float u_revR;
+uniform float u_revSpeed;
+uniform float u_revPhase;
+uniform float u_revAmb;
+uniform int u_revMask;
+uniform int u_revN;
+uniform float u_revProg;
+uniform float u_revT;
+uniform vec2 u_revP[8];
 uniform int u_fromOutput;
 uniform float u_aspect;
 uniform vec3 u_color;
@@ -219,6 +231,22 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
+/** Centro de la linterna en coordenadas de salida: recorre los puntos definidos o deambula. */
+vec2 revCenter() {
+  vec2 cn;
+  if (u_revN >= 2) {
+    float s = clamp(u_revProg, 0.0, 1.0) * float(u_revN - 1);
+    int i = int(min(floor(s), float(u_revN - 2)));
+    float f = s - float(i);
+    f = f * f * (3.0 - 2.0 * f);
+    cn = mix(u_revP[i], u_revP[i + 1], f);
+  } else {
+    float rt = u_revT * u_revSpeed + u_revPhase;
+    cn = vec2(0.5 + 0.38 * sin(rt * 0.47) + 0.08 * sin(rt * 1.3), 0.5 + 0.3 * sin(rt * 0.79 + 1.0));
+  }
+  // pulso de mano: la linterna no está perfectamente quieta
+  return cn + vec2(0.003 * sin(u_revT * 9.0), 0.0025 * sin(u_revT * 7.3 + 1.0));
+}
 float edgeD(vec2 p, vec2 a, vec2 b) { return (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y); }
 /** Triángulo suave (1 dentro, 0 fuera); el borde se difumina e = ancho en unidades locales. */
 float triM(vec2 p, vec2 a, vec2 b, vec2 c, float e) {
@@ -930,6 +958,19 @@ void main() {
     vec3 rim = (u_color * 1.3 + vec3(0.3, 0.2, 0.1)) * edge;
     float halo = exp(-r * 8.0) * 0.28 * lid;
     col = vec4(clamp(iris * a + rim + u_color * halo, 0.0, 1.0), clamp(a + edge + halo, 0.0, 1.0));
+  } else if (u_mode == 51) {
+    // Linterna: círculo de luz con borde suave y halo que sigue el recorrido reveal del clip.
+    vec2 cn = revCenter();
+    float dR = length(vec2((v_pos.x - cn.x) * u_outAspect, v_pos.y - cn.y));
+    float rr = u_revR > 0.0 ? u_revR : 0.16;
+    float x = dR / rr;
+    float core = 1.0 / (1.0 + x * x * x * x * 2.5);              // meseta brillante con caída suave
+    float edge = smoothstep(1.5, 0.6, x);
+    vec2 dd2 = vec2((v_pos.x - cn.x) * u_outAspect, v_pos.y - cn.y);
+    float dust = 0.88 + 0.12 * vnoise(dd2 * 38.0 + vec2(u_revT * 0.5, u_revT * 0.3));   // polvo y turbulencia en el haz
+    float flick = 0.94 + 0.06 * sin(u_revT * 13.0) * sin(u_revT * 4.3);
+    float a = clamp((core * edge * 0.62 * dust * flick) + exp(-dR * 7.0) * 0.05, 0.0, 1.0);
+    col = vec4(mix(u_color2, u_color, core) * a, a);
   } else if (u_mode == 34) {
     // Boca (la casa despierta): sonríe, se ríe, hace «¡oh!» y bosteza, en un ciclo de 8 s.
     vec2 d = (c - vec2(0.5, 0.45)) * vec2(u_aspect, 1.0);
@@ -1371,6 +1412,13 @@ void main() {
     float st = step(0.5, fract((c.x + c.y) * 10.0));
     col = vec4(mix(vec3(0.35, 0.0, 0.25), vec3(0.9, 0.1, 0.6), st), 1.0);
   }
+  if (u_revR > 0.0 && u_revMask == 1) {
+    // Linterna: solo se ve lo que cae dentro del foco que recorre la casa.
+    vec2 cenR = revCenter();
+    float dR = length(vec2((v_pos.x - cenR.x) * u_outAspect, v_pos.y - cenR.y));
+    float mR = smoothstep(1.2, 0.5, dR / u_revR);
+    col *= mix(u_revAmb, 1.0, mR);
+  }
   o = col * u_opacity;
 }`;
 
@@ -1512,7 +1560,7 @@ export class GLRenderer {
     for (const n of ['u_pts', 'u_cum', 'u_n', 'u_total', 'u_width', 'u_mode', 'u_time', 'u_dur', 'u_color', 'u_color2', 'u_opacity', 'u_res', 'u_margin']) {
       this.cu[n] = gl.getUniformLocation(this.contourProg, n);
     }
-    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_surfBottom', 'u_rowSplit', 'u_sill', 'u_fromOutput', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
+    for (const n of ['u_toSurface', 'u_toContent', 'u_mode', 'u_tex', 'u_opacity', 'u_time', 'u_local', 'u_dur', 'u_param', 'u_surfH', 'u_surfBottom', 'u_rowSplit', 'u_sill', 'u_revR', 'u_revSpeed', 'u_revPhase', 'u_revAmb', 'u_revMask', 'u_revN', 'u_revProg', 'u_revT', 'u_revP', 'u_fromOutput', 'u_aspect', 'u_color', 'u_color2', 'u_keyMode', 'u_keyColor', 'u_keyTh', 'u_keySoft', 'u_despill', 'u_global', 'u_outAspect', 'u_tint', 'u_tintColor']) {
       this.u[n] = gl.getUniformLocation(this.prog, n);
     }
     this.vbo = gl.createBuffer()!;
@@ -1638,6 +1686,18 @@ export class GLRenderer {
       gl.uniform1f(this.u.u_surfBottom, l.surfBottom ?? 1);
       gl.uniform1f(this.u.u_rowSplit, l.rowSplit ?? -1);
       gl.uniform1f(this.u.u_sill, l.sill ?? 0);
+      gl.uniform1f(this.u.u_revR, l.reveal?.radius ?? 0);
+      gl.uniform1f(this.u.u_revSpeed, l.reveal?.speed ?? 1);
+      gl.uniform1f(this.u.u_revPhase, l.reveal?.phase ?? 0);
+      gl.uniform1f(this.u.u_revAmb, l.reveal?.ambient ?? 0);
+      gl.uniform1i(this.u.u_revMask, l.reveal?.mask ? 1 : 0);
+      gl.uniform1f(this.u.u_revProg, l.reveal?.prog ?? 0);
+      gl.uniform1f(this.u.u_revT, l.reveal?.t ?? 0);
+      const pts = l.reveal?.points ?? [];
+      gl.uniform1i(this.u.u_revN, pts.length);
+      const flat = new Float32Array(16);
+      pts.slice(0, 8).forEach((p, i) => { flat[i * 2] = p[0]; flat[i * 2 + 1] = p[1]; });
+      gl.uniform2fv(this.u.u_revP, flat);
       gl.uniform1i(this.u.u_fromOutput, l.fromOutput ? 1 : 0);
       gl.uniform1f(this.u.u_aspect, l.aspect ?? 1);
       gl.uniform3fv(this.u.u_color, l.color ?? [1, 1, 1]);

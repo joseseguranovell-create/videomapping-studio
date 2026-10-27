@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -181,13 +181,15 @@ export const EFFECT_KINDS = [
   'searchBeams', 'policeTape', 'policeLights', 'cobwebs', 'bats', 'spiders',
   // ojo de pupila vertical para rodear un foco
   'slitEye',
+  // linterna: círculo de luz que sigue el recorrido definido en reveal del clip
+  'flashlight',
   // contorno: bola de luz que recorre el borde
   'comet',
 ] as const;
 /** Efectos que se dibujan sobre el contorno (no recortados por la superficie). */
 export const CONTOUR_EFFECTS = ['neon', 'drawOn', 'chase', 'comet'] as const;
 /** Efectos que pueden calcularse en el espacio de toda la fachada (continuos entre ventanas). */
-export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass', 'fairyDust', 'lanterns', 'confetti', 'searchBeams', 'policeTape', 'policeLights', 'bats'] as const;
+export const FACADE_EFFECTS = ['sweep', 'lightning', 'fire', 'fog', 'rain', 'snow', 'fireflies', 'rainbow', 'stars', 'spirits', 'searchlight', 'fireworks', 'aurora', 'shootingStars', 'shadowPass', 'fairyDust', 'lanterns', 'confetti', 'searchBeams', 'policeTape', 'policeLights', 'bats', 'flashlight'] as const;
 export const EffectKind = z.enum(EFFECT_KINDS);
 export type EffectKind = z.infer<typeof EffectKind>;
 
@@ -260,6 +262,29 @@ export const Clip = z.object({
     /** Altura del arco (fracción del alto de la salida; 0 = en línea recta). */
     arc: z.number().default(0),
     surfaces: z.array(z.string()).default([]),
+  }).nullable().default(null),
+  /**
+   * Vídeo o imagen de fachada entera: el contenido cubre toda la salida (no cada superficie) y se ve a través de
+   * todas las superficies visibles, como una proyección continua sobre la casa.
+   */
+  facade: z.boolean().default(false),
+  /**
+   * Linterna: el clip solo se ve dentro de un foco de luz que recorre la fachada (en coordenadas de la salida).
+   * Usa el mismo recorrido que el efecto «Foco buscador», con speed y phase para desfasarlo.
+   */
+  reveal: z.object({
+    radius: z.number().min(0.03).max(0.8).default(0.16),
+    /** Recorrido del foco: puntos en coordenadas de salida (0..1). Vacío = deambula solo (usa speed y phase). */
+    points: z.array(Vec2).max(8).default([]),
+    /** Inicio y duración del recorrido dentro de la escena (s); al acabar, el foco se queda en el último punto. */
+    start: z.number().default(0),
+    duration: z.number().positive().default(10),
+    speed: z.number().min(0.1).max(4).default(1),
+    phase: z.number().default(0),
+    /** Fracción visible fuera del foco (0 = nada). */
+    ambient: z.number().min(0).max(1).default(0),
+    /** true = recorta el clip con el foco; false = solo marca el recorrido (lo usa el efecto «flashlight»). */
+    mask: z.boolean().default(true),
   }).nullable().default(null),
 });
 export type Clip = z.infer<typeof Clip>;
@@ -512,6 +537,7 @@ export const EFFECT_LABELS: Record<EffectKind, string> = {
   bats: 'Murciélagos',
   spiders: 'Arañas que bajan',
   slitEye: 'Ojo de pupila vertical (para un foco)',
+  flashlight: 'Linterna que recorre la casa',
   comet: 'Cometa por el contorno',
 };
 
