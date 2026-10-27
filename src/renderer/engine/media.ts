@@ -18,7 +18,7 @@ function mixHex(hex: string, to: [number, number, number], k: number): string {
  * Dibuja un rótulo en un lienzo ajustado a las letras: halo del color del texto, contorno oscuro
  * (en la proyección separa las letras de la pared) y relleno con degradado de arriba (claro) a abajo (intenso).
  */
-export function renderText(src: TextSource): HTMLCanvasElement {
+export function renderText(src: TextSource, shown = Infinity): HTMLCanvasElement {
   const size = 160;
   const lines = (src.text || ' ').split('\n');
   const { css, overhang } = fontFor(src.font, size);
@@ -41,29 +41,39 @@ export function renderText(src: TextSource): HTMLCanvasElement {
   g.lineJoin = 'round';
   g.miterLimit = 2;
   const cx = c.width / 2;
-  lines.forEach((line, i) => {
+  // Máquina de escribir: el lienzo y la posición son los del texto entero; solo se pintan las primeras letras.
+  let left = shown;
+  const fullLines = lines;
+  lines.forEach((fullLine, i) => {
+    const line = fullLine.slice(0, Math.max(0, left));
+    left -= fullLine.length + 1;
+    if (shown !== Infinity) {
+      g.textAlign = 'left';
+    }
     const base = pad + asc + i * lineH;
+    const lx = shown !== Infinity ? cx - m.measureText(fullLines[i]).width / 2 : cx;
+    if (!line) return;
     if (src.glow) {
       g.save();
       g.fillStyle = src.color;
       g.shadowColor = src.color;
       g.shadowBlur = size * 0.45;
       g.globalAlpha = 0.85;
-      g.fillText(line, cx, base);
+      g.fillText(line, lx, base);
       g.shadowBlur = size * 0.16;
       g.globalAlpha = 1;
-      g.fillText(line, cx, base);
+      g.fillText(line, lx, base);
       g.restore();
     }
     g.lineWidth = size * 0.11;
     g.strokeStyle = src.outline;
-    g.strokeText(line, cx, base);
+    g.strokeText(line, lx, base);
     const grad = g.createLinearGradient(0, base - asc, 0, base + desc);
     grad.addColorStop(0, mixHex(src.color, [255, 255, 240], 0.55));
     grad.addColorStop(0.45, src.color);
     grad.addColorStop(1, mixHex(src.color, [40, 0, 20], 0.45));
     g.fillStyle = grad;
-    g.fillText(line, cx, base);
+    g.fillText(line, lx, base);
   });
   return c;
 }
@@ -239,15 +249,15 @@ export class MediaManager {
     this.texts.clear();
   }
 
-  text(src: TextSource): { texture: WebGLTexture; aspect: number } {
-    const k = JSON.stringify([src.text, src.font, src.color, src.outline, src.glow, src.bold]);
+  text(src: TextSource, shown = Infinity): { texture: WebGLTexture; aspect: number } {
+    const k = JSON.stringify([src.text, src.font, src.color, src.outline, src.glow, src.bold, shown === Infinity ? -1 : shown]);
     let e = this.texts.get(k);
     if (!e) {
-      if (this.texts.size > 60) {
+      if (this.texts.size > 300) {
         for (const v of this.texts.values()) this.r.deleteTexture(v.texture);
         this.texts.clear();
       }
-      const c = renderText(src);
+      const c = renderText(src, shown);
       const texture = this.r.createTexture();
       this.r.upload(texture, c);
       e = { texture, aspect: c.width / c.height };

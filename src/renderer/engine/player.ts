@@ -623,7 +623,8 @@ export class Player {
     }
     if (e.source.type === 'text') {
       if (e.opacity <= 0) return null;
-      const t = this.media.text(e.source);
+      const typed = (e.source.typing ?? 0) > 0 ? Math.min(e.source.text.length, Math.floor(Math.max(0, e.clipTime) * (e.source.typing ?? 0))) : Infinity;
+      const t = this.media.text(e.source, typed >= e.source.text.length ? Infinity : typed);
       const fitted = { ...clip, scale: Math.min(clip.scale, textMaxScale(clip, surfAspect, t.aspect)) };
       return { mode: 'texture', texture: t.texture, toContent: contentMatrix(fitted, surfAspect, t.aspect, motion), opacity: e.opacity, ...travelTo(t.aspect), reveal };
     }

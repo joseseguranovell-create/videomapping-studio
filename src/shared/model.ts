@@ -208,6 +208,8 @@ export const ClipSource = z.discriminatedUnion('type', [
     /** Halo luminoso alrededor de las letras. */
     glow: z.boolean().default(true),
     bold: z.boolean().default(true),
+    /** Letras por segundo con las que se «escribe» el rótulo (0 = aparece entero). */
+    typing: z.number().min(0).max(60).optional(),
   }),
   z.object({ type: z.literal('asset'), assetId: z.string() }),
   z.object({
