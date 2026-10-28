@@ -58,6 +58,8 @@ export interface AppSettings {
   showFps: boolean;
   schedule: ScheduleSettings;
   agentApi: { enabled: boolean; port: number; token: string };
+  /** Salida por red: la misma imagen del proyector en el navegador de un Fire TV, otra tele u otro equipo. */
+  webOutput: { enabled: boolean; port: number; token: string; fireTvIp: string };
   /** Luces de casa con Home Assistant. La clave de acceso no va aquí: se guarda cifrada aparte. */
   homeAssistant: HomeAssistantSettings;
 }
@@ -108,6 +110,16 @@ export interface UpdateCheck {
   /** Solo la aplicación empaquetada de Windows puede instalarse sola. */
   canInstall: boolean;
   hasToken: boolean;
+  error: string | null;
+}
+
+export interface WebOutputStatus {
+  running: boolean;
+  port: number;
+  /** Enlaces para abrir en la tele (uno por cada dirección de este equipo en la red). */
+  urls: string[];
+  clients: number;
+  fireTvIp: string;
   error: string | null;
 }
 
@@ -285,6 +297,14 @@ export interface VmApi {
     apply(cmds: LightCommand[]): Promise<void>;
     /** Devuelve las luces a como estaban antes de empezar. */
     release(): Promise<void>;
+  };
+  web: {
+    status(): Promise<WebOutputStatus>;
+    configure(p: { enabled?: boolean; fireTvIp?: string }): Promise<WebOutputStatus>;
+    /** Conecta con el Fire TV por adb y abre en él la salida. Devuelve un mensaje para mostrar. */
+    openOnFireTv(): Promise<string>;
+    /** Copia al Fire TV el último vídeo grabado y lo reproduce en VLC. */
+    sendLastVideoToFireTv(): Promise<string>;
   };
   agent: {
     status(): Promise<AgentApiStatus>;
