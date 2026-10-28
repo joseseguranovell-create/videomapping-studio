@@ -8,7 +8,7 @@ import type { ImportedFile, OpenedProject, OutputMode, OutputRequest } from '../
 import { mediaUrl } from '../engine/media';
 import { newId, nowIso } from '../../shared/ids';
 import { referencedAssetIds, createSurface } from '../../shared/factory';
-import { clampPoint, translateSurface } from '../../shared/geometry';
+import { clampPoint, translateGroup } from '../../shared/geometry';
 import { inSchedule } from '../../shared/schedule';
 
 export const vm = window.vm;
@@ -522,6 +522,15 @@ export function handleOutputRequest(r: OutputRequest) {
   const s = st();
   if (!s.project) return;
   const instId = outputInstallationId();
+  /** Mueve la superficie y las de su grupo (una balaustrada entera se arrastra como una sola pieza). */
+  const moveGroup = (live: boolean, label: string, surfaceId: string, dx: number, dy: number) => {
+    const apply = (d: Project) => {
+      const i = d.installations.find((x) => x.id === instId);
+      const sf = i?.surfaces.find((x) => x.id === surfaceId);
+      if (i && sf && !sf.locked) translateGroup(i.surfaces, surfaceId, dx, dy);
+    };
+    live ? st().dragUpdate(apply) : st().update(label, apply);
+  };
   const mutSurface = (live: boolean, label: string, surfaceId: string, fn: (x: Surface) => void) => {
     const apply = (d: Project) => {
       const sf = d.installations.find((i) => i.id === instId)?.surfaces.find((x) => x.id === surfaceId);
@@ -564,21 +573,19 @@ export function handleOutputRequest(r: OutputRequest) {
     case 'drag': {
       if (r.phase === 'start') { st().beginDrag(); return; }
       if (r.phase === 'end') { st().endDrag('Ajustar sobre la proyección'); return; }
+      if (r.target === 'move' && r.delta) { moveGroup(true, '', r.surfaceId, r.delta.x, r.delta.y); return; }
       mutSurface(true, '', r.surfaceId, (x) => {
-        if (r.target === 'move' && r.delta) Object.assign(x, translateSurface(x, r.delta.x, r.delta.y));
-        else if (r.target === 'quad') x.quad[r.index] = clampPoint(r.point);
+        if (r.target === 'quad') x.quad[r.index] = clampPoint(r.point);
         else if (r.target === 'polygon' && x.polygon[r.index]) x.polygon[r.index] = clampPoint(r.point);
       });
       return;
     }
     case 'nudge':
+      if (r.target === 'move') { moveGroup(false, 'Ajuste fino sobre la proyección', r.surfaceId, r.dx, r.dy); return; }
       mutSurface(false, 'Ajuste fino sobre la proyección', r.surfaceId, (x) => {
-        if (r.target === 'move') Object.assign(x, translateSurface(x, r.dx, r.dy));
-        else {
-          const pts = r.target === 'quad' ? x.quad : x.polygon;
-          const p = pts[r.index];
-          if (p) pts[r.index] = clampPoint({ x: p.x + r.dx, y: p.y + r.dy });
-        }
+        const pts = r.target === 'quad' ? x.quad : x.polygon;
+        const p = pts[r.index];
+        if (p) pts[r.index] = clampPoint({ x: p.x + r.dx, y: p.y + r.dy });
       });
       return;
     case 'addSurface': {

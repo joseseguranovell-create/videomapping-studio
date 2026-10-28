@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   squareToQuad, invert3, applyH, quadToQuad, orderQuad, isValidQuad, isSelfIntersecting, sortByAngle,
   triangulate, pointInPolygon, nearestEdge, rescaleInstallation, surfaceAspect, rectQuad, validateInstallation,
-  signedArea,
+  signedArea, translateGroup,
 } from '../../src/shared/geometry';
 import { createInstallation, createSurface } from '../../src/shared/factory';
 
@@ -111,5 +111,27 @@ describe('instalaciones', () => {
     s.quad = [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 1, y: 0 }, { x: 0, y: 1 }];
     inst.surfaces.push(s);
     expect(validateInstallation(inst).some((i) => i.level === 'error')).toBe(true);
+  });
+});
+
+describe('mover un grupo de superficies', () => {
+  const mk = () => {
+    const a = createSurface('A', 'decor', 0), b = createSurface('B', 'decor', 1), c = createSurface('C', 'decor', 2), d = createSurface('D', 'decor', 3);
+    a.group = b.group = c.group = 'Balaustrada';
+    c.locked = true;
+    return [a, b, c, d];
+  };
+  it('mueve las del mismo grupo y respeta bloqueadas y las de otro grupo', () => {
+    const l = mk(); const antes = l.map((s) => s.quad[0].x);
+    translateGroup(l, l[0].id, 0.1, 0);
+    close(l[0].quad[0].x, antes[0] + 0.1); close(l[1].quad[0].x, antes[1] + 0.1);
+    close(l[2].quad[0].x, antes[2]); close(l[3].quad[0].x, antes[3]);
+  });
+  it('con solo mueve únicamente la indicada, y sin grupo también', () => {
+    const l = mk(); const antes = l.map((s) => s.quad[0].x);
+    translateGroup(l, l[0].id, 0.1, 0, true);
+    close(l[1].quad[0].x, antes[1]);
+    translateGroup(l, l[3].id, 0.1, 0);
+    close(l[3].quad[0].x, antes[3] + 0.1);
   });
 });

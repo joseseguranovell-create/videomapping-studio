@@ -268,6 +268,17 @@ export function translateSurface(s: Surface, dx: number, dy: number): Surface {
 }
 
 /**
+ * Mueve una superficie y, si pertenece a un grupo, también las demás del mismo grupo (que no estén bloqueadas).
+ * Con `solo` mueve únicamente la indicada. Así una balaustrada de 16 balaustres + fondo se arrastra como una sola pieza.
+ */
+export function translateGroup(surfaces: Surface[], id: string, dx: number, dy: number, solo = false): void {
+  const s = surfaces.find((x) => x.id === id);
+  if (!s) return;
+  const grupo = !solo && s.group ? surfaces.filter((x) => x.group === s.group && !x.locked) : [s];
+  for (const x of grupo) Object.assign(x, translateSurface(x, dx, dy));
+}
+
+/**
  * Cambio de resolución de salida.
  * - 'keep-relative': la calibración se mantiene relativa al fotograma (misma proporción → mismo resultado).
  * - 'keep-pixels': conserva la posición en píxeles anclada arriba a la izquierda (cuando cambia la proporción

@@ -15,7 +15,7 @@ import { Player } from '../../engine/player';
 import { mediaUrl } from '../../engine/media';
 import { registerPlayerInvalidator } from '../services';
 import type { Installation, Mask, Surface, Vec2, Quad } from '../../../shared/model';
-import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateSurface, translatePoints, quadFromBBox } from '../../../shared/geometry';
+import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateGroup, translatePoints, quadFromBBox } from '../../../shared/geometry';
 import { createMask, createPolygonSurface, createSurface } from '../../../shared/factory';
 import { SURFACE_KIND_LABELS } from '../../../shared/model';
 import { cropStyle } from '../../../shared/crop';
@@ -26,7 +26,7 @@ interface ActiveVertex { target: Target; index: number }
 
 type Drag =
   | { kind: 'vertex'; target: Target; index: number; start: Vec2; orig: Vec2; precise: boolean }
-  | { kind: 'move'; what: 'surface' | 'mask'; start: Vec2 }
+  | { kind: 'move'; what: 'surface' | 'mask'; start: Vec2; solo?: boolean }
   | { kind: 'pan'; sx: number; sy: number; px: number; py: number }
   | { kind: 'rect'; start: Vec2; cur: Vec2 };
 
@@ -140,6 +140,14 @@ export function SurfaceCanvas() {
     };
     live ? st().dragUpdate(apply) : st().update(label, apply);
   };
+  /** Mueve la superficie seleccionada y las de su grupo (Ctrl: solo ella). */
+  const mutGroup = (live: boolean, solo: boolean, dx: number, dy: number, label = 'Mover superficie') => {
+    const apply = (d: typeof project) => {
+      const i = d.installations.find((x) => x.id === inst.id);
+      if (i && surfaceId) translateGroup(i.surfaces, surfaceId, dx, dy, solo);
+    };
+    live ? st().dragUpdate(apply) : st().update(label, apply);
+  };
   const mutMask = (live: boolean, fn: (m: Mask) => void, label = 'Editar máscara') => {
     const apply = (d: typeof project) => {
       const i = d.installations.find((x) => x.id === inst.id);
@@ -196,7 +204,7 @@ export function SurfaceCanvas() {
         } else if (selMask) {
           mutMask(false, (m) => { m.points = translatePoints(m.points, dx, dy); }, 'Mover máscara');
         } else if (surface) {
-          mutSurface(false, (s) => { Object.assign(s, translateSurface(s, dx, dy)); }, 'Mover superficie');
+          mutGroup(false, e.ctrlKey, dx, dy, 'Mover superficie');
         }
         return;
       }
@@ -322,7 +330,7 @@ export function SurfaceCanvas() {
       setActive(null);
       if (!hit.locked) {
         st().beginDrag();
-        drag.current = { kind: 'move', what: 'surface', start: p };
+        drag.current = { kind: 'move', what: 'surface', start: p, solo: e.ctrlKey };
       }
       return;
     }
@@ -366,7 +374,7 @@ export function SurfaceCanvas() {
       const k = e.shiftKey ? 0.1 : 1;
       const dx = (p.x - d.start.x) * k, dy = (p.y - d.start.y) * k;
       d.start = p;
-      if (d.what === 'surface') mutSurface(true, (s) => { Object.assign(s, translateSurface(s, dx, dy)); });
+      if (d.what === 'surface') mutGroup(true, !!d.solo, dx, dy);
       else mutMask(true, (m) => { m.points = translatePoints(m.points, dx, dy); });
     }
   };
