@@ -59,7 +59,7 @@ export interface GenerateOptions {
   protagonists: Protagonist[];
   /** Duración aproximada en segundos (sin contar la espera). */
   duration?: number;
-  /** Rótulo del gran final (p. ej. «¡Feliz Halloween, Arnau!»). */
+  /** Rótulo del gran final (p. ej. «¡Feliz Halloween, familia!»). */
   finaleText?: string;
   /** Rótulo de la despedida. */
   endText?: string;
