@@ -87,12 +87,6 @@ const api: VmApi = {
     apply: (c) => inv('lights:apply', c),
     release: () => inv('lights:release'),
   },
-  web: {
-    status: () => inv('web:status'),
-    configure: (p) => inv('web:configure', p),
-    openOnFireTv: () => inv('web:openFireTv'),
-    sendLastVideoToFireTv: () => inv('web:sendVideo'),
-  },
   agent: {
     status: () => inv('agent:status'),
     configure: (p) => inv('agent:configure', p),

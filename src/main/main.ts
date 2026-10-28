@@ -17,9 +17,6 @@ import { newId } from '../shared/ids';
 import { startAgentApi, stopAgentApi, agentApiRunning, newToken } from './agentApi';
 import type { AgentApiStatus } from '../shared/api';
 import * as updater from './updater';
-import { startWebOutput, stopWebOutput, webOutputRunning, webOutputClients, broadcastCommand, lanAddresses, newWebToken } from './webOutput';
-import { execFile } from 'node:child_process';
-import type { WebOutputStatus } from '../shared/api';
 import { HomeAssistant } from './homeAssistant';
 import type { LightCommand } from '../shared/api';
 
@@ -387,90 +384,6 @@ async function applyAgentSettings(): Promise<AgentApiStatus> {
   return agentStatus();
 }
 
-// ───────── Salida por red (Fire TV, otra tele u otro equipo) ─────────
-
-let webError: string | null = null;
-
-function webStatus(): WebOutputStatus {
-  const w = settings.get().webOutput;
-  const running = webOutputRunning();
-  return {
-    running,
-    port: w.port,
-    urls: running ? lanAddresses().map((ip) => `http://${ip}:${w.port}/salida?t=${w.token}`) : [],
-    clients: webOutputClients(),
-    fireTvIp: w.fireTvIp,
-    error: webError,
-  };
-}
-
-async function applyWebSettings(): Promise<WebOutputStatus> {
-  const w = settings.get().webOutput;
-  webError = null;
-  if (!w.enabled) {
-    await stopWebOutput();
-    return webStatus();
-  }
-  try {
-    await startWebOutput({
-      port: w.port,
-      token: w.token,
-      uiDir,
-      getProjectDir: () => current?.dir ?? null,
-      getPackDir: (id) => packDirs.get(id) ?? null,
-      onRequest: (r) => editorWin?.webContents.send('output:request', r),
-      onLights: (cmds) => lights().apply(sanitizeLightCommands(cmds)),
-      onLightsRelease: () => { void lights().release(); },
-    });
-  } catch (e) {
-    webError = `No se pudo abrir el puerto ${w.port}: ${(e as Error).message}`;
-    log('error', 'salida web', webError);
-  }
-  return webStatus();
-}
-
-function findAdb(): string {
-  const cands = [process.env.VM_ADB, 'C:/adb/platform-tools-latest-windows/platform-tools/adb.exe', path.join(process.env.LOCALAPPDATA ?? '', 'Android/Sdk/platform-tools/adb.exe')].filter((x): x is string => !!x);
-  return cands.find((c) => fs.existsSync(c)) ?? 'adb';
-}
-const run = (cmd: string, args: string[]) => new Promise<string>((resolve, reject) => {
-  execFile(cmd, args, { timeout: 20000, windowsHide: true }, (err, out, errOut) => (err ? reject(new Error((errOut || err.message).trim())) : resolve(String(out).trim())));
-});
-
-/** Conecta con el Fire TV por adb (IP guardada en la salida por red). Devuelve la ruta de adb y el destino. */
-async function connectFireTv(): Promise<{ adb: string; target: string; ip: string }> {
-  const w = settings.get().webOutput;
-  if (!w.fireTvIp) throw new Error('Escribe la IP del Fire TV en «Salida por red» (Ajustes > Mi Fire TV > Acerca de > Red).');
-  const adb = findAdb();
-  const target = `${w.fireTvIp}:5555`;
-  const out = await run(adb, ['connect', target]).catch((e) => { throw new Error(`No se encontró adb o no conecta con el Fire TV: ${(e as Error).message}`); });
-  if (/unauthorized|failed|cannot/i.test(out)) throw new Error(`El Fire TV no deja conectar (${out}). Activa la depuración ADB y acepta el aviso que sale en la tele.`);
-  return { adb, target, ip: w.fireTvIp };
-}
-
-/** Copia el último vídeo grabado al Fire TV y lo reproduce en VLC. */
-async function sendVideoToFireTv(): Promise<string> {
-  if (!lastDemo || !fs.existsSync(lastDemo)) throw new Error('Graba primero un vídeo de demostración.');
-  const { adb, target } = await connectFireTv();
-  const name = path.basename(lastDemo).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_');
-  const dest = `/sdcard/Movies/${name}`;
-  await run(adb, ['-s', target, 'push', lastDemo, dest]);
-  await run(adb, ['-s', target, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `file://${dest}`, '-t', 'video/*', '-p', 'org.videolan.vlc']).catch(() => { throw new Error('El vídeo está en el Fire TV pero no se pudo abrir: ¿tiene VLC instalado?'); });
-  return `Vídeo enviado y reproduciéndose en el Fire TV (${name}).`;
-}
-
-/** Conecta con el Fire TV por adb y abre la salida en su navegador (Silk). */
-async function openOnFireTv(): Promise<string> {
-  const w = settings.get().webOutput;
-  if (!webOutputRunning()) throw new Error('Activa primero la salida por red.');
-  if (!w.fireTvIp) throw new Error('Escribe la IP del Fire TV (Ajustes > Mi Fire TV > Acerca de > Red).');
-  const mine = lanAddresses().find((ip) => ip.split('.').slice(0, 3).join('.') === w.fireTvIp.split('.').slice(0, 3).join('.')) ?? lanAddresses()[0];
-  if (!mine) throw new Error('Este equipo no está conectado a ninguna red.');
-  const { adb, target } = await connectFireTv();
-  await run(adb, ['-s', target, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', `http://${mine}:${w.port}/salida?t=${w.token}`, '-p', 'com.amazon.cloud9']);
-  return 'Abierto en el Fire TV. Pulsa OK en el mando para empezar.';
-}
-
 // ───────── Luces de casa (Home Assistant) ─────────
 
 let ha: HomeAssistant | null = null;
@@ -550,14 +463,6 @@ function registerIpc() {
   handle('updates:download', (e) => updater.downloadInstaller((done, total) => { if (!e.sender.isDestroyed()) e.sender.send('updates:progress', { done, total }); }));
   handle('updates:install', (_e, file: string) => { log('info', 'actualización', `Abriendo el instalador ${file}`); updater.runInstaller(file); });
   handle('updates:setToken', (_e, token: string | null) => updater.setToken(token));
-  handle('web:status', () => webStatus());
-  handle('web:configure', async (_e, p: { enabled?: boolean; fireTvIp?: string }) => {
-    const w = settings.get().webOutput;
-    await settings.set({ webOutput: { ...w, token: w.token || newWebToken(), enabled: p.enabled ?? w.enabled, fireTvIp: typeof p.fireTvIp === 'string' ? p.fireTvIp.trim() : w.fireTvIp } });
-    return applyWebSettings();
-  });
-  handle('web:openFireTv', () => openOnFireTv());
-  handle('web:sendVideo', () => sendVideoToFireTv());
   handle('agent:status', () => agentStatus());
   handle('agent:configure', async (_e, p: { enabled: boolean; port?: number; regenerate?: boolean }) => {
     const a = settings.get().agentApi;
@@ -786,7 +691,6 @@ function registerIpc() {
   ipcMain.on('output:cmd', (e, cmd: OutputCommand) => {
     if (!editorWin || e.sender.id !== editorWin.webContents.id) return;
     if (outputWin && !outputWin.isDestroyed()) outputWin.webContents.send('output:cmd', cmd);
-    broadcastCommand(cmd);
   });
   ipcMain.on('output:status', (e, s) => {
     if (!outputWin || e.sender.id !== outputWin.webContents.id) return;
@@ -895,7 +799,6 @@ async function startApp() {
   createEditorWindow();
   watchDisplays();
   if (settings.get().agentApi.enabled) void applyAgentSettings();
-  if (settings.get().webOutput.enabled) void applyWebSettings();
   log('info', 'main', `Videomapping Studio ${app.getVersion()} iniciado (Electron ${process.versions.electron}, ${process.platform})`);
 }
 

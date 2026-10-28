@@ -1504,13 +1504,7 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string) {
   const s = gl.createShader(type)!;
   gl.shaderSource(s, src);
   gl.compileShader(s);
-  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-    // Algunos controladores (p. ej. Mali) devuelven el registro vacío: se añade qué shader era y cómo es la GPU.
-    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-    const gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
-    const head = src.split('\n').slice(1, 6).join(' ').replace(/\s+/g, ' ').slice(0, 160);
-    throw new Error(`Shader ${type === gl.VERTEX_SHADER ? 'de vértices' : 'de fragmentos'} (${src.length} caracteres, «${head}»): ${gl.getShaderInfoLog(s) || 'sin detalle'}${gl.isContextLost() ? ' [contexto perdido]' : ''} · GPU ${gpu} · ${String(gl.getParameter(gl.VERSION))} · uniformes ${gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)}`);
-  }
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(`Shader: ${gl.getShaderInfoLog(s)}`);
   return s;
 }
 

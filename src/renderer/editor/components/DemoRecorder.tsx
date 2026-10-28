@@ -49,9 +49,6 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
   const photo = inst?.referenceImageAssetId ? project.assets.find((a) => a.id === inst.referenceImageAssetId) ?? null : null;
   const [onPhoto, setOnPhoto] = useState(!!photo);
   const [monitor, setMonitor] = useState(true);
-  const [toTv, setToTv] = useState(false);
-  const [tvIp, setTvIp] = useState('');
-  useEffect(() => { vm.web.status().then((w) => setTvIp(w.fireTvIp)).catch(() => {}); }, []);
   const [state, setState] = useState<{ phase: 'idle' | 'prep' | 'rec' | 'saving' | 'done'; t: number; total: number; file?: string | null }>({ phase: 'idle', t: 0, total: 0 });
   const cancel = useRef(false);
   const fmt = demoFormat();
@@ -135,10 +132,6 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
       id = null;
       setState({ phase: file ? 'done' : 'idle', t: recTotal, total: recTotal, file });
       if (file) toast('success', `Vídeo guardado: ${file}`, 6000);
-      if (file && toTv) {
-        toast('info', 'Enviando al Fire TV…', 4000);
-        try { toast('success', await vm.web.sendLastVideoToFireTv(), 8000); } catch (e) { toast('error', errMsg(e), 12000); }
-      }
     } catch (e) {
       toast('error', `No se pudo grabar: ${errMsg(e)}`, 10000);
       if (id) await vm.demo.cancel(id).catch(() => {});
@@ -162,7 +155,6 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
           <Field label="Calidad"><Select value={quality} onChange={setQuality} options={[{ value: '720', label: '720p (ideal para WhatsApp)' }, { value: '1080', label: '1080p' }]} /></Field>
           {photo ? <Toggle checked={onPhoto} onChange={setOnPhoto} label="Sobre la foto de la fachada, de noche (se ve cómo quedaría en la casa)" data-testid="demo-photo" /> : <p className="muted small">Consejo: si pones una foto de la fachada en Calibración, el vídeo se graba sobre la casa, de noche.</p>}
           <Toggle checked={monitor} onChange={setMonitor} label="Oírlo mientras se graba" />
-          <Toggle checked={toTv} onChange={(v) => { setToTv(v); if (v) { setQuality('1080'); setOnPhoto(false); setMonitor(false); } }} label={tvIp ? 'Para el proyector: enviarlo al Fire TV y reproducirlo al terminar (1080p, sin foto)' : 'Para el proyector: enviarlo al Fire TV al terminar (pon antes su IP en Reproducción > Salida por red)'} data-testid="demo-to-tv" />
           <p className="muted small">Formato: {fmt ? (fmt.ext === 'mp4' ? 'MP4 (se ve en cualquier móvil)' : 'WebM (si el móvil no lo abre, conviértelo a MP4)') : '—'}.</p>
           <div className="btn-row">
             <Button variant="primary" icon={<Video size={15} />} onClick={() => void run()} disabled={!show || !fmt || !recTotal} data-testid="demo-start">Grabar</Button>

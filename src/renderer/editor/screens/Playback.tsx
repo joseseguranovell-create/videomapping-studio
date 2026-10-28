@@ -9,7 +9,6 @@ import { formatTime, layoutShow } from '../../../shared/timeline';
 import { validateInstallation } from '../../../shared/geometry';
 import { LightDots } from './Lights';
 import { DemoRecorder } from '../components/DemoRecorder';
-import { WebOutputPanel } from '../components/WebOutputPanel';
 import type { HaStatus } from '../../../shared/api';
 
 export function PlaybackScreen() {
@@ -162,7 +161,6 @@ export function PlaybackScreen() {
           )}
         </Panel>
         <SchedulePanel showId={show?.id ?? null} />
-        <WebOutputPanel />
         {demo && <DemoRecorder showId={show?.id ?? null} onClose={() => setDemo(false)} />}
       </div>
       <aside className="side right">
