@@ -15,7 +15,7 @@ import { Player } from '../../engine/player';
 import { mediaUrl } from '../../engine/media';
 import { registerPlayerInvalidator } from '../services';
 import type { Installation, Mask, Surface, Vec2, Quad } from '../../../shared/model';
-import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateGroup, translatePoints, quadFromBBox } from '../../../shared/geometry';
+import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateGroup, translatePoints, isGroupMaster, followGroupQuad, quadFromBBox } from '../../../shared/geometry';
 import { createMask, createPolygonSurface, createSurface } from '../../../shared/factory';
 import { SURFACE_KIND_LABELS } from '../../../shared/model';
 import { cropStyle } from '../../../shared/crop';
@@ -25,7 +25,7 @@ type Target = 'quad' | 'polygon' | 'mask';
 interface ActiveVertex { target: Target; index: number }
 
 type Drag =
-  | { kind: 'vertex'; target: Target; index: number; start: Vec2; orig: Vec2; precise: boolean }
+  | { kind: 'vertex'; target: Target; index: number; start: Vec2; orig: Vec2; precise: boolean; grp?: { masterId: string; origs: Surface[] } }
   | { kind: 'move'; what: 'surface' | 'mask'; start: Vec2; solo?: boolean }
   | { kind: 'pan'; sx: number; sy: number; px: number; py: number }
   | { kind: 'rect'; start: Vec2; cur: Vec2 };
@@ -354,7 +354,11 @@ export function SurfaceCanvas() {
     const p = toNorm(e.clientX, e.clientY);
     setActive({ target, index });
     st().beginDrag();
-    drag.current = { kind: 'vertex', target, index, start: p, orig: { ...pointsFor(target)[index] }, precise: e.shiftKey };
+    // La esquina de la pieza principal de un grupo (p. ej. el fondo de la balaustrada) arrastra a todo el grupo; Ctrl: solo ella.
+    const grp = target === 'quad' && surface && !e.ctrlKey && isGroupMaster(inst.surfaces, surface.id)
+      ? { masterId: surface.id, origs: structuredClone(inst.surfaces.filter((x) => x.group === surface.group)) as Surface[] }
+      : undefined;
+    drag.current = { kind: 'vertex', target, index, start: p, orig: { ...pointsFor(target)[index] }, precise: e.shiftKey, grp };
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -369,7 +373,17 @@ export function SurfaceCanvas() {
       setRect({ a: d.start, b: p });
     } else if (d.kind === 'vertex') {
       const k = e.shiftKey ? 0.1 : 1;
-      setPoint(d.target, d.index, { x: d.orig.x + (p.x - d.start.x) * k, y: d.orig.y + (p.y - d.start.y) * k }, true);
+      const q = { x: d.orig.x + (p.x - d.start.x) * k, y: d.orig.y + (p.y - d.start.y) * k };
+      if (d.grp) {
+        const { masterId, origs } = d.grp;
+        st().dragUpdate((doc: typeof project) => {
+          const i = doc.installations.find((x) => x.id === inst.id);
+          const m = i?.surfaces.find((x) => x.id === masterId);
+          if (!i || !m) return;
+          m.quad[d.index] = clampPoint(q);
+          followGroupQuad(i.surfaces, masterId, origs, m.quad);
+        });
+      } else setPoint(d.target, d.index, q, true);
     } else if (d.kind === 'move') {
       const k = e.shiftKey ? 0.1 : 1;
       const dx = (p.x - d.start.x) * k, dy = (p.y - d.start.y) * k;

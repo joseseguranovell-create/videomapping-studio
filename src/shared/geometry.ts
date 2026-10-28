@@ -278,6 +278,36 @@ export function translateGroup(surfaces: Surface[], id: string, dx: number, dy: 
   for (const x of grupo) Object.assign(x, translateSurface(x, dx, dy));
 }
 
+/** ¿Es la pieza de mayor superficie de su grupo (el «fondo» que contiene a las demás)? Los grupos de una sola pieza no tienen. */
+export function isGroupMaster(surfaces: readonly Surface[], id: string): boolean {
+  const s = surfaces.find((x) => x.id === id);
+  if (!s || !s.group) return false;
+  const mates = surfaces.filter((x) => x.group === s.group);
+  if (mates.length < 2) return false;
+  const area = (x: Surface) => Math.abs(signedArea(x.quad));
+  return mates.every((x) => x.id === s.id || area(x) <= area(s));
+}
+
+/**
+ * Cuando cambia el cuadrilátero de la pieza principal de un grupo, las demás piezas del grupo lo siguen:
+ * se parte de su estado original (`origs`, antes de empezar a arrastrar) y se les aplica la misma deformación.
+ */
+export function followGroupQuad(surfaces: Surface[], masterId: string, origs: readonly Surface[], newQuad: Quad): void {
+  const om = origs.find((x) => x.id === masterId);
+  if (!om) return;
+  const H = quadToQuad(om.quad, newQuad);
+  const map = (p: Vec2) => applyH(H, p);
+  if (![...H].every(Number.isFinite)) return;
+  for (const x of surfaces) {
+    if (x.id === masterId || x.group !== om.group || x.locked) continue;
+    const o = origs.find((y) => y.id === x.id);
+    if (!o) continue;
+    x.quad = o.quad.map(map) as Quad;
+    x.polygon = o.polygon.map(map);
+    x.masks = o.masks.map((m) => ({ ...m, points: m.points.map(map) }));
+  }
+}
+
 /**
  * Cambio de resolución de salida.
  * - 'keep-relative': la calibración se mantiene relativa al fotograma (misma proporción → mismo resultado).

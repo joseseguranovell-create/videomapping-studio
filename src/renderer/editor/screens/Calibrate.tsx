@@ -405,7 +405,7 @@ function SurfaceProps({ inst, s }: { inst: Installation; s: Surface }) {
             <input type="color" value={s.color} onChange={(e) => mut('Color', (x) => { x.color = e.target.value; })} />
           </Field>
         </div>
-        <Field label="Grupo" hint="Las del mismo grupo se mueven juntas al arrastrar (Ctrl: solo una)"><TextInput value={s.group} onCommit={(v) => mut('Grupo', (x) => { x.group = v; })} /></Field>
+        <Field label="Grupo" hint="Las del mismo grupo se mueven juntas; al estirar una esquina de la más grande (el fondo), las demás la siguen. Ctrl: solo una"><TextInput value={s.group} onCommit={(v) => mut('Grupo', (x) => { x.group = v; })} /></Field>
         <div className="row2">
           <Toggle checked={s.visible} onChange={(v) => mut('Visibilidad', (x) => { x.visible = v; })} label="Visible" />
           <Toggle checked={s.locked} onChange={(v) => mut('Bloqueo', (x) => { x.locked = v; })} label="Bloqueada" data-testid="surface-lock" />

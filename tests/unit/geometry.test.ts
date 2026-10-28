@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   squareToQuad, invert3, applyH, quadToQuad, orderQuad, isValidQuad, isSelfIntersecting, sortByAngle,
   triangulate, pointInPolygon, nearestEdge, rescaleInstallation, surfaceAspect, rectQuad, validateInstallation,
-  signedArea, translateGroup,
+  signedArea, translateGroup, isGroupMaster, followGroupQuad,
 } from '../../src/shared/geometry';
 import { createInstallation, createSurface } from '../../src/shared/factory';
 
@@ -133,5 +133,32 @@ describe('mover un grupo de superficies', () => {
     close(l[1].quad[0].x, antes[1]);
     translateGroup(l, l[3].id, 0.1, 0);
     close(l[3].quad[0].x, antes[3] + 0.1);
+  });
+});
+
+describe('estirar un grupo desde su pieza principal', () => {
+  const mk = () => {
+    const fondo = createSurface('Fondo', 'decor', 0, { x: 0.2, y: 0.2, w: 0.4, h: 0.2 });
+    const pil = createSurface('Pilar', 'decor', 1, { x: 0.3, y: 0.25, w: 0.1, h: 0.1 });
+    const otro = createSurface('Otro', 'decor', 2, { x: 0.7, y: 0.7, w: 0.1, h: 0.1 });
+    fondo.group = pil.group = 'Balaustrada';
+    return [fondo, pil, otro];
+  };
+  it('la pieza más grande es la principal', () => {
+    const l = mk();
+    expect(isGroupMaster(l, l[0].id)).toBe(true);
+    expect(isGroupMaster(l, l[1].id)).toBe(false);
+    expect(isGroupMaster(l, l[2].id)).toBe(false);
+  });
+  it('las demás siguen al estirar la principal y las de otro grupo no se tocan', () => {
+    const l = mk();
+    const origs = structuredClone(l);
+    const nq = structuredClone(l[0].quad);
+    nq[2] = { x: 1.0, y: 0.4 }; nq[1] = { x: 1.0, y: 0.2 };
+    l[0].quad = nq;
+    followGroupQuad(l, l[0].id, origs, l[0].quad);
+    // el pilar estaba a un cuarto del ancho del fondo: ahora sigue estándolo
+    close(l[1].quad[0].x, 0.2 + (0.3 - 0.2) * 2, 1e-6);
+    close(l[2].quad[0].x, origs[2].quad[0].x);
   });
 });
