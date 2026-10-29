@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -37,6 +37,8 @@ export const Surface = z.object({
   name: z.string(),
   kind: SurfaceKind.default('window'),
   group: z.string().default(''),
+  /** Las piezas de un mismo grupo con esto activado se mueven y se estiran juntas (p. ej. una balaustrada y sus balaustres). */
+  groupMove: z.boolean().default(false),
   color: z.string().default('#ff8a3d'),
   visible: z.boolean().default(true),
   locked: z.boolean().default(false),

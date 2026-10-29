@@ -274,15 +274,15 @@ export function translateSurface(s: Surface, dx: number, dy: number): Surface {
 export function translateGroup(surfaces: Surface[], id: string, dx: number, dy: number, solo = false): void {
   const s = surfaces.find((x) => x.id === id);
   if (!s) return;
-  const grupo = !solo && s.group ? surfaces.filter((x) => x.group === s.group && !x.locked) : [s];
+  const grupo = !solo && s.group && s.groupMove ? surfaces.filter((x) => x.group === s.group && x.groupMove && !x.locked) : [s];
   for (const x of grupo) Object.assign(x, translateSurface(x, dx, dy));
 }
 
 /** ¿Es la pieza de mayor superficie de su grupo (el «fondo» que contiene a las demás)? Los grupos de una sola pieza no tienen. */
 export function isGroupMaster(surfaces: readonly Surface[], id: string): boolean {
   const s = surfaces.find((x) => x.id === id);
-  if (!s || !s.group) return false;
-  const mates = surfaces.filter((x) => x.group === s.group);
+  if (!s || !s.group || !s.groupMove) return false;
+  const mates = surfaces.filter((x) => x.group === s.group && x.groupMove);
   if (mates.length < 2) return false;
   const area = (x: Surface) => Math.abs(signedArea(x.quad));
   return mates.every((x) => x.id === s.id || area(x) <= area(s));
@@ -299,7 +299,7 @@ export function followGroupQuad(surfaces: Surface[], masterId: string, origs: re
   const map = (p: Vec2) => applyH(H, p);
   if (![...H].every(Number.isFinite)) return;
   for (const x of surfaces) {
-    if (x.id === masterId || x.group !== om.group || x.locked) continue;
+    if (x.id === masterId || x.group !== om.group || !x.groupMove || x.locked) continue;
     const o = origs.find((y) => y.id === x.id);
     if (!o) continue;
     x.quad = o.quad.map(map) as Quad;

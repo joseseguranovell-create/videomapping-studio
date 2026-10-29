@@ -118,6 +118,7 @@ describe('mover un grupo de superficies', () => {
   const mk = () => {
     const a = createSurface('A', 'decor', 0), b = createSurface('B', 'decor', 1), c = createSurface('C', 'decor', 2), d = createSurface('D', 'decor', 3);
     a.group = b.group = c.group = 'Balaustrada';
+    a.groupMove = b.groupMove = c.groupMove = true;
     c.locked = true;
     return [a, b, c, d];
   };
@@ -126,6 +127,12 @@ describe('mover un grupo de superficies', () => {
     translateGroup(l, l[0].id, 0.1, 0);
     close(l[0].quad[0].x, antes[0] + 0.1); close(l[1].quad[0].x, antes[1] + 0.1);
     close(l[2].quad[0].x, antes[2]); close(l[3].quad[0].x, antes[3]);
+  });
+  it('un grupo que es solo una etiqueta (sin «mover juntas») no arrastra a las demás', () => {
+    const l = mk(); l.forEach((s) => { s.groupMove = false; });
+    const antes = l.map((s) => s.quad[0].x);
+    translateGroup(l, l[0].id, 0.1, 0);
+    close(l[0].quad[0].x, antes[0] + 0.1); close(l[1].quad[0].x, antes[1]);
   });
   it('con solo mueve únicamente la indicada, y sin grupo también', () => {
     const l = mk(); const antes = l.map((s) => s.quad[0].x);
@@ -142,6 +149,7 @@ describe('estirar un grupo desde su pieza principal', () => {
     const pil = createSurface('Pilar', 'decor', 1, { x: 0.3, y: 0.25, w: 0.1, h: 0.1 });
     const otro = createSurface('Otro', 'decor', 2, { x: 0.7, y: 0.7, w: 0.1, h: 0.1 });
     fondo.group = pil.group = 'Balaustrada';
+    fondo.groupMove = pil.groupMove = true;
     return [fondo, pil, otro];
   };
   it('la pieza más grande es la principal', () => {

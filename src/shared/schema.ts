@@ -38,6 +38,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   8: (doc) => ({ ...doc, schemaVersion: 9 }),
   // Versión 9 → 10: clips de fachada entera (facade) y linterna que revela (reveal). Campos opcionales.
   9: (doc) => ({ ...doc, schemaVersion: 10 }),
+  // Versión 10 → 11: «groupMove» en las superficies (mover y estirar un grupo como una pieza). Opcional; por defecto desactivado.
+  10: (doc) => ({ ...doc, schemaVersion: 11 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {
