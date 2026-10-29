@@ -23,6 +23,17 @@ const docs = path.join(tmp, 'docs');
 const results = [];
 let current = '';
 
+/** Primera diferencia entre dos documentos JSON (para que un fallo diga qué campo cambió). */
+function firstDiff(a, b, p = '') {
+  if (a === b) return null;
+  if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return `${p}: ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`;
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const d = firstDiff(a[k], b[k], `${p}/${k}`);
+    if (d) return d;
+  }
+  return null;
+}
+
 function assert(cond, msg) {
   if (!cond) throw new Error(`Falla: ${msg}`);
 }
@@ -400,7 +411,7 @@ try {
         const sh = d.shows.find((x) => x.name === 'Halloween 2026');
         const door = d.installations[0].surfaces[2];
         sh.scenes[0].clips = sh.scenes[0].clips.filter((c) => c.surfaceId !== door.id);
-        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0, silhouette: false, silhouetteColor: '#000000', travel: null });
+        sh.scenes[0].clips.push({ id: 'alpha-test', name: '', surfaceId: door.id, source: { type: 'asset', assetId: 'hx-ast-fantasma-video' }, characterId: null, animationId: null, start: 0, duration: 8, loop: true, playbackRate: 1, fit: 'contain', x: 0.5, y: 0.5, scale: 1, rotation: 0, flipX: false, opacity: 1, fadeIn: 0, fadeOut: 0, motion: { preset: 'none', intensity: 1, speed: 1 }, z: 0, silhouette: false, silhouetteColor: '#000000', travel: null, facade: false, reveal: null });
       });
     });
     await out.evaluate(() => { window.__vmPlayer.seek(2); void window.__vmPlayer.play(); });
@@ -435,7 +446,7 @@ try {
     const after = await S(win);
     assert(after.project.name === 'Casa de pruebas', 'se reabre el último proyecto');
     assert(JSON.stringify(after.project.installations) === JSON.stringify(before.project.installations), 'calibración idéntica');
-    assert(JSON.stringify(after.project.shows) === JSON.stringify(before.project.shows), 'espectáculos idénticos');
+    assert(JSON.stringify(after.project.shows) === JSON.stringify(before.project.shows), `espectáculos idénticos (${firstDiff(before.project.shows, after.project.shows)})`);
     assert(after.missing.length === 0, `sin recursos ausentes (${after.missing.length})`);
   });
 
