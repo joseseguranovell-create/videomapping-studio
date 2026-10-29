@@ -16,6 +16,7 @@ export async function readPack(dir: string): Promise<PackManifest> {
 export async function listPacks(dirs: { dir: string; builtIn: boolean }[]): Promise<{ packs: PackInfo[]; errors: string[] }> {
   const packs: PackInfo[] = [];
   const errors: string[] = [];
+  const mtimes = new Map<string, number>();
   for (const { dir, builtIn } of dirs) {
     if (!(await exists(dir))) continue;
     for (const e of await fsp.readdir(dir, { withFileTypes: true })) {
@@ -24,7 +25,14 @@ export async function listPacks(dirs: { dir: string; builtIn: boolean }[]): Prom
       if (!(await exists(path.join(pdir, 'pack.json')))) continue;
       try {
         const m = await readPack(pdir);
-        if (packs.some((p) => p.id === m.id)) continue;
+        // Mismo paquete en dos carpetas (p. ej. una versión nueva copiada junto a la antigua): gana el integrado y, entre los del usuario, el más reciente.
+        const dup = packs.findIndex((p) => p.id === m.id);
+        const mtime = (await fsp.stat(path.join(pdir, 'pack.json'))).mtimeMs;
+        if (dup >= 0) {
+          if (builtIn || packs[dup].builtIn || mtime <= (mtimes.get(m.id) ?? 0)) continue;
+          packs.splice(dup, 1);
+        }
+        mtimes.set(m.id, mtime);
         packs.push({
           id: m.id, name: m.name, description: m.description, version: m.version, license: m.license, author: m.author,
           builtIn, dir: pdir, assetCount: m.assets.length, characterCount: m.characters.length, showCount: m.shows.length, tags: m.tags,
