@@ -42,6 +42,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   10: (doc) => ({ ...doc, schemaVersion: 11 }),
   // Versión 11 → 12: movimientos «dropExitLeft» y «dropExitRight» (baja de arriba y se va hacia un lado). Nada que convertir.
   11: (doc) => ({ ...doc, schemaVersion: 12 }),
+  // Versión 12 → 13: el recorrido de la linterna (reveal.points) admite hasta 12 puntos en vez de 8. Nada que convertir.
+  12: (doc) => ({ ...doc, schemaVersion: 13 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

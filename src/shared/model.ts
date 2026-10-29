@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -281,7 +281,7 @@ export const Clip = z.object({
   reveal: z.object({
     radius: z.number().min(0.03).max(0.8).default(0.16),
     /** Recorrido del foco: puntos en coordenadas de salida (0..1). Vacío = deambula solo (usa speed y phase). */
-    points: z.array(Vec2).max(8).default([]),
+    points: z.array(Vec2).max(12).default([]),
     /** Inicio y duración del recorrido dentro de la escena (s); al acabar, el foco se queda en el último punto. */
     start: z.number().default(0),
     duration: z.number().positive().default(10),
