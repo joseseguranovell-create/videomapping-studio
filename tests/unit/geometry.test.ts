@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   squareToQuad, invert3, applyH, quadToQuad, orderQuad, isValidQuad, isSelfIntersecting, sortByAngle,
   triangulate, pointInPolygon, nearestEdge, rescaleInstallation, surfaceAspect, rectQuad, validateInstallation,
-  signedArea, translateGroup, isGroupMaster, followGroupQuad,
+  signedArea, translateGroup, isGroupMaster, followGroupQuad, groupMasterOf,
 } from '../../src/shared/geometry';
 import { createInstallation, createSurface } from '../../src/shared/factory';
 
@@ -152,6 +152,13 @@ describe('estirar un grupo desde su pieza principal', () => {
     fondo.groupMove = pil.groupMove = true;
     return [fondo, pil, otro];
   };
+  it('al elegir una pieza del grupo se selecciona la principal; las sueltas, ellas mismas', () => {
+    const l = mk();
+    expect(groupMasterOf(l, l[1]).id).toBe(l[0].id);
+    expect(groupMasterOf(l, l[2]).id).toBe(l[2].id);
+    l[1].groupMove = false;
+    expect(groupMasterOf(l, l[1]).id).toBe(l[1].id);
+  });
   it('la pieza más grande es la principal', () => {
     const l = mk();
     expect(isGroupMaster(l, l[0].id)).toBe(true);

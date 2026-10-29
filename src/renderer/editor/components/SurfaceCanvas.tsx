@@ -15,7 +15,7 @@ import { Player } from '../../engine/player';
 import { mediaUrl } from '../../engine/media';
 import { registerPlayerInvalidator } from '../services';
 import type { Installation, Mask, Surface, Vec2, Quad } from '../../../shared/model';
-import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateGroup, translatePoints, isGroupMaster, followGroupQuad, quadFromBBox } from '../../../shared/geometry';
+import { centroid, clampPoint, pointInPolygon, surfaceOutline, translateGroup, translatePoints, isGroupMaster, followGroupQuad, groupMasterOf, quadFromBBox } from '../../../shared/geometry';
 import { createMask, createPolygonSurface, createSurface } from '../../../shared/factory';
 import { SURFACE_KIND_LABELS } from '../../../shared/model';
 import { cropStyle } from '../../../shared/crop';
@@ -326,7 +326,9 @@ export function SurfaceCanvas() {
     }
     const hit = [...inst.surfaces].reverse().find((s) => (s.visible || s.id === surfaceId) && pointInPolygon(p, surfaceOutline(s)));
     if (hit) {
-      set({ surfaceId: hit.id, maskId: null, view: 'calibrate' });
+      // Un clic en una pieza de un grupo «mover juntas» (p. ej. un balaustre) selecciona el conjunto, es decir, su pieza principal (el fondo); Ctrl: solo esa pieza.
+      const pick = e.ctrlKey || hit.id === surfaceId ? hit : groupMasterOf(inst.surfaces, hit);
+      set({ surfaceId: pick.id, maskId: null, view: 'calibrate' });
       setActive(null);
       if (!hit.locked) {
         st().beginDrag();
@@ -513,11 +515,12 @@ export function SurfaceCanvas() {
           ))}
           {inst.surfaces.map((s, idx) => {
             const sel = s.id === surfaceId;
+            const grp = !sel && !!surface?.groupMove && !!surface.group && s.groupMove && s.group === surface.group;
             const outline = surfaceOutline(s);
             const c = centroid(outline);
             return (
-              <g key={s.id} className={`surf${sel ? ' sel' : ''}${s.visible ? '' : ' hidden'}${s.locked ? ' locked' : ''}`} data-testid={`surface-shape-${idx}`}>
-                <polygon points={path(outline)} stroke={s.color} strokeWidth={unit * (sel ? 3 : 1.75)} />
+              <g key={s.id} className={`surf${sel ? ' sel' : ''}${grp ? ' grp' : ''}${s.visible ? '' : ' hidden'}${s.locked ? ' locked' : ''}`} data-testid={`surface-shape-${idx}`}>
+                <polygon points={path(outline)} stroke={s.color} strokeWidth={unit * (sel ? 3 : grp ? 2.5 : 1.75)} />
                 {s.shape === 'polygon' && sel && <polygon points={path(s.quad)} className="quadguide" strokeWidth={unit} />}
                 {s.masks.map((m) => (
                   <polygon key={m.id} points={path(m.points)} className={`mask${m.id === maskId ? ' sel' : ''}${m.enabled ? '' : ' off'}`} strokeWidth={unit * 2} />
@@ -564,7 +567,7 @@ export function SurfaceCanvas() {
             {active!.target === 'quad' ? `Esquina ${active!.index + 1}` : `Vértice ${active!.index + 1}`}: {Math.round(activePoint.x * W)}, {Math.round(activePoint.y * H)}
           </span>
         )}
-        {surface && <span>{SURFACE_KIND_LABELS[surface.kind]} «{surface.name}»{surface.locked ? ' (bloqueada)' : ''}</span>}
+        {surface && <span>{SURFACE_KIND_LABELS[surface.kind]} «{surface.name}»{surface.locked ? ' (bloqueada)' : ''}{surface.groupMove && surface.group ? ` · con ${inst.surfaces.filter((x) => x.id !== surface.id && x.groupMove && x.group === surface.group).length} piezas de «${surface.group}» (Ctrl: solo ella)` : ''}</span>}
         {(calib.tool === 'polygon' || calib.tool === 'mask') && (
           <span className="hint">Clic para añadir puntos · Intro o doble clic para cerrar · Esc para cancelar</span>
         )}

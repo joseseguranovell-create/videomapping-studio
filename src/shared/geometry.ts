@@ -288,6 +288,15 @@ export function isGroupMaster(surfaces: readonly Surface[], id: string): boolean
   return mates.every((x) => x.id === s.id || area(x) <= area(s));
 }
 
+/** La pieza principal (la más grande) del grupo de `s`; `s` misma si no está en un grupo de piezas que se mueven juntas. */
+export function groupMasterOf(surfaces: readonly Surface[], s: Surface): Surface {
+  if (!s.group || !s.groupMove) return s;
+  const mates = surfaces.filter((x) => x.group === s.group && x.groupMove);
+  if (mates.length < 2) return s;
+  const area = (x: Surface) => Math.abs(signedArea(x.quad));
+  return mates.reduce((a, b) => (area(b) > area(a) ? b : a));
+}
+
 /**
  * Cuando cambia el cuadrilátero de la pieza principal de un grupo, las demás piezas del grupo lo siguen:
  * se parte de su estado original (`origs`, antes de empezar a arrastrar) y se les aplica la misma deformación.
