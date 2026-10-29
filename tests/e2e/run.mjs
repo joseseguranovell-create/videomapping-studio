@@ -892,10 +892,18 @@ try {
     const w = inst.surfaces.find((x) => x.name === 'Ventana alta izquierda');
     const X0 = w.quad[0].x * 1920, X1 = w.quad[1].x * 1920, Y0 = w.quad[0].y * 1080, Y1 = w.quad[2].y * 1080;
     const pts = [];
-    for (let i = 0; i <= 18; i++) for (let j = 0; j <= 12; j++) pts.push([X0 - 6 + ((X1 - X0 + 12) * i) / 18, Y0 - 6 + ((Y1 - Y0 + 12) * j) / 12]);
+    // rejilla fina en vertical: las cintas y otras líneas finas caen entre filas si la rejilla es gruesa
+    for (let i = 0; i <= 18; i++) for (let j = 0; j <= 48; j++) pts.push([X0 - 6 + ((X1 - X0 + 12) * i) / 18, Y0 - 6 + ((Y1 - Y0 + 12) * j) / 48]);
     const dark = [];
     for (const k of kinds) {
       await api('editar_clip', { clipId: clip, efecto: k });
+      if (k === 'flashlight') {
+        // La linterna solo se ve donde llega su recorrido (reveal): se le hace pasar por la ventana.
+        const c = { x: (X0 + X1) / 2 / 1920, y: (Y0 + Y1) / 2 / 1080 };
+        await win.evaluate(([id, c]) => window.__vmStore.getState().update('Recorrido de la linterna', (d) => {
+          for (const sh of d.shows) for (const sc of sh.scenes) for (const x of sc.clips) if (x.id === id) x.reveal = { radius: 0.3, points: [c], start: 0, duration: 1, speed: 1, phase: 0, ambient: 0, mask: false };
+        }), [clip, c]);
+      }
       await win.waitForFunction(([id, k]) => window.__vmStore.getState().project.shows.some((s) => s.scenes.some((c) => c.clips.some((x) => x.id === id && x.source.effect === k))), [clip, k]);
       let best = 0;
       // relámpagos, ojos y foco son intermitentes o se mueven: se miran varios instantes
