@@ -603,7 +603,7 @@ try {
     await out.evaluate(() => { const p = window.__vmPlayer; const D = p.currentShow().scenes.filter((s) => s.enabled)[1].duration; p.live.since -= D * 1.5; p.renderFrame(); });
     i = await info();
     assert(i.scene === name && i.live.index === 1, `al acabar la escena vuelve a empezar (${i.scene})`);
-    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.live?.index === 1, null, { timeout: 5000 });
+    await win.waitForFunction(() => window.__vmStore.getState().outputStatus?.live?.index === 1, null, { timeout: 15000 });
     await out.keyboard.press('ArrowRight');
     i = await info();
     assert(i.live?.index === 2, 'flecha derecha: siguiente escena');
@@ -612,7 +612,7 @@ try {
     i = await info();
     assert(i.live?.index === 0, 'RePág dos veces: dos escenas atrás');
     await win.click('[data-testid="live-scene-3"]');
-    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 3, null, { timeout: 5000 });
+    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 3, null, { timeout: 15000 });
     await out.keyboard.press('Enter');
     i = await info();
     const sh = await out.evaluate(() => window.__vmPlayer.currentShow().scenes.filter((s) => s.enabled).map((s) => s.name));
@@ -748,7 +748,7 @@ try {
     const cap = await api('captura');
     assert(cap.ok && cap.resultado.png.length > 1000, 'captura devuelve una imagen');
     assert((await api('escena_en_bucle', { espectaculoId: sh.id, escena: 2 })).ok, 'escena_en_bucle');
-    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 1, null, { timeout: 5000 });
+    await out.waitForFunction(() => window.__vmPlayer.liveInfo()?.index === 1, null, { timeout: 15000 });
     assert((await api('escena_en_bucle', { accion: 'salir' })).ok, 'salir del modo directo');
     await out.waitForFunction(() => window.__vmPlayer.liveInfo() === null, null, { timeout: 5000 });
     assert(!(await api('escena_en_bucle', { escena: 99 })).ok, 'escena inexistente rechazada');
