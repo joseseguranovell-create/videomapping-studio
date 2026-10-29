@@ -94,6 +94,12 @@ export function evaluateMotion(m: Motion | undefined, t: number, duration: numbe
       s.rotation = Math.sin(TAU * t * 0.5 * sp) * 4 * I * k;
       break;
     }
+    case 'dropExitLeft':
+    case 'dropExitRight':
+      // baja desde arriba al empezar y, al acabar, se va hacia un lado (sin quedarse en pantalla)
+      s.dy = -(1 - easeOutCubic(inP)) * 0.9;
+      s.dx = (m.preset === 'dropExitLeft' ? -1 : 1) * easeInCubic(1 - outP) * 1.0;
+      break;
     case 'enterLeft':
       s.dx = -(1 - easeOutCubic(inP)) * 1.0;
       break;

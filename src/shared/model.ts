@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -141,6 +141,8 @@ export const MOTION_PRESETS = [
   'peekRight',
   'peekBottom',
   'peekTop',
+  'dropExitLeft',
+  'dropExitRight',
   'enterLeft',
   'enterRight',
   'exitLeft',
@@ -462,6 +464,8 @@ export const MOTION_LABELS: Record<MotionPreset, string> = {
   peekRight: 'Asomarse por la derecha',
   peekBottom: 'Asomarse por abajo',
   peekTop: 'Asomarse por arriba',
+  dropExitLeft: 'Baja de arriba y se va por la izquierda',
+  dropExitRight: 'Baja de arriba y se va por la derecha',
   enterLeft: 'Entrar por la izquierda',
   enterRight: 'Entrar por la derecha',
   exitLeft: 'Salir por la izquierda',

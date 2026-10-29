@@ -40,6 +40,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   9: (doc) => ({ ...doc, schemaVersion: 10 }),
   // Versión 10 → 11: «groupMove» en las superficies (mover y estirar un grupo como una pieza). Opcional; por defecto desactivado.
   10: (doc) => ({ ...doc, schemaVersion: 11 }),
+  // Versión 11 → 12: movimientos «dropExitLeft» y «dropExitRight» (baja de arriba y se va hacia un lado). Nada que convertir.
+  11: (doc) => ({ ...doc, schemaVersion: 12 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {
