@@ -7,6 +7,9 @@ import { fontFor } from './fonts';
 
 type TextSource = Extract<ClipSource, { type: 'text' }>;
 
+/** Texturas de rótulo que se conservan a la vez. */
+const MAX_TEXTURAS_TEXTO = 40;
+
 function mixHex(hex: string, to: [number, number, number], k: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
   const n = m ? parseInt(m[1], 16) : 0xffffff;
@@ -252,17 +255,24 @@ export class MediaManager {
   text(src: TextSource, shown = Infinity): { texture: WebGLTexture; aspect: number } {
     const k = JSON.stringify([src.text, src.font, src.color, src.outline, src.glow, src.bold, shown === Infinity ? -1 : shown]);
     let e = this.texts.get(k);
-    if (!e) {
-      if (this.texts.size > 300) {
-        for (const v of this.texts.values()) this.r.deleteTexture(v.texture);
-        this.texts.clear();
-      }
-      const c = renderText(src, shown);
-      const texture = this.r.createTexture();
-      this.r.upload(texture, c);
-      e = { texture, aspect: c.width / c.height };
+    if (e) {
+      // se marca como el más reciente (la caché descarta los más antiguos)
+      this.texts.delete(k);
       this.texts.set(k, e);
+      return e;
     }
+    // Un rótulo que se escribe letra a letra genera una textura por cada letra y las anteriores ya no se usan: se guardan pocas
+    // (cada una puede pesar varios MB; con cientos, un portátil con la gráfica integrada se arrastra).
+    while (this.texts.size >= MAX_TEXTURAS_TEXTO) {
+      const [oldKey, old] = this.texts.entries().next().value as [string, { texture: WebGLTexture }];
+      this.r.deleteTexture(old.texture);
+      this.texts.delete(oldKey);
+    }
+    const c = renderText(src, shown);
+    const texture = this.r.createTexture();
+    this.r.upload(texture, c);
+    e = { texture, aspect: c.width / c.height };
+    this.texts.set(k, e);
     return e;
   }
 
