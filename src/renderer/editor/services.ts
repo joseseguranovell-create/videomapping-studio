@@ -372,8 +372,9 @@ function invalidateAssetInPlayers(id: string) {
 }
 
 /** Documento sin miniaturas para enviar a la salida (menos datos por IPC). */
-export function slimProject(p: Project): Project {
-  const q = withPlaylists(p); // las listas de reproducción viajan como espectáculos
+export function slimProject(p: Project, calibrating = false): Project {
+  // Calibrar no usa los espectáculos: no se mandan para que arrastrar un vértice no copie miles de clips en cada movimiento.
+  const q = calibrating ? { ...p, shows: [], playlists: [] } : withPlaylists(p); // las listas de reproducción viajan como espectáculos
   return { ...q, assets: q.assets.map((a) => (a.thumbnail ? { ...a, thumbnail: '' } : a)) };
 }
 
@@ -398,6 +399,7 @@ export function currentOutputMode(): OutputMode {
 }
 
 let lastSentDoc: Project | null = null;
+let lastSentLight = false;
 let lastSentMode = '';
 let syncRaf = 0;
 
@@ -411,9 +413,11 @@ export function scheduleOutputSync(force = false) {
     syncRaf = 0;
     const s = st();
     if (!s.output.open) return;
-    if (s.project && s.project !== lastSentDoc) {
-      vm.output.send({ type: 'doc', project: slimProject(s.project), mediaBase: mediaBase(), projectKey: s.projectKey });
+    const light = s.outputMode === 'calibration';
+    if (s.project && (s.project !== lastSentDoc || (lastSentLight && !light))) {
+      vm.output.send({ type: 'doc', project: slimProject(s.project, light), mediaBase: mediaBase(), projectKey: s.projectKey });
       lastSentDoc = s.project;
+      lastSentLight = light;
     }
     const mode = currentOutputMode();
     const key = JSON.stringify(mode);

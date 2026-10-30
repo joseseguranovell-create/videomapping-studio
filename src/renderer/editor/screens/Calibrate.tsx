@@ -391,7 +391,7 @@ function SurfaceProps({ inst, s }: { inst: Installation; s: Surface }) {
       if (x) fn(x);
     });
   const W = inst.output.width, H = inst.output.height;
-  const usage = project.shows.reduce((n, sh) => n + sh.scenes.reduce((m, sc) => m + sc.clips.filter((c) => c.surfaceId === s.id).length, 0), 0);
+  const usage = React.useMemo(() => project.shows.reduce((n, sh) => n + sh.scenes.reduce((m, sc) => m + sc.clips.filter((c) => c.surfaceId === s.id).length, 0), 0), [project.shows, s.id]);
   const validQuad = isValidQuad(s.quad);
   return (
     <div className="inspector" data-testid="surface-props">
