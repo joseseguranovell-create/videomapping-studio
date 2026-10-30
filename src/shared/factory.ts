@@ -40,6 +40,7 @@ export function createProject(name: string): Project {
     assets: [],
     characters: [],
     shows: [],
+    playlists: [],
     lights: [],
     collections: [],
   };

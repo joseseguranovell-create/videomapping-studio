@@ -9,6 +9,7 @@ import { mediaUrl } from '../engine/media';
 import { newId, nowIso } from '../../shared/ids';
 import { referencedAssetIds, createSurface } from '../../shared/factory';
 import { clampPoint, translateGroup } from '../../shared/geometry';
+import { allShows, withPlaylists } from '../../shared/playlist';
 import { inSchedule } from '../../shared/schedule';
 
 export const vm = window.vm;
@@ -366,7 +367,8 @@ function invalidateAssetInPlayers(id: string) {
 
 /** Documento sin miniaturas para enviar a la salida (menos datos por IPC). */
 export function slimProject(p: Project): Project {
-  return { ...p, assets: p.assets.map((a) => (a.thumbnail ? { ...a, thumbnail: '' } : a)) };
+  const q = withPlaylists(p); // las listas de reproducción viajan como espectáculos
+  return { ...q, assets: q.assets.map((a) => (a.thumbnail ? { ...a, thumbnail: '' } : a)) };
 }
 
 export function currentOutputMode(): OutputMode {
@@ -504,7 +506,7 @@ function outputInstallationId(): string | null {
   const s = st();
   if (!s.project) return null;
   if (s.outputMode === 'show') {
-    const sh = s.project.shows.find((x) => x.id === s.outputShowId);
+    const sh = allShows(s.project).find((x) => x.id === s.outputShowId);
     if (sh?.installationId) return sh.installationId;
   }
   return s.installationId ?? s.project.installations[0]?.id ?? null;
@@ -513,7 +515,7 @@ function outputInstallationId(): string | null {
 function ensureShowSelected(): string | null {
   const s = st();
   if (!s.project) return null;
-  const id = s.outputShowId && s.project.shows.some((x) => x.id === s.outputShowId) ? s.outputShowId : s.showId ?? s.project.shows[0]?.id ?? null;
+  const id = s.outputShowId && allShows(s.project).some((x) => x.id === s.outputShowId) ? s.outputShowId : s.showId ?? s.project.shows[0]?.id ?? null;
   if (id !== s.outputShowId) s.set({ outputShowId: id });
   return id;
 }

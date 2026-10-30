@@ -44,6 +44,8 @@ export const MIGRATIONS: Record<number, (doc: RawProject) => RawProject> = {
   11: (doc) => ({ ...doc, schemaVersion: 12 }),
   // Versión 12 → 13: el recorrido de la linterna (reveal.points) admite hasta 12 puntos en vez de 8. Nada que convertir.
   12: (doc) => ({ ...doc, schemaVersion: 13 }),
+  // Versión 13 → 14: listas de reproducción (project.playlists, por defecto vacía).
+  13: (doc) => ({ ...doc, schemaVersion: 14 }),
 };
 
 export function migrateProject(input: unknown): { doc: RawProject; migratedFrom: number | null } {

@@ -9,6 +9,8 @@ import { formatTime, layoutShow } from '../../../shared/timeline';
 import { validateInstallation } from '../../../shared/geometry';
 import { LightDots } from './Lights';
 import { DemoRecorder } from '../components/DemoRecorder';
+import { PlaylistPanel } from '../components/PlaylistPanel';
+import { allShows, isPlaylistShowId } from '../../../shared/playlist';
 import type { HaStatus } from '../../../shared/api';
 
 export function PlaybackScreen() {
@@ -24,7 +26,8 @@ export function PlaybackScreen() {
   const [displayChoice, setDisplayChoice] = useState<number>(preferredOutputDisplayId() ?? -1);
   const [demo, setDemo] = useState(false);
 
-  const show = project.shows.find((s) => s.id === outputShowId) ?? project.shows[0] ?? null;
+  const shows = useMemo(() => allShows(project), [project]);
+  const show = shows.find((s) => s.id === outputShowId) ?? shows[0] ?? null;
   const inst = show ? project.installations.find((i) => i.id === show.installationId) : null;
   const L = useMemo(() => (show ? layoutShow(show) : null), [show]);
 
@@ -85,7 +88,7 @@ export function PlaybackScreen() {
               onChange={(e) => set({ outputShowId: e.target.value })}
               data-testid="play-show-select"
             >
-              {project.shows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {shows.map((s) => <option key={s.id} value={s.id}>{isPlaylistShowId(s.id) ? '☰ ' : ''}{s.name}</option>)}
             </select>
             {!output.open && (
               <select value={displayChoice} onChange={(e) => setDisplayChoice(parseInt(e.target.value, 10))}>
@@ -160,6 +163,7 @@ export function PlaybackScreen() {
             </div>
           )}
         </Panel>
+        <PlaylistPanel />
         <SchedulePanel showId={show?.id ?? null} />
         {demo && <DemoRecorder showId={show?.id ?? null} onClose={() => setDemo(false)} />}
       </div>

@@ -12,7 +12,7 @@
  */
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export const Vec2 = z.object({ x: z.number(), y: z.number() });
 export type Vec2 = z.infer<typeof Vec2>;
@@ -399,6 +399,28 @@ export const Show = z.object({
 });
 export type Show = z.infer<typeof Show>;
 
+/** Un espectáculo dentro de una lista de reproducción. */
+export const PlaylistItem = z.object({
+  showId: z.string(),
+  /** Salta la primera escena activa (la de espera) cuando este espectáculo no abre la lista. */
+  skipFirstScene: z.boolean().default(false),
+  /** Pausa en negro antes de este espectáculo (segundos). */
+  gap: z.number().min(0).max(120).default(0),
+});
+export type PlaylistItem = z.infer<typeof PlaylistItem>;
+
+/** Espectáculos encadenados que se reproducen uno tras otro con la misma calibración. */
+export const Playlist = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(PlaylistItem).default([]),
+  /** Volver a empezar al terminar la lista. */
+  loop: z.boolean().default(false),
+  /** Pausa en negro entre repeticiones (segundos). */
+  loopGap: z.number().min(0).default(3),
+});
+export type Playlist = z.infer<typeof Playlist>;
+
 export const CharacterAnimation = z.object({
   id: z.string(),
   name: z.string(),
@@ -432,6 +454,7 @@ export const Project = z.object({
   assets: z.array(Asset).default([]),
   characters: z.array(Character).default([]),
   shows: z.array(Show).default([]),
+  playlists: z.array(Playlist).default([]),
   lights: z.array(LightDevice).default([]),
   collections: z.array(z.string()).default([]),
 });

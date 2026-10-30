@@ -3,7 +3,7 @@
  * foto de la fachada oscurecida como si fuera de noche, para enviarlo por WhatsApp o enseñarlo.
  * Usa un reproductor propio, oculto: no toca el proyector ni las luces de casa.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Video, FolderOpen } from 'lucide-react';
 import { useStore, mediaBase } from '../store';
 import { vm, errMsg } from '../services';
@@ -11,6 +11,7 @@ import { mediaUrl } from '../../engine/media';
 import { Player } from '../../engine/player';
 import { Button, Field, Modal, Select, Toggle } from './ui';
 import { layoutShow, formatTime } from '../../../shared/timeline';
+import { allShows, withPlaylists, isPlaylistShowId } from '../../../shared/playlist';
 import { cropSource } from '../../../shared/crop';
 
 const TYPES: { mime: string; ext: 'mp4' | 'webm' }[] = [
@@ -41,10 +42,11 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
   const project = useStore((s) => s.project)!;
   const projectKey = useStore((s) => s.projectKey);
   const toast = useStore((s) => s.toast);
-  const [sid, setSid] = useState(showId ?? project.shows[0]?.id ?? '');
+  const shows = useMemo(() => allShows(project), [project]);
+  const [sid, setSid] = useState(showId ?? shows[0]?.id ?? '');
   const [length, setLength] = useState<'full' | '10' | '30' | '60'>('full');
   const [quality, setQuality] = useState<'720' | '1080'>('720');
-  const show = project.shows.find((s) => s.id === sid) ?? null;
+  const show = shows.find((s) => s.id === sid) ?? null;
   const inst = show ? project.installations.find((i) => i.id === show.installationId) ?? null : null;
   const photo = inst?.referenceImageAssetId ? project.assets.find((a) => a.id === inst.referenceImageAssetId) ?? null : null;
   const [onPhoto, setOnPhoto] = useState(!!photo);
@@ -66,7 +68,7 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
     let id: string | null = null;
     try {
       p = new Player(gl, { audio: true, showMissing: false, maxWidth: quality === '1080' ? 1920 : 1280 });
-      p.setProject(project, mediaBase(), `${projectKey}-demo`);
+      p.setProject(withPlaylists(project), mediaBase(), `${projectKey}-demo`);
       p.setMode({ kind: 'show', showId: show.id });
       await p.fontsReady();
       // Precarga: unos fotogramas al principio para que lleguen imágenes y vídeos.
@@ -149,7 +151,7 @@ export function DemoRecorder({ showId, onClose }: { showId: string | null; onClo
       {state.phase === 'idle' && (
         <>
           <div className="row2">
-            <Field label="Espectáculo"><Select value={sid} onChange={setSid} options={project.shows.map((s) => ({ value: s.id, label: s.name }))} /></Field>
+            <Field label="Espectáculo"><Select value={sid} onChange={setSid} options={shows.map((s) => ({ value: s.id, label: (isPlaylistShowId(s.id) ? '☰ ' : '') + s.name }))} /></Field>
             <Field label="Duración"><Select value={length} onChange={setLength} options={[{ value: 'full', label: `Completo (${formatTime(total)})` }, { value: '10', label: 'Primeros 10 s (prueba rápida)' }, { value: '30', label: 'Primeros 30 s' }, { value: '60', label: 'Primer minuto' }]} data-testid="demo-length" /></Field>
           </div>
           <Field label="Calidad"><Select value={quality} onChange={setQuality} options={[{ value: '720', label: '720p (ideal para WhatsApp)' }, { value: '1080', label: '1080p' }]} /></Field>
