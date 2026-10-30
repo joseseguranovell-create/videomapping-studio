@@ -11,6 +11,25 @@ import { newId } from '../../shared/ids';
 
 setAutoFreeze(false);
 
+/**
+ * Con el congelado automático desactivado, immer recorre entero cada trozo del documento que no esté congelado para
+ * buscar cambios: con muchos espectáculos (decenas de miles de clips) cada cambio, incluso mover un vértice, tardaba ~180 ms.
+ * Congelar (sin profundizar) las colecciones grandes hace que immer las dé por buenas sin recorrerlas; se copian al modificarlas.
+ */
+function shield(p: Project): Project {
+  Object.freeze(p.assets);
+  Object.freeze(p.shows);
+  for (const sh of p.shows) {
+    Object.freeze(sh);
+    Object.freeze(sh.scenes);
+    for (const sc of sh.scenes) {
+      Object.freeze(sc);
+      Object.freeze(sc.clips);
+    }
+  }
+  return p;
+}
+
 export type View = 'home' | 'calibrate' | 'library' | 'characters' | 'shows' | 'lights' | 'play' | 'settings';
 export type OutputModeChoice = 'black' | 'calibration' | 'show';
 export type CalibTool = 'select' | 'rect' | 'polygon' | 'mask';
@@ -170,10 +189,10 @@ export const useStore = create<State & Actions>((set, get) => ({
   update(label, fn) {
     const cur = get().project;
     if (!cur) return;
-    const next = produce(cur, (d) => {
+    const next = shield(produce(cur, (d) => {
       fn(d);
       d.updatedAt = new Date().toISOString();
-    });
+    }));
     if (next === cur) return;
     set((s) => ({
       ...keepSelection(s, next),
@@ -190,7 +209,7 @@ export const useStore = create<State & Actions>((set, get) => ({
   dragUpdate(fn) {
     const cur = get().project;
     if (!cur) return;
-    const next = produce(cur, fn);
+    const next = shield(produce(cur, fn));
     if (next !== cur) set((s) => ({ project: next, changeCounter: s.changeCounter + 1 }));
   },
   endDrag(label) {
@@ -198,9 +217,9 @@ export const useStore = create<State & Actions>((set, get) => ({
     const cur = get().project;
     set({ dragBase: null });
     if (!base || !cur || base === cur) return;
-    const stamped = produce(cur, (d) => {
+    const stamped = shield(produce(cur, (d) => {
       d.updatedAt = new Date().toISOString();
-    });
+    }));
     set((s) => ({ project: stamped, past: [...s.past, { doc: base, label }].slice(-HISTORY_LIMIT), future: [], dirty: true, changeCounter: s.changeCounter + 1 }));
   },
   undo() {
