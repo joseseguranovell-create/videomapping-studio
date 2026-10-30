@@ -1,0 +1,182 @@
+npm warn skipping integrity check for git dependency ssh://git@github.com/electron/node-gyp.git
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated @npmcli/move-file@2.0.1: This functionality has been moved to @npmcli/fs
+npm warn deprecated rimraf@2.6.3: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated rimraf@3.0.2: Rimraf versions prior to v4 are no longer supported
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated glob@8.1.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated tar@6.2.1: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+added 442 packages, and audited 443 packages in 15s
+
+81 packages are looking for funding
+  run `npm fund` for details
+
+17 vulnerabilities (1 moderate, 13 high, 3 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues, run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+> videomapping-studio@0.1.0 typecheck
+> tsc -p tsconfig.json
+
+
+> videomapping-studio@0.1.0 test
+> vitest run
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mD:/a/videomapping-studio/videomapping-studio[39m
+
+ [32m✓[39m tests/unit/geometry.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m tests/unit/lights.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m tests/unit/project.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m tests/unit/timeline.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/unit/playlist.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m tests/unit/generator.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m tests/unit/templates.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m tests/unit/choreo.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m tests/unit/projectStore.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 1571[2mms[22m[39m
+   [33m[2m✓[22m[39m paquetes[2m > [22mimportar dos veces no duplica recursos [33m 491[2mms[22m[39m
+   [33m[2m✓[22m[39m paquetes[2m > [22mexportar un paquete y volver a leerlo [33m 551[2mms[22m[39m
+ [32m✓[39m tests/unit/updates.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m tests/unit/schedule.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/unit/detect.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 106[2mms[22m[39m
+ [32m✓[39m tests/unit/motion.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m13 passed[39m[22m[90m (13)[39m
+[2m      Tests [22m [1m[32m121 passed[39m[22m[90m (121)[39m
+[2m   Start at [22m 20:35:18
+[2m   Duration [22m 2.80s[2m (transform 511ms, setup 0ms, collect 2.50s, tests 1.89s, environment 3ms, prepare 1.50s)[22m
+
+
+> videomapping-studio@0.1.0 build
+> npm run build:main && npm run build:renderer
+
+
+> videomapping-studio@0.1.0 build:main
+> node scripts/build-main.mjs
+
+
+  dist\preload\output.cjs  785b 
+
+Done in 7ms
+
+  dist\preload\editor.cjs  4.8kb
+
+Done in 7ms
+
+  dist\main\main.cjs      549.0kb
+  dist\main\main.cjs.map    1.0mb
+
+Done in 50ms
+
+> videomapping-studio@0.1.0 build:renderer
+> vite build
+
+[36mvite v7.1.12 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 1809 modules transformed.
+rendering chunks...
+computing gzip size...
+[2m../../dist/renderer/[22m[32mindex.html                               [39m[1m[2m  0.64 kB[22m[1m[22m[2m │ gzip:   0.36 kB[22m
+[2m../../dist/renderer/[22m[32moutput.html                              [39m[1m[2m  1.93 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2m../../dist/renderer/[22m[32massets/pirata-one-C8jLWNfm.woff2         [39m[1m[2m  8.87 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/cinzel-decorative-CnX1aK6s.woff2  [39m[1m[2m 15.49 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/fredoka-C4zohCW5.woff2            [39m[1m[2m 16.47 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/jolly-lodger-DHti15Vw.woff2       [39m[1m[2m 17.87 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/mystery-quest-DNAk52LO.woff2      [39m[1m[2m 21.88 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/bangers-DeHY8Ncq.woff2            [39m[1m[2m 23.53 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/creepster-DnKpM-ys.woff2          [39m[1m[2m 28.12 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/eater-DA5WSXgB.woff2              [39m[1m[2m 41.70 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/henny-penny-BoMsKDmu.woff2        [39m[1m[2m 44.81 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[32massets/griffy-i6EZju_L.woff2             [39m[1m[2m 70.00 kB[22m[1m[22m
+[2m../../dist/renderer/[22m[35massets/index-B9R1pea9.css                [39m[1m[2m 36.93 kB[22m[1m[22m[2m │ gzip:   8.23 kB[22m
+[2m../../dist/renderer/[22m[36massets/output-Bc6-Hi-W.js                [39m[1m[2m  8.28 kB[22m[1m[22m[2m │ gzip:   3.40 kB[22m[2m │ map:    26.77 kB[22m
+[2m../../dist/renderer/[22m[36massets/player-DcsquZca.js                [39m[1m[2m207.67 kB[22m[1m[22m[2m │ gzip:  65.15 kB[22m[2m │ map:   697.79 kB[22m
+[2m../../dist/renderer/[22m[36massets/index-HKGbeGNB.js                 [39m[1m[33m508.13 kB[39m[22m[2m │ gzip: 156.74 kB[22m[2m │ map: 1,856.76 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 3.48s[39m
+Datos temporales: C:\Users\RUNNER~1\AppData\Local\Temp\vms-e2e-vtmYJU
+Downloading Electron binary...
+  ✔ 1. La aplicación arranca y muestra Inicio (23 ms)
+  ✔ 1b. Proyecto vacío + paquete: la casa del paquete llega a Calibrar (3373 ms)
+  ✔ 2. Crear proyecto nuevo vacío y una instalación (406 ms)
+  ✔ 3. Dibujar dos ventanas y una puerta con el ratón (2525 ms)
+  ✔ 4. Ajustar una esquina arrastrando, deshacer y rehacer, mover 1 px con el teclado (4592 ms)
+  ✔ 5. Dibujar una zona de exclusión poligonal (810 ms)
+  ✔ 6. Abrir la salida de proyección y comprobar la calibración en directo (píxeles) (4235 ms)
+  ✔ 6b. Calibrar directamente sobre la proyección (ratón y teclado en la ventana de salida) (11298 ms)
+  ✔ 7. Importar un vídeo MP4 y una imagen PNG con transparencia (1179 ms)
+  ✔ 8. Añadir el paquete Halloween al proyecto (recursos y personajes) (2440 ms)
+  ✔ 9. Crear un espectáculo con escenas, personaje, vídeo, efecto, sonido y música (18532 ms)
+  ✔ 10. Mover un clip en la línea de tiempo arrastrándolo (6645 ms)
+  ✔ 11. Reproducir en el proyector: clips coordinados en dos ventanas sin invadir vecinas (4632 ms)
+      diagnóstico vídeo: {"t":4.841541950113381,"videos":2,"gpu":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)","errs":[]}
+  ✔ 12. Transparencia real de vídeo WebM VP9 (paquete): fondo transparente, cuerpo visible (4020 ms)
+  ✔ 13. Guardar, cerrar y reabrir sin perder calibración ni recursos (4877 ms)
+  ✔ 14. Duplicar el espectáculo para otra versión sin modificar el original (529 ms)
+  ✔ 15. Crear un perfil para otra casa y adaptar una copia del espectáculo (2201 ms)
+  ✔ 16. Recurso ausente: aviso al abrir y relocalización (2796 ms)
+  ✔ 17. Recuperación tras cierre inesperado (guardado automático) (7451 ms)
+  ✔ 18. Proyecto de ejemplo completo desde el paquete y barrido de todo el espectáculo (436090 ms)
+      pantalla completa: antes=true después de Esc=false
+  ✔ 18a. Preparar en espera y empezar con Espacio sobre la proyección; B negro; Esc sale de pantalla completa (7416 ms)
+      reloj: {"src":"perf","rate":1.000000000000007}
+  ✔ 18a2. Modo directo: escena en bucle con teclas, cambio con flechas y seguir el espectáculo (21328 ms)
+  ✘ 18b. Mover y escalar un clip arrastrando sobre la previsualización
+      locator.click: Timeout 30000ms exceeded.
+      Call log:
+      [2m  - waiting for locator('[data-testid="tl-clip"]').filter({ hasText: 'Boo saluda' })[22m
+      [2m    - locator resolved to <div class="tl-bar chr" data-testid="tl-clip" title="Boo saluda · 3.0s → 7.0s · clic derecho: más opciones">…</div>[22m
+      [2m  - attempting click action[22m
+      [2m    - waiting for element to be visible, enabled and stable[22m
+      [2m    - element is visible, enabled and stable[22m
+      [2m    - scrolling into view if needed[22m
+      [2m    - done scrolling[22m
+      
+
+22/23 pasos superados — falló: 18b. Mover y escalar un clip arrastrando sobre la previsualización
+  • electron-builder  version=26.0.12 os=10.0.26100
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=44.9.3 arch=x64 buildFromSource=false appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=44.9.3 appOutDir=release\win-unpacked
+  • downloading     url=https://github.com/electron/electron/releases/download/v44.9.3/electron-v44.9.3-win32-x64.zip size=158 MB parts=8
+  • downloaded      url=https://github.com/electron/electron/releases/download/v44.9.3/electron-v44.9.3-win32-x64.zip duration=2.338s
+  • updating asar integrity executable resource  executablePath=release\win-unpacked\Videomapping Studio.exe
+  • building        target=zip arch=x64 file=release\Videomapping-Studio-0.1.0-win-x64-portable.zip
+  • building        target=nsis file=release\Videomapping-Studio-Setup-0.1.0.exe archs=x64 oneClick=false perMachine=false
+  • downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z size=1.3 MB parts=1
+  • downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-3.0.4.1/nsis-3.0.4.1.7z duration=309ms
+  • downloading     url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-resources-3.4.1/nsis-resources-3.4.1.7z size=731 kB parts=1
+  • downloaded      url=https://github.com/electron-userland/electron-builder-binaries/releases/download/nsis-resources-3.4.1/nsis-resources-3.4.1.7z duration=301ms
+  • signing with signtool.exe  path=release\__uninstaller-nsis-videomapping-studio.exe
+  • signing with signtool.exe  path=release\Videomapping-Studio-Setup-0.1.0.exe
+  • building block map  blockMapFile=release\Videomapping-Studio-Setup-0.1.0.exe.blockmap
+ventanas visibles: [ true ]
+OK: el ejecutable empaquetado arranca, muestra la ventana y crea el proyecto de ejemplo { missing: 0, assets: 22 }
+--- app.log ---
+2026-10-30T20:47:51.791Z [INFO] [main] Arrancando (empaquetado=true, appPath=D:\a\videomapping-studio\videomapping-studio\release\win-unpacked\resources\app.asar, ui=D:\a\videomapping-studio\videomapping-studio\release\win-unpacked\resources\app.asar\dist\renderer)
+2026-10-30T20:47:51.822Z [INFO] [main] Electron listo
+2026-10-30T20:47:51.823Z [INFO] [main] Paso: menú
+2026-10-30T20:47:51.823Z [INFO] [main] Paso: seguridad
+2026-10-30T20:47:51.832Z [INFO] [main] Paso: protocolo
+2026-10-30T20:47:51.841Z [INFO] [main] Paso: IPC
+2026-10-30T20:47:51.843Z [INFO] [main] Paso: paquetes
+2026-10-30T20:47:51.914Z [INFO] [main] Paso: ventana
+2026-10-30T20:47:52.042Z [INFO] [main] Videomapping Studio 0.1.0 iniciado (Electron 44.9.3, win32)
+2026-10-30T20:47:52.578Z [INFO] [main] Mostrando ventana del editor (lista)
+2026-10-30T20:47:53.228Z [INFO] [main] Proyecto abierto: C:\Users\RUNNER~1\AppData\Local\Temp\vms-pkg-XUuUVO\docs\Proyectos\Prueba empaquetada\project.vmsp (recursos ausentes: 0)
+

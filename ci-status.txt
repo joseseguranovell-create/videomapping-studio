@@ -1,0 +1,7 @@
+npm ci: 0
+typecheck: 0
+unit: 0
+build: 0
+e2e: 1
+package: 0
+packaged-exe: 0
