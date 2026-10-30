@@ -12,6 +12,13 @@ export const PLAYLIST_ID_PREFIX = 'lista:';
 export const isPlaylistShowId = (id: string | null | undefined): id is string => !!id && id.startsWith(PLAYLIST_ID_PREFIX);
 export const playlistIdOf = (showId: string) => showId.slice(PLAYLIST_ID_PREFIX.length);
 
+/** ¿El espectáculo empieza con una escena de espera (su nombre dice «espera»)? Esa es la que se salta al encadenarlo después de otro. */
+export const hasWaitScene = (show: Show): boolean => /espera/i.test(show.scenes.find((s) => s.enabled)?.name ?? '');
+
+/** Elemento de lista con los ajustes por defecto: salta la espera solo si la tiene, y deja 2 s en negro entre espectáculos. */
+export const newPlaylistItem = (show: Show, first: boolean): { showId: string; skipFirstScene: boolean; gap: number } =>
+  ({ showId: show.id, skipFirstScene: !first && hasWaitScene(show), gap: first ? 0 : 2 });
+
 /** Escenas activas de un espectáculo; si `skipFirst`, sin la primera (la de espera). */
 function keptScenes(show: Show, skipFirst: boolean): Scene[] {
   const on = show.scenes.filter((s) => s.enabled);

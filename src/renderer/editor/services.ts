@@ -9,7 +9,7 @@ import { mediaUrl } from '../engine/media';
 import { newId, nowIso } from '../../shared/ids';
 import { referencedAssetIds, createSurface } from '../../shared/factory';
 import { clampPoint, translateGroup } from '../../shared/geometry';
-import { allShows, withPlaylists } from '../../shared/playlist';
+import { allShows, newPlaylistItem, withPlaylists } from '../../shared/playlist';
 import { inSchedule } from '../../shared/schedule';
 
 export const vm = window.vm;
@@ -318,18 +318,24 @@ export async function addPackToProject(packId: string, withShows: boolean) {
   if (!p) return;
   try {
     const r = await vm.packs.importIntoProject(packId, p);
+    const packName = (await vm.packs.list().catch(() => null))?.packs.find((x) => x.id === packId)?.name;
     st().update('Añadir paquete', (d) => {
       d.assets.push(...r.assets);
       d.characters.push(...r.characters);
       if (withShows) {
         for (const i of r.installations) if (!d.installations.some((x) => x.id === i.id)) d.installations.push(i);
         for (const s of r.shows) if (!d.shows.some((x) => x.id === s.id)) d.shows.push(s);
+        // Un paquete con varios espectáculos trae también una lista de reproducción con todos, en su orden.
+        const lid = `lst-${packId}`;
+        if (r.shows.length > 1 && !d.playlists.some((l) => l.id === lid)) {
+          d.playlists.push({ id: lid, name: packName ?? 'Todos los espectáculos', items: r.shows.map((s, i) => newPlaylistItem(s, i === 0)), loop: false, loopGap: 3 });
+        }
       }
     });
     // Deja seleccionadas la casa y el espectáculo del paquete para que Calibrar y Espectáculos los muestren.
     if (withShows && r.installations[0]) st().set({ installationId: r.installations[0].id, surfaceId: null });
     if (withShows && r.shows[0]) st().set({ showId: r.shows[0].id, sceneId: r.shows[0].scenes[0]?.id ?? null, clipId: null });
-    st().toast('success', `Paquete añadido: ${r.assets.length} recursos, ${r.characters.length} personajes${withShows && r.installations.length ? `, ${r.installations.length} instalación(es) y ${r.shows.length} espectáculo(s)` : ''}${r.skippedAssets ? ` (${r.skippedAssets} ya estaban)` : ''}`);
+    st().toast('success', `Paquete añadido: ${r.assets.length} recursos, ${r.characters.length} personajes${withShows && r.installations.length ? `, ${r.installations.length} instalación(es) y ${r.shows.length} espectáculo(s)${r.shows.length > 1 ? ' (con una lista de reproducción con todos)' : ''}` : ''}${r.skippedAssets ? ` (${r.skippedAssets} ya estaban)` : ''}`);
     await refreshMissing();
   } catch (e) {
     st().toast('error', `No se pudo añadir el paquete: ${errMsg(e)}`, 8000);

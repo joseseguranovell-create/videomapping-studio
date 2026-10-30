@@ -8,7 +8,7 @@ import { useStore } from '../store';
 import { Button, Field, NumberInput, Panel, Select, TextInput, Toggle, confirmDialog, promptDialog } from './ui';
 import { newId } from '../../../shared/ids';
 import { layoutShow, formatTime } from '../../../shared/timeline';
-import { playlistToShow } from '../../../shared/playlist';
+import { newPlaylistItem, playlistToShow } from '../../../shared/playlist';
 import type { Playlist } from '../../../shared/model';
 
 export function PlaylistPanel() {
@@ -73,12 +73,15 @@ export function PlaylistPanel() {
           <Field label="Añadir espectáculo">
             <Select
               value=""
-              onChange={(v) => { if (v) mut('Añadir a la lista', (x) => { x.items.push({ showId: v, skipFirstScene: x.items.length > 0, gap: x.items.length > 0 ? 2 : 0 }); }); }}
+              onChange={(v) => { const sh = project.shows.find((q) => q.id === v); if (sh) mut('Añadir a la lista', (x) => { x.items.push(newPlaylistItem(sh, x.items.length === 0)); }); }}
               options={[{ value: '', label: 'Elige un espectáculo…' }, ...project.shows.map((s) => ({ value: s.id, label: s.name }))]}
               data-testid="playlist-add"
             />
           </Field>
-          <p className="muted small">Duración total: {formatTime(total)}. Los espectáculos que se añaden después del primero saltan su escena de espera y dejan 2 s de pausa en negro, pero se puede cambiar. La música de cada uno empieza con él.</p>
+          <div className="btn-row">
+            <Button small icon={<Plus size={14} />} data-testid="playlist-add-all" onClick={() => mut('Añadir todos a la lista', (x) => { for (const sh of project.shows) if (!x.items.some((i) => i.showId === sh.id)) x.items.push(newPlaylistItem(sh, x.items.length === 0)); })}>Añadir todos los espectáculos</Button>
+          </div>
+          <p className="muted small">Duración total: {formatTime(total)}. Al añadir un espectáculo detrás de otro se salta su escena de espera solo si la tiene, y se deja 2 s en negro; todo se puede cambiar. La música de cada uno empieza con él.</p>
           <div className="btn-row"><Button small icon={<Trash2 size={14} />} onClick={() => void borrar()}>Eliminar lista</Button></div>
         </>
       )}

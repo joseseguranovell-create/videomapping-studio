@@ -58,3 +58,16 @@ describe('listas de reproducción', () => {
     expect(isPlaylistShowId('A')).toBe(false);
   });
 });
+
+describe('ajustes por defecto de la lista', () => {
+  it('salta la espera solo si el espectáculo la tiene, y solo después del primero', async () => {
+    const { hasWaitScene, newPlaylistItem } = await import('../../src/shared/playlist');
+    const conEspera = { id: 'a', scenes: [{ name: '0 · Espera: velas', enabled: true }] } as any;
+    const sinEspera = { id: 'b', scenes: [{ name: '1 · media (0:00)', enabled: true }] } as any;
+    expect(hasWaitScene(conEspera)).toBe(true);
+    expect(hasWaitScene(sinEspera)).toBe(false);
+    expect(newPlaylistItem(conEspera, false)).toEqual({ showId: 'a', skipFirstScene: true, gap: 2 });
+    expect(newPlaylistItem(sinEspera, false)).toEqual({ showId: 'b', skipFirstScene: false, gap: 2 });
+    expect(newPlaylistItem(conEspera, true)).toEqual({ showId: 'a', skipFirstScene: false, gap: 0 });
+  });
+});
